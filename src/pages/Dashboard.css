@@ -1,0 +1,19 @@
+.header-top {
+  background: #858585;
+}
+
+.sidebar-toggle svg #Path_1,
+.sidebar-toggle svg #Path_2,
+.sidebar-toggle svg #Path_3 {
+  fill: #fff;
+}
+
+.sidebar-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.sidebar-toggle:hover svg #Path_1,
+.sidebar-toggle:hover svg #Path_2,
+.sidebar-toggle:hover svg #Path_3 {
+  fill: #fff;
+}
