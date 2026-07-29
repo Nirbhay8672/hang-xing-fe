@@ -1,4 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { ApiError } from '../auth/apiClient'
+import { useAuth } from '../auth/AuthContext'
 import './Login.css'
 
 const SLIDESHOW_IMAGES = ['/images/product/product.jpg', '/images/product/product1.jpg']
@@ -62,11 +65,25 @@ function ApertureIcon() {
   )
 }
 
+function extractErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    const firstValidationError = error.body?.errors && Object.values(error.body.errors)[0]?.[0]
+    return firstValidationError ?? error.body?.message ?? 'Invalid email or password.'
+  }
+  return 'Something went wrong. Please try again.'
+}
+
 export default function Login() {
+  const { status, login } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [activeSlide, setActiveSlide] = useState(0)
+  const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -75,18 +92,23 @@ export default function Login() {
     return () => clearInterval(id)
   }, [])
 
-  useEffect(() => {
-    // The dashboard theme's style.css paints a full-screen white body::after overlay
-    // that's only hidden once <body> has a "loaded" class (normally added by the
-    // theme's own loader.js, which this page doesn't load).
-    document.body.classList.add('loaded')
-    return () => {
-      document.body.classList.remove('loaded')
-    }
-  }, [])
-
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    setError(null)
+    setSubmitting(true)
+    try {
+      await login(email, password)
+      const from = (location.state as { from?: Location })?.from
+      navigate(from?.pathname ?? '/', { replace: true })
+    } catch (err) {
+      setError(extractErrorMessage(err))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (status === 'authenticated') {
+    return <Navigate to="/" replace />
   }
 
   return (
@@ -99,6 +121,8 @@ export default function Login() {
             <p className="login-subtitle">Heng Xing Pvt. Ltd.</p>
 
             <form onSubmit={handleSubmit}>
+              {error && <p className="form-error">{error}</p>}
+
               <div className="form-field">
                 <input
                   type="email"
@@ -106,6 +130,7 @@ export default function Login() {
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  required
                 />
               </div>
 
@@ -116,6 +141,7 @@ export default function Login() {
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  required
                 />
                 <button
                   type="button"
@@ -127,8 +153,8 @@ export default function Login() {
                 </button>
               </div>
 
-              <button type="submit" className="btn-signin">
-                Sign In
+              <button type="submit" className="btn-signin" disabled={submitting}>
+                {submitting ? 'Signing in…' : 'Sign In'}
               </button>
             </form>
 

@@ -1,0 +1,12 @@
+.app-preloader {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 999999;
+  background: #ffffff;
+}
+
+.app-preloader .dot-primary {
+  background: #d9622a;
+}

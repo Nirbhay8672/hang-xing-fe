@@ -59,6 +59,15 @@
   text-align: center;
 }
 
+.form-error {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(217, 98, 42, 0.45);
+  color: #fff;
+  font-size: 13px;
+}
+
 .form-field {
   margin-bottom: 16px;
 }
