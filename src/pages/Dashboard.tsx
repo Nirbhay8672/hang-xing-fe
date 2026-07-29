@@ -1,118 +1,73 @@
-import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../auth/AuthContext'
-import PageLoader from '../components/PageLoader'
-import DASHBOARD_HTML from './dashboardContent'
-import { DASHBOARD_JS_SRCS } from './dashboardAssets'
+import AppShell from '../components/AppShell'
 import './Dashboard.css'
 
-/**
- * Re-injects the theme's vendor scripts and resolves once the last one has loaded.
- *
- * These scripts don't just define reusable libraries — several of them (charts.js,
- * main.js's feather-icon/inline-SVG swap, etc.) wire themselves up to whatever specific
- * DOM elements exist *at the moment they execute* (e.g. `new Chart(document.getElementById(...))`
- * for each canvas). Dashboard renders its markup via `dangerouslySetInnerHTML`, which
- * hands the browser a brand-new, unprocessed DOM subtree on every mount — so if these
- * scripts only ran once (e.g. gated behind a "loaded already" flag), charts/icons would
- * only ever render on the very first mount and stay blank on any mount after that
- * (such as logging out and back in). Re-running them fresh each time keeps them in sync
- * with the fresh markup; old script tags from a previous mount are removed first so they
- * don't pile up in the DOM.
- */
-function injectDashboardAssets(): Promise<void> {
-  document.querySelectorAll('script[data-dashboard-asset]').forEach((el) => el.remove())
-
-  return new Promise((resolve) => {
-    DASHBOARD_JS_SRCS.forEach((src, index) => {
-      const script = document.createElement('script')
-      script.src = src
-      // Preserves the theme's original load order (jQuery before its plugins, etc.).
-      script.async = false
-      script.dataset.dashboardAsset = 'true'
-      if (index === DASHBOARD_JS_SRCS.length - 1) {
-        script.addEventListener('load', () => resolve())
-        script.addEventListener('error', () => resolve())
-      }
-      document.body.appendChild(script)
-    })
-  })
+interface Bar {
+  x: number
+  y: number
+  h: number
 }
 
-// Re-fetching these ~46 scripts is near-instant once the browser has them cached, which
-// can make the loader flash so briefly it reads as "not showing" at all. Holding it up
-// for at least this long keeps it perceptible without meaningfully delaying real loads.
-const MIN_LOADER_MS = 500
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+interface StatCardProps {
+  value: number
+  label: string
+  variant: 'amber' | 'violet' | 'rose'
+  bars: Bar[]
+}
+
+function StatCard({ value, label, variant, bars }: StatCardProps) {
+  return (
+    <div className="col-lg-4 col-md-6 col-12">
+      <div className="card hx-stat-card">
+        <div className="card-body d-flex align-items-center justify-content-between">
+          <div>
+            <h3 className="hx-stat-card__value">{value}</h3>
+            <p className="hx-stat-card__label">{label}</p>
+          </div>
+          <div className={`hx-stat-card__icon hx-stat-card__icon--${variant}`}>
+            <svg width="34" height="26" viewBox="0 0 34 26" fill="none">
+              {bars.map((bar) => (
+                <rect key={bar.x} x={bar.x} y={bar.y} width="4" height={bar.h} rx="1" fill="currentColor" />
+              ))}
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const BARS: Record<StatCardProps['variant'], Bar[]> = {
+  amber: [
+    { x: 0, y: 16, h: 10 },
+    { x: 7, y: 10, h: 16 },
+    { x: 14, y: 14, h: 12 },
+    { x: 21, y: 4, h: 22 },
+    { x: 28, y: 8, h: 18 },
+  ],
+  violet: [
+    { x: 0, y: 12, h: 14 },
+    { x: 7, y: 6, h: 20 },
+    { x: 14, y: 16, h: 10 },
+    { x: 21, y: 2, h: 24 },
+    { x: 28, y: 10, h: 16 },
+  ],
+  rose: [
+    { x: 0, y: 18, h: 8 },
+    { x: 7, y: 8, h: 18 },
+    { x: 14, y: 14, h: 12 },
+    { x: 21, y: 0, h: 26 },
+    { x: 28, y: 6, h: 20 },
+  ],
+}
 
 export default function Dashboard() {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const { user, logout } = useAuth()
-  const navigate = useNavigate()
-  const [assetsReady, setAssetsReady] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    Promise.all([injectDashboardAssets(), delay(MIN_LOADER_MS)]).then(() => {
-      if (!cancelled) setAssetsReady(true)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
-
-    const nameEl = container.querySelector<HTMLElement>('.nav-author__info h6')
-    const roleEl = container.querySelector<HTMLElement>('.nav-author__info span')
-    if (nameEl && user) nameEl.textContent = user.name
-    if (roleEl && user) roleEl.textContent = user.email
-
-    const signOutEl = container.querySelector<HTMLAnchorElement>('.nav-author__signout')
-    const dropdown = container.querySelector<HTMLElement>('.nav-author .dropdown-custom')
-    const toggleEl = dropdown?.querySelector<HTMLElement>('.nav-item-toggle')
-
-    const cleanups: Array<() => void> = []
-
-    if (signOutEl) {
-      const handleSignOut = (event: MouseEvent) => {
-        event.preventDefault()
-        logout().finally(() => navigate('/login', { replace: true }))
-      }
-      signOutEl.addEventListener('click', handleSignOut)
-      cleanups.push(() => signOutEl.removeEventListener('click', handleSignOut))
-    }
-
-    // This dropdown only opens on CSS `:hover`, with a gap between the avatar and the
-    // panel below it — moving the mouse from one to the other easily drifts outside the
-    // hoverable area, closing the menu (and dropping its pointer-events) before a click on
-    // Logout/Profile ever lands. A click-to-toggle `.show` class is a reliable alternative.
-    if (dropdown && toggleEl) {
-      const handleToggle = (event: MouseEvent) => {
-        event.preventDefault()
-        event.stopPropagation()
-        dropdown.classList.toggle('show')
-      }
-      const handleOutsideClick = (event: MouseEvent) => {
-        if (!dropdown.contains(event.target as Node)) dropdown.classList.remove('show')
-      }
-      toggleEl.addEventListener('click', handleToggle)
-      document.addEventListener('click', handleOutsideClick)
-      cleanups.push(() => {
-        toggleEl.removeEventListener('click', handleToggle)
-        document.removeEventListener('click', handleOutsideClick)
-      })
-    }
-
-    return () => cleanups.forEach((fn) => fn())
-  }, [user, logout, navigate])
-
   return (
-    <>
-      {!assetsReady && <PageLoader />}
-      <div ref={containerRef} className="dashboard-app" dangerouslySetInnerHTML={{ __html: DASHBOARD_HTML }} />
-    </>
+    <AppShell title="Dashboard">
+      <div className="row">
+        <StatCard value={1} label="Company" variant="amber" bars={BARS.amber} />
+        <StatCard value={0} label="Planning Orders" variant="violet" bars={BARS.violet} />
+        <StatCard value={0} label="Pending Orders" variant="rose" bars={BARS.rose} />
+      </div>
+    </AppShell>
   )
 }

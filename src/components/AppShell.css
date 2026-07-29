@@ -1,0 +1,52 @@
+.header-top {
+  background: #858585;
+}
+
+/* The theme opens this dropdown purely via CSS `:hover`, which never triggers on touch
+   devices and is easy to lose while moving the mouse from the avatar to the panel below
+   it. `.show` is toggled by click in AppShell.tsx as a reliable alternative. */
+.dropdown-custom.show .dropdown-wrapper {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: all;
+  transform: scale(1);
+}
+
+.sidebar-toggle svg #Path_1,
+.sidebar-toggle svg #Path_2,
+.sidebar-toggle svg #Path_3 {
+  fill: #fff;
+}
+
+.sidebar-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.sidebar-toggle:hover svg #Path_1,
+.sidebar-toggle:hover svg #Path_2,
+.sidebar-toggle:hover svg #Path_3 {
+  fill: #fff;
+}
+
+.page-header {
+  padding-top: 24px;
+  margin-bottom: 16px;
+}
+
+.page-header__inner h2 {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.page-header__inner .breadcrumb {
+  margin-bottom: 0;
+  font-size: 13px;
+}
+
+/* This theme's bootstrap.css points the breadcrumb separator at an icon-font glyph
+   ("\f112") that isn't actually wired up anywhere, so it renders as a missing-glyph box. */
+.page-header__inner .breadcrumb-item + .breadcrumb-item::before {
+  content: "/";
+  font-family: inherit;
+}
