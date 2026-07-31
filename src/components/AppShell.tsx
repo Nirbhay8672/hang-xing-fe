@@ -5,6 +5,13 @@ import { DASHBOARD_JS_SRCS } from '../pages/dashboardAssets'
 import PageLoader from './PageLoader'
 import { SHELL_HEADER_HTML, SHELL_SIDEBAR_HTML } from './shellMarkup'
 
+declare global {
+  interface Window {
+    /** Global injected by the vendored feather.min.js (see DASHBOARD_JS_SRCS). */
+    feather?: { replace: () => void }
+  }
+}
+
 /**
  * Re-injects the theme's vendor scripts and resolves once the last one has loaded.
  *
@@ -59,11 +66,40 @@ export default function AppShell({ title, actions, children }: AppShellProps) {
   useEffect(() => {
     let cancelled = false
     Promise.all([injectDashboardAssets(), delay(MIN_LOADER_MS)]).then(() => {
-      if (!cancelled) setAssetsReady(true)
+      if (cancelled) return
+      window.feather?.replace()
+      setAssetsReady(true)
     })
     return () => {
       cancelled = true
     }
+  }, [])
+
+  // Keeps feather icons rendered no matter what else touches the header/sidebar DOM.
+  // A handful of the vendored jQuery plugins (mobile-nav cloning, submenu toggles, etc.)
+  // rebuild parts of this markup after their own async init, which puts the raw
+  // `<span data-feather="...">` placeholders back after feather.replace() already swapped
+  // them for inline SVGs — with 46 legacy scripts racing on load, exactly when/whether that
+  // happens isn't predictable. Watching the two containers and re-running replace() any
+  // time they change makes icon rendering self-healing instead of a one-shot timing bet.
+  useEffect(() => {
+    const containers = [headerRef.current, sidebarRef.current].filter((el): el is HTMLDivElement => el !== null)
+    if (containers.length === 0) return
+
+    let replacing = false
+    function resyncIcons() {
+      if (replacing) return
+      if (document.querySelectorAll('[data-feather]').length === 0) return
+      replacing = true
+      window.feather?.replace()
+      replacing = false
+    }
+
+    const observer = new MutationObserver(resyncIcons)
+    containers.forEach((el) => observer.observe(el, { childList: true, subtree: true }))
+    resyncIcons()
+
+    return () => observer.disconnect()
   }, [])
 
   // The header markup below is the theme's raw HTML (dangerouslySetInnerHTML), so the
