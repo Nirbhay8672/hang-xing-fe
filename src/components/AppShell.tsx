@@ -75,56 +75,76 @@ export default function AppShell({ title, actions, children }: AppShellProps) {
     }
   }, [])
 
-  // Keeps feather icons rendered no matter what else touches the header/sidebar DOM.
-  // A handful of the vendored jQuery plugins (mobile-nav cloning, submenu toggles, etc.)
-  // rebuild parts of this markup after their own async init, which puts the raw
-  // `<span data-feather="...">` placeholders back after feather.replace() already swapped
-  // them for inline SVGs — with 46 legacy scripts racing on load, exactly when/whether that
-  // happens isn't predictable. Watching the two containers and re-running replace() any
-  // time they change makes icon rendering self-healing instead of a one-shot timing bet.
+  // Keeps the header/sidebar content in sync no matter what else touches that DOM. React
+  // itself re-applies the raw `dangerouslySetInnerHTML` markup once shortly after mount
+  // (a re-render of this component resets it back to the pristine template), and a few of
+  // the vendored jQuery plugins do their own async DOM rebuilding on top of that — either
+  // way, anything imperatively patched in (feather's SVG swap, the logged-in user's
+  // name/email) gets wiped back to placeholder content. Watching the two containers and
+  // re-applying both fixups any time they change makes this self-healing instead of a
+  // one-shot timing bet.
   useEffect(() => {
-    const containers = [headerRef.current, sidebarRef.current].filter((el): el is HTMLDivElement => el !== null)
+    const header = headerRef.current
+    const sidebar = sidebarRef.current
+    const containers = [header, sidebar].filter((el): el is HTMLDivElement => el !== null)
     if (containers.length === 0) return
 
-    let replacing = false
-    function resyncIcons() {
-      if (replacing) return
-      if (document.querySelectorAll('[data-feather]').length === 0) return
-      replacing = true
-      window.feather?.replace()
-      replacing = false
+    let syncing = false
+    function resync() {
+      if (syncing) return
+      syncing = true
+
+      if (document.querySelectorAll('[data-feather]').length > 0) {
+        window.feather?.replace()
+      }
+
+      if (header && user) {
+        const nameEl = header.querySelector<HTMLElement>('.nav-author__info h6')
+        const emailEl = header.querySelector<HTMLElement>('.nav-author__info span')
+        if (nameEl && nameEl.textContent !== user.name) nameEl.textContent = user.name
+        if (emailEl && emailEl.textContent !== user.email) emailEl.textContent = user.email
+      }
+
+      syncing = false
     }
 
-    const observer = new MutationObserver(resyncIcons)
+    const observer = new MutationObserver(resync)
     containers.forEach((el) => observer.observe(el, { childList: true, subtree: true }))
-    resyncIcons()
+    resync()
 
     return () => observer.disconnect()
-  }, [])
+  }, [user])
 
-  // The header markup below is the theme's raw HTML (dangerouslySetInnerHTML), so the
-  // logged-in user's name/email and the real sign-out action are patched onto it here,
-  // the same way the pre-React template would if it were driven by a backend templating
-  // language instead of React.
+  // Sign-out and the sidebar-collapse toggle both live inside the header's raw HTML, so a
+  // listener attached directly to those inner elements (or main.js's own vendored wiring
+  // for the toggle) gets lost whenever that markup is rebuilt (see the effect above).
+  // Delegating from the stable outer container instead means the listener survives no
+  // matter how many times its descendants get replaced.
   useEffect(() => {
     const header = headerRef.current
     if (!header) return
 
-    const nameEl = header.querySelector<HTMLElement>('.nav-author__info h6')
-    const emailEl = header.querySelector<HTMLElement>('.nav-author__info span')
-    if (nameEl && user) nameEl.textContent = user.name
-    if (emailEl && user) emailEl.textContent = user.email
+    function handleClick(event: MouseEvent) {
+      const target = event.target as HTMLElement
 
-    const signOutEl = header.querySelector<HTMLAnchorElement>('.nav-author__signout')
-    if (!signOutEl) return
+      if (target.closest('.nav-author__signout')) {
+        event.preventDefault()
+        logout().finally(() => navigate('/login', { replace: true }))
+        return
+      }
 
-    function handleSignOut(event: MouseEvent) {
-      event.preventDefault()
-      logout().finally(() => navigate('/login', { replace: true }))
+      if (target.closest('.sidebar-toggle')) {
+        event.preventDefault()
+        document.querySelector('.overlay-dark-sidebar')?.classList.toggle('show')
+        document.querySelector('.sidebar')?.classList.toggle('sidebar-collapse')
+        document.querySelector('.sidebar')?.classList.toggle('collapsed')
+        document.querySelector('.contents')?.classList.toggle('expanded')
+      }
     }
-    signOutEl.addEventListener('click', handleSignOut)
-    return () => signOutEl.removeEventListener('click', handleSignOut)
-  }, [user, logout, navigate])
+
+    header.addEventListener('click', handleClick)
+    return () => header.removeEventListener('click', handleClick)
+  }, [logout, navigate])
 
   // Marks whichever sidebar link matches the current route as active/open, mirroring how
   // the theme's own static pages ship each with their own nav item pre-marked active.

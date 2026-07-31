@@ -24,6 +24,7 @@ export const authService = {
   },
 
   async fetchMe(): Promise<User> {
-    return apiRequest<User>('/me')
+    const data = await apiRequest<{ user: User }>('/me')
+    return data.user
   },
 }
