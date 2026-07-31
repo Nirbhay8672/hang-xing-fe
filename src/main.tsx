@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './index.css'
 import { AuthProvider, RequireAuth } from './auth/AuthContext.tsx'
 import Layout from './components/Layout.tsx'
+import Companies from './pages/Companies.tsx'
 import Dashboard from './pages/Dashboard.tsx'
 import Login from './pages/Login.tsx'
 import Users from './pages/Users.tsx'
@@ -31,6 +32,14 @@ createRoot(document.getElementById('root')!).render(
             element={
               <RequireAuth>
                 <Users />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/companies"
+            element={
+              <RequireAuth>
+                <Companies />
               </RequireAuth>
             }
           />
