@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { ApiError } from '../auth/apiClient'
 import AppShell from '../components/AppShell'
+import '../components/formStyles.css'
 import '../components/iconButtons.css'
 import type { User } from '../users/types'
 import { usersService } from '../users/usersService'

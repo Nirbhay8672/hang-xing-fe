@@ -5,15 +5,6 @@
   padding: 20px;
 }
 
-.hx-form-error {
-  margin: 0 0 16px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  background: rgba(220, 53, 69, 0.1);
-  color: #dc3545;
-  font-size: 13px;
-}
-
 .hx-specs-badge {
   display: inline-flex;
   align-items: center;
@@ -37,41 +28,6 @@
   background: #eef0f4;
   color: #9299b8;
   cursor: not-allowed;
-}
-
-.hx-field-error {
-  display: block;
-  margin-top: 4px;
-  color: #dc3545;
-  font-size: 12.5px;
-}
-
-/* The theme's own `.btn-outline-secondary` maps to its brand "secondary" color, which is
-   pink here — not the neutral grey a Cancel button needs, so it gets its own look. */
-.hx-btn-secondary {
-  background: #eef0f4;
-  color: #4b5468;
-  border: 1px solid #dde1ea;
-}
-
-.hx-btn-secondary:hover:not(:disabled) {
-  background: #e3e6ed;
-  color: #2e3175;
-}
-
-.hx-btn-secondary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* The theme's `.btn-danger` defaults to black text (--bs-btn-color: #000) on its red
-   background, which reads as low-contrast/broken — this page's delete-confirm button
-   needs white text by default, not just on hover. */
-.btn-danger {
-  --bs-btn-color: #fff;
-  --bs-btn-hover-color: #fff;
-  --bs-btn-active-color: #fff;
-  --bs-btn-disabled-color: #fff;
 }
 
 .hx-specs-section {

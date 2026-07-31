@@ -5,22 +5,6 @@
   padding: 20px;
 }
 
-.hx-form-error {
-  margin: 0 0 16px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  background: rgba(220, 53, 69, 0.1);
-  color: #dc3545;
-  font-size: 13px;
-}
-
-.hx-field-error {
-  display: block;
-  margin-top: 4px;
-  color: #dc3545;
-  font-size: 12.5px;
-}
-
 .hx-password-field {
   position: relative;
 }
@@ -43,22 +27,4 @@
 
 .hx-password-toggle:hover {
   color: #2e3175;
-}
-
-/* The theme's own `.btn-outline-secondary` maps to its brand "secondary" color, which is
-   pink here — not the neutral grey a Cancel button needs, so it gets its own look. */
-.hx-btn-secondary {
-  background: #eef0f4;
-  color: #4b5468;
-  border: 1px solid #dde1ea;
-}
-
-.hx-btn-secondary:hover:not(:disabled) {
-  background: #e3e6ed;
-  color: #2e3175;
-}
-
-.hx-btn-secondary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }

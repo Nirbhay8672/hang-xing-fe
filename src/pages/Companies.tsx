@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { ApiError } from '../auth/apiClient'
 import AppShell from '../components/AppShell'
+import '../components/formStyles.css'
 import '../components/iconButtons.css'
 import type { Company, ManufacturingSpecificationInput } from '../companies/types'
 import { companiesService } from '../companies/companiesService'
