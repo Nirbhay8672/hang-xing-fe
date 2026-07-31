@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { ApiError } from '../auth/apiClient'
 import AppShell from '../components/AppShell'
 import type { User } from '../users/types'
@@ -13,13 +13,6 @@ interface UserFormState {
 
 const EMPTY_FORM: UserFormState = { name: '', email: '', password: '' }
 const GENERAL_ERROR_KEY = '_general'
-
-// Theme demo avatars (public/html/img/tm*.png) — our API has no per-user photo,
-// so each row gets a stable placeholder cycled by id.
-const AVATARS = ['tm1', 'tm2', 'tm3', 'tm4', 'tm5', 'tm6', 'tm7', 'tm9', 'tm10', 'tm11', 'tm12', 'tm13', 'tm14']
-function avatarFor(id: number): string {
-  return `/html/img/${AVATARS[id % AVATARS.length]}.png`
-}
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
@@ -38,9 +31,6 @@ export default function Users() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
 
-  const [openMenuId, setOpenMenuId] = useState<number | null>(null)
-  const menuRef = useRef<HTMLDivElement>(null)
-
   const [modalMode, setModalMode] = useState<'create' | 'edit' | null>(null)
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [form, setForm] = useState<UserFormState>(EMPTY_FORM)
@@ -55,17 +45,6 @@ export default function Users() {
   useEffect(() => {
     loadUsers()
   }, [])
-
-  useEffect(() => {
-    if (openMenuId === null) return
-    function handleOutsideClick(event: MouseEvent) {
-      if (!(event.target as HTMLElement).closest('.table-actions .dropdown')) {
-        setOpenMenuId(null)
-      }
-    }
-    document.addEventListener('click', handleOutsideClick)
-    return () => document.removeEventListener('click', handleOutsideClick)
-  }, [openMenuId])
 
   async function loadUsers() {
     setLoadError(null)
@@ -86,7 +65,6 @@ export default function Users() {
   }
 
   function openEditModal(user: User) {
-    setOpenMenuId(null)
     setModalMode('edit')
     setEditingUser(user)
     setForm({ name: user.name, email: user.email, password: '' })
@@ -143,6 +121,11 @@ export default function Users() {
     }
   }
 
+  function openDeleteModal(user: User) {
+    setDeleteTarget(user)
+    setDeleteError(null)
+  }
+
   const filteredUsers = users?.filter((u) => {
     const q = search.trim().toLowerCase()
     if (!q) return true
@@ -191,14 +174,7 @@ export default function Users() {
                     <thead>
                       <tr>
                         <th>
-                          <div className="d-flex align-items-center">
-                            <div className="custom-checkbox check-all">
-                              <input className="checkbox" type="checkbox" id="check-all-users" />
-                              <label htmlFor="check-all-users">
-                                <span className="checkbox-text userDatatable-title">Name</span>
-                              </label>
-                            </div>
-                          </div>
+                          <span className="userDatatable-title">Name</span>
                         </th>
                         <th className="c-email">
                           <span>Email</span>
@@ -215,26 +191,8 @@ export default function Users() {
                       {filteredUsers.map((u) => (
                         <tr key={u.id}>
                           <td>
-                            <div className="contact-item d-flex align-items-center">
-                              <div className="contact-personal-wrap">
-                                <div className="checkbox-group-wrapper">
-                                  <div className="checkbox-group d-flex">
-                                    <div className="checkbox-theme-default custom-checkbox checkbox-group__single d-flex">
-                                      <input className="checkbox" type="checkbox" id={`check-user-${u.id}`} />
-                                      <label htmlFor={`check-user-${u.id}`}></label>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="contact-personal-info d-flex">
-                                <span
-                                  className="profile-image rounded-circle d-block m-0 wh-38"
-                                  style={{ backgroundImage: `url('${avatarFor(u.id)}')`, backgroundSize: 'cover' }}
-                                ></span>
-                                <div className="contact_title">
-                                  <h6>{u.name}</h6>
-                                </div>
-                              </div>
+                            <div className="contact_title">
+                              <h6>{u.name}</h6>
                             </div>
                           </td>
                           <td>
@@ -244,36 +202,25 @@ export default function Users() {
                             <span className="position">{formatDate(u.created_at)}</span>
                           </td>
                           <td>
-                            <div className="table-actions">
-                              <div className={`dropdown dropdown-click${openMenuId === u.id ? ' show' : ''}`} ref={openMenuId === u.id ? menuRef : null}>
-                                <button
-                                  className="btn-link border-0 bg-transparent p-0"
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    setOpenMenuId((id) => (id === u.id ? null : u.id))
-                                  }}
-                                >
-                                  <i className="las la-ellipsis-v"></i>
-                                </button>
-                                <div className={`dropdown-default dropdown-menu${openMenuId === u.id ? ' show' : ''}`}>
-                                  <a className="dropdown-item" href="#" onClick={(e) => { e.preventDefault(); openEditModal(u) }}>
-                                    edit
-                                  </a>
-                                  <a
-                                    className="dropdown-item"
-                                    href="#"
-                                    onClick={(e) => {
-                                      e.preventDefault()
-                                      setOpenMenuId(null)
-                                      setDeleteTarget(u)
-                                      setDeleteError(null)
-                                    }}
-                                  >
-                                    delete
-                                  </a>
-                                </div>
-                              </div>
+                            <div className="table-actions d-flex">
+                              <button
+                                type="button"
+                                className="hx-icon-btn hx-icon-btn--edit"
+                                aria-label="Edit user"
+                                title="Edit"
+                                onClick={() => openEditModal(u)}
+                              >
+                                <i className="la la-edit"></i>
+                              </button>
+                              <button
+                                type="button"
+                                className="hx-icon-btn hx-icon-btn--delete"
+                                aria-label="Delete user"
+                                title="Delete"
+                                onClick={() => openDeleteModal(u)}
+                              >
+                                <i className="la la-trash"></i>
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -300,7 +247,7 @@ export default function Users() {
                 </div>
                 <div className="modal-body">
                   <div className="add-new-contact">
-                    <form onSubmit={handleSubmit}>
+                    <form onSubmit={handleSubmit} autoComplete="off">
                       {formErrors[GENERAL_ERROR_KEY] && <p className="hx-form-error">{formErrors[GENERAL_ERROR_KEY][0]}</p>}
 
                       <div className="form-group mb-20">
@@ -311,6 +258,7 @@ export default function Users() {
                           placeholder="Full name"
                           value={form.name}
                           onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                          autoComplete="off"
                           required
                         />
                         {formErrors.name && <small className="hx-field-error">{formErrors.name[0]}</small>}
@@ -324,6 +272,7 @@ export default function Users() {
                           placeholder="Email address"
                           value={form.email}
                           onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                          autoComplete="off"
                           required
                         />
                         {formErrors.email && <small className="hx-field-error">{formErrors.email[0]}</small>}
@@ -340,6 +289,7 @@ export default function Users() {
                             onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
                             minLength={modalMode === 'create' ? 8 : undefined}
                             required={modalMode === 'create'}
+                            autoComplete="new-password"
                           />
                           <button type="button" className="hx-password-toggle" onClick={() => setShowPassword((v) => !v)}>
                             <i className={`las ${showPassword ? 'la-eye-slash' : 'la-eye'}`}></i>
@@ -348,8 +298,8 @@ export default function Users() {
                         {formErrors.password && <small className="hx-field-error">{formErrors.password[0]}</small>}
                       </div>
 
-                      <div className="button-group d-flex pt-20">
-                        <button type="button" className="btn btn-outline-secondary btn-squared me-10" onClick={closeModal} disabled={submitting}>
+                      <div className="button-group d-flex justify-content-center pt-20">
+                        <button type="button" className="btn hx-btn-secondary btn-squared me-10" onClick={closeModal} disabled={submitting}>
                           Cancel
                         </button>
                         <button type="submit" className="btn btn-primary btn-default btn-squared" disabled={submitting}>
@@ -387,10 +337,10 @@ export default function Users() {
                     This will permanently delete <strong>{deleteTarget.name}</strong>. This cannot be undone.
                   </p>
                   {deleteError && <p className="hx-form-error">{deleteError}</p>}
-                  <div className="button-group d-flex pt-20">
+                  <div className="button-group d-flex justify-content-center pt-20">
                     <button
                       type="button"
-                      className="btn btn-outline-secondary btn-squared me-10"
+                      className="btn hx-btn-secondary btn-squared me-10"
                       onClick={() => setDeleteTarget(null)}
                       disabled={deleting}
                     >

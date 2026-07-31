@@ -198,7 +198,7 @@ export default function AppShell({ title, actions, children }: AppShellProps) {
               <div className="col-md-6">
                 <div className="footer-copyright">
                   <p>
-                    2020 @<a href="#">Aazztech</a>
+                    2026 @<a href="#">Mr web</a>
                   </p>
                 </div>
               </div>
