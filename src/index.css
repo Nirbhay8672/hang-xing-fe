@@ -63,7 +63,7 @@
 }
 
 #root:has(.login-page),
-#root:has(.dashboard-app) {
+#root:has(.main-content) {
   width: 100%;
   border-inline: none;
   text-align: left;

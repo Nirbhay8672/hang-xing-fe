@@ -1,14 +1,9 @@
-import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { DASHBOARD_JS_SRCS } from '../pages/dashboardAssets'
 import PageLoader from './PageLoader'
-import './AppShell.css'
-
-const NAV_ITEMS = [
-  { to: '/', label: 'Dashboard', icon: 'home' },
-  { to: '/users', label: 'Users', icon: 'users' },
-]
+import { SHELL_HEADER_HTML, SHELL_SIDEBAR_HTML } from './shellMarkup'
 
 /**
  * Re-injects the theme's vendor scripts and resolves once the last one has loaded.
@@ -48,15 +43,18 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 interface AppShellProps {
   title: string
+  /** Rendered inside the shared header's .breadcrumb-action slot (search box, "Add New", etc). */
+  actions?: ReactNode
   children: ReactNode
 }
 
-export default function AppShell({ title, children }: AppShellProps) {
+export default function AppShell({ title, actions, children }: AppShellProps) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [assetsReady, setAssetsReady] = useState(false)
-  const [dropdownOpen, setDropdownOpen] = useState(false)
-  const dropdownRef = useRef<HTMLLIElement>(null)
+  const headerRef = useRef<HTMLDivElement>(null)
+  const sidebarRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -68,138 +66,69 @@ export default function AppShell({ title, children }: AppShellProps) {
     }
   }, [])
 
-  // Same hover-drift problem noted in the theme: moving the mouse from the avatar to the
-  // panel below it easily drifts outside the hoverable area. Click-to-toggle is reliable.
+  // The header markup below is the theme's raw HTML (dangerouslySetInnerHTML), so the
+  // logged-in user's name/email and the real sign-out action are patched onto it here,
+  // the same way the pre-React template would if it were driven by a backend templating
+  // language instead of React.
   useEffect(() => {
-    if (!dropdownOpen) return
-    function handleOutsideClick(event: globalThis.MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setDropdownOpen(false)
-      }
+    const header = headerRef.current
+    if (!header) return
+
+    const nameEl = header.querySelector<HTMLElement>('.nav-author__info h6')
+    const emailEl = header.querySelector<HTMLElement>('.nav-author__info span')
+    if (nameEl && user) nameEl.textContent = user.name
+    if (emailEl && user) emailEl.textContent = user.email
+
+    const signOutEl = header.querySelector<HTMLAnchorElement>('.nav-author__signout')
+    if (!signOutEl) return
+
+    function handleSignOut(event: MouseEvent) {
+      event.preventDefault()
+      logout().finally(() => navigate('/login', { replace: true }))
     }
-    document.addEventListener('click', handleOutsideClick)
-    return () => document.removeEventListener('click', handleOutsideClick)
-  }, [dropdownOpen])
+    signOutEl.addEventListener('click', handleSignOut)
+    return () => signOutEl.removeEventListener('click', handleSignOut)
+  }, [user, logout, navigate])
 
-  function handleSignOut(event: MouseEvent) {
-    event.preventDefault()
-    logout().finally(() => navigate('/login', { replace: true }))
-  }
+  // Marks whichever sidebar link matches the current route as active/open, mirroring how
+  // the theme's own static pages ship each with their own nav item pre-marked active.
+  useEffect(() => {
+    const sidebar = sidebarRef.current
+    if (!sidebar) return
 
-  function handleToggleDropdown(event: MouseEvent) {
-    event.preventDefault()
-    event.stopPropagation()
-    setDropdownOpen((v) => !v)
-  }
+    const activeLink = sidebar.querySelector<HTMLAnchorElement>(`a[href="${location.pathname}"]`)
+    if (!activeLink) return
+
+    activeLink.classList.add('active')
+    const parentLi = activeLink.closest('li.has-child')
+    const toggle = parentLi?.querySelector<HTMLElement>(':scope > a')
+    parentLi?.classList.add('open')
+    toggle?.classList.add('active')
+
+    return () => {
+      activeLink.classList.remove('active')
+      parentLi?.classList.remove('open')
+      toggle?.classList.remove('active')
+    }
+  }, [location.pathname])
 
   return (
     <>
       {!assetsReady && <PageLoader />}
 
-      <div className="mobile-search">
-        <form className="search-form">
-          <span data-feather="search"></span>
-          <input className="form-control me-sm-2 box-shadow-none" type="text" placeholder="Search..." />
-        </form>
-      </div>
-
-      <div className="mobile-author-actions"></div>
-
-      <header className="header-top">
-        <nav className="navbar navbar-light">
-          <div className="navbar-left">
-            <a href="" className="sidebar-toggle">
-              <img className="svg" src="/html/img/svg/bars.svg" alt="img" />
-            </a>
-            <a className="navbar-brand" href="/">
-              <img className="dark" src="/images/logo.png" alt="Heng Xing" />
-              <img className="light" src="/images/logo.png" alt="Heng Xing" />
-            </a>
-          </div>
-
-          <div className="navbar-right">
-            <ul className="navbar-right__menu">
-              <li className="nav-author" ref={dropdownRef}>
-                <div className={`dropdown-custom${dropdownOpen ? ' show' : ''}`}>
-                  <a href="javascript:;" className="nav-item-toggle" onClick={handleToggleDropdown}>
-                    <img src="/html/img/author-nav.jpg" alt="" className="rounded-circle" />
-                  </a>
-                  <div className="dropdown-wrapper">
-                    <div className="nav-author__info">
-                      <div className="author-img">
-                        <img src="/html/img/author-nav.jpg" alt="" className="rounded-circle" />
-                      </div>
-                      <div>
-                        <h6>{user?.name}</h6>
-                        <span>{user?.email}</span>
-                      </div>
-                    </div>
-                    <div className="nav-author__options">
-                      <ul>
-                        <li>
-                          <a href="">
-                            <span data-feather="user"></span> Profile
-                          </a>
-                        </li>
-                      </ul>
-                      <a href="/login" className="nav-author__signout" onClick={handleSignOut}>
-                        <span data-feather="log-out"></span> Logout
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              </li>
-            </ul>
-
-            <div className="navbar-right__mobileAction d-md-none">
-              <a href="#" className="btn-search">
-                <span data-feather="search"></span>
-                <span data-feather="x"></span>
-              </a>
-              <a href="#" className="btn-author-action">
-                <span data-feather="more-vertical"></span>
-              </a>
-            </div>
-          </div>
-        </nav>
-      </header>
+      <div ref={headerRef} dangerouslySetInnerHTML={{ __html: SHELL_HEADER_HTML }} />
 
       <main className="main-content">
-        <aside className="sidebar-wrapper">
-          <div className="sidebar sidebar-collapse" id="sidebar">
-            <div className="sidebar__menu-group">
-              <ul className="sidebar_nav">
-                <li className="menu-title">
-                  <span>Main menu</span>
-                </li>
-                {NAV_ITEMS.map((item) => (
-                  <li key={item.to}>
-                    <NavLink to={item.to} end className={({ isActive }) => (isActive ? 'active' : '')}>
-                      <span data-feather={item.icon} className="nav-icon"></span>
-                      <span className="menu-text">{item.label}</span>
-                    </NavLink>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </aside>
+        <div ref={sidebarRef} dangerouslySetInnerHTML={{ __html: SHELL_SIDEBAR_HTML }} />
 
         <div className="contents">
           <div className="container-fluid">
-            <div className="page-header">
-              <div className="page-header__inner">
-                <h2>{title}</h2>
-                <nav aria-label="breadcrumb">
-                  <ol className="breadcrumb bg-transparent p-0 m-0">
-                    <li className="breadcrumb-item">
-                      <a href="/">Home</a>
-                    </li>
-                    <li className="breadcrumb-item active" aria-current="page">
-                      {title}
-                    </li>
-                  </ol>
-                </nav>
+            <div className="row">
+              <div className="col-lg-12">
+                <div className="breadcrumb-main">
+                  <h4 className="text-capitalize breadcrumb-title">{title}</h4>
+                  {actions && <div className="breadcrumb-action justify-content-center flex-wrap">{actions}</div>}
+                </div>
               </div>
             </div>
 
