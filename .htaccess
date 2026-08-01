@@ -1,3 +1,11 @@
+# Force correct MIME types for ES module scripts — some Apache configs default unknown/
+# misconfigured extensions to application/octet-stream, which browsers reject for
+# <script type="module">.
+<IfModule mod_mime.c>
+    AddType text/javascript .js .mjs
+    AddType text/css .css
+</IfModule>
+
 # Block direct access to source/config files (in case this folder is a raw git checkout
 # rather than just the built dist/ output).
 <FilesMatch "(^\.|^package(-lock)?\.json$|^tsconfig.*\.json$|^vite\.config\.ts$|^eslint\.config\.js$)">
