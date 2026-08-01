@@ -4,11 +4,11 @@
     Require all denied
 </FilesMatch>
 
-RedirectMatch 404 ^/frontend/(src|node_modules)(/.*)?$
+RedirectMatch 404 ^/(src|node_modules)(/.*)?$
 
 # SPA fallback: let React Router handle any path that isn't a real file (deep links, refreshes).
 RewriteEngine On
-RewriteBase /frontend/
+RewriteBase /
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule . index.html [L]
