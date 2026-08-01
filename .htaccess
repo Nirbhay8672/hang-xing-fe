@@ -1,0 +1,14 @@
+# Block direct access to source/config files (in case this folder is a raw git checkout
+# rather than just the built dist/ output).
+<FilesMatch "(^\.|^package(-lock)?\.json$|^tsconfig.*\.json$|^vite\.config\.ts$|^eslint\.config\.js$)">
+    Require all denied
+</FilesMatch>
+
+RedirectMatch 404 ^/frontend/(src|node_modules)(/.*)?$
+
+# SPA fallback: let React Router handle any path that isn't a real file (deep links, refreshes).
+RewriteEngine On
+RewriteBase /frontend/
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . index.html [L]

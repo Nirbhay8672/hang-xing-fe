@@ -4,7 +4,9 @@ import { ApiError } from '../auth/apiClient'
 import { useAuth } from '../auth/AuthContext'
 import './Login.css'
 
-const SLIDESHOW_IMAGES = ['/images/product/product.jpg', '/images/product/product1.jpg']
+const SLIDESHOW_IMAGES = ['images/product/product.jpg', 'images/product/product1.jpg'].map(
+  (path) => `${import.meta.env.BASE_URL}${path}`,
+)
 const SLIDESHOW_INTERVAL_MS = 4000
 
 function EyeIcon({ open }: { open: boolean }) {
@@ -100,7 +102,7 @@ export default function Login() {
       <div className="login-card">
         <div className="login-card__form">
           <div className="login-card__form-inner">
-            <img className="login-logo" src="/images/logo.png" alt="Heng Xing" />
+            <img className="login-logo" src={`${import.meta.env.BASE_URL}images/logo.png`} alt="Heng Xing" />
             <h1>Sign in</h1>
             <p className="login-subtitle">Heng Xing Pvt. Ltd.</p>
 

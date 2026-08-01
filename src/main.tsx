@@ -16,7 +16,7 @@ import Users from './pages/Users.tsx'
 // out mid-load and racing the second batch — harmless for pure-React effects, but this one
 // manages real DOM/network side effects a legacy script tag can't safely have "two" of.
 createRoot(document.getElementById('root')!).render(
-  <BrowserRouter>
+  <BrowserRouter basename={import.meta.env.BASE_URL}>
     <AuthProvider>
       <Layout>
         <Routes>

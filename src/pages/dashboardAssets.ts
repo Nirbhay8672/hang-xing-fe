@@ -1,6 +1,9 @@
 // CSS is linked directly in index.html (render-blocking, avoids a flash of unstyled content),
 // so only the theme's scripts need runtime injection here.
-export const DASHBOARD_JS_SRCS: string[] = [
+//
+// Paths are root-relative so the app still works when deployed under a subpath (e.g.
+// /frontend/); the map below prepends BASE_URL to each one at load time.
+const RAW_JS_SRCS: string[] = [
   "https://maps.googleapis.com/maps/api/js?key=AIzaSyDduF2tLXicDEPDMAtC6-NLOekX0A5vlnY",
   "/html/assets/vendor_assets/js/jquery/jquery-3.5.1.min.js",
   "/html/assets/vendor_assets/js/jquery/jquery-ui.js",
@@ -48,3 +51,7 @@ export const DASHBOARD_JS_SRCS: string[] = [
   "/html/assets/theme_assets/js/leaflet-init.js",
   "/html/assets/theme_assets/js/main.js"
 ]
+
+export const DASHBOARD_JS_SRCS: string[] = RAW_JS_SRCS.map((src) =>
+  src.startsWith('/') ? `${import.meta.env.BASE_URL}${src.slice(1)}` : src,
+)
