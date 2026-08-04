@@ -4,27 +4,3 @@
   margin: 0;
   padding: 20px;
 }
-
-.hx-password-field {
-  position: relative;
-}
-
-.hx-password-field input {
-  padding-right: 46px;
-}
-
-.hx-password-toggle {
-  position: absolute;
-  top: 50%;
-  right: 6px;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  padding: 6px 10px;
-  color: #9299b8;
-  cursor: pointer;
-}
-
-.hx-password-toggle:hover {
-  color: #2e3175;
-}

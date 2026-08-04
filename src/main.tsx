@@ -7,6 +7,8 @@ import Companies from './pages/Companies.tsx'
 import Dashboard from './pages/Dashboard.tsx'
 import Login from './pages/Login.tsx'
 import Orders from './pages/Orders.tsx'
+import Profile from './pages/Profile.tsx'
+import Roles from './pages/Roles.tsx'
 import Users from './pages/Users.tsx'
 
 // No <StrictMode>: AppShell re-injects the theme's ~46 jQuery-era vendor scripts as plain
@@ -33,6 +35,22 @@ createRoot(document.getElementById('root')!).render(
             element={
               <RequireAuth>
                 <Users />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/roles"
+            element={
+              <RequireAuth>
+                <Roles />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <RequireAuth>
+                <Profile />
               </RequireAuth>
             }
           />

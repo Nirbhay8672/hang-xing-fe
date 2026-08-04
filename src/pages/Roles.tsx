@@ -3,24 +3,27 @@ import { ApiError } from '../auth/apiClient'
 import AppShell from '../components/AppShell'
 import '../components/formStyles.css'
 import '../components/iconButtons.css'
+import type { PermissionGroup } from '../permissions/types'
+import { permissionsService } from '../permissions/permissionsService'
 import type { Role } from '../roles/types'
 import { rolesService } from '../roles/rolesService'
-import type { User } from '../users/types'
-import { usersService } from '../users/usersService'
-import './Users.css'
+import './Roles.css'
 
-interface UserFormState {
+interface RoleFormState {
   name: string
-  email: string
-  password: string
-  role_id: string
+  permissions: string[]
 }
 
-const EMPTY_FORM: UserFormState = { name: '', email: '', password: '', role_id: '' }
+const EMPTY_FORM: RoleFormState = { name: '', permissions: [] }
 const GENERAL_ERROR_KEY = '_general'
+const PERMISSIONS_PREVIEW_LIMIT = 3
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
+function titleCase(value: string): string {
+  return value.replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 function extractErrors(error: unknown, fallback: string): Record<string, string[]> {
@@ -31,56 +34,61 @@ function extractErrors(error: unknown, fallback: string): Record<string, string[
   return { [GENERAL_ERROR_KEY]: [fallback] }
 }
 
-export default function Users() {
-  const [users, setUsers] = useState<User[] | null>(null)
+export default function Roles() {
+  const [roles, setRoles] = useState<Role[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
 
-  const [roles, setRoles] = useState<Role[] | null>(null)
+  const [permissionGroups, setPermissionGroups] = useState<PermissionGroup[] | null>(null)
+  const [permissionsError, setPermissionsError] = useState<string | null>(null)
 
   const [modalMode, setModalMode] = useState<'create' | 'edit' | null>(null)
-  const [editingUser, setEditingUser] = useState<User | null>(null)
-  const [form, setForm] = useState<UserFormState>(EMPTY_FORM)
+  const [editingRole, setEditingRole] = useState<Role | null>(null)
+  const [form, setForm] = useState<RoleFormState>(EMPTY_FORM)
   const [formErrors, setFormErrors] = useState<Record<string, string[]>>({})
-  const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
-  const [deleteTarget, setDeleteTarget] = useState<User | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Role | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
-    loadUsers()
-    rolesService
-      .list()
-      .then(setRoles)
-      .catch(() => setRoles([]))
+    loadRoles()
+    loadPermissions()
   }, [])
 
-  async function loadUsers() {
+  async function loadRoles() {
     setLoadError(null)
     try {
-      const data = await usersService.list()
-      setUsers(data)
+      const data = await rolesService.list()
+      setRoles(data)
     } catch (err) {
-      setLoadError(err instanceof ApiError ? err.message : 'Failed to load users.')
+      setLoadError(err instanceof ApiError ? err.message : 'Failed to load roles.')
+    }
+  }
+
+  async function loadPermissions() {
+    setPermissionsError(null)
+    try {
+      const data = await permissionsService.list()
+      setPermissionGroups(data)
+    } catch (err) {
+      setPermissionsError(err instanceof ApiError ? err.message : 'Failed to load permissions.')
     }
   }
 
   function openCreateModal() {
     setModalMode('create')
-    setEditingUser(null)
+    setEditingRole(null)
     setForm(EMPTY_FORM)
     setFormErrors({})
-    setShowPassword(false)
   }
 
-  function openEditModal(user: User) {
+  function openEditModal(role: Role) {
     setModalMode('edit')
-    setEditingUser(user)
-    setForm({ name: user.name, email: user.email, password: '', role_id: user.role_id ? String(user.role_id) : '' })
+    setEditingRole(role)
+    setForm({ name: role.name, permissions: [...role.permissions] })
     setFormErrors({})
-    setShowPassword(false)
   }
 
   function closeModal() {
@@ -88,28 +96,26 @@ export default function Users() {
     setModalMode(null)
   }
 
+  function togglePermission(name: string) {
+    setForm((f) =>
+      f.permissions.includes(name)
+        ? { ...f, permissions: f.permissions.filter((p) => p !== name) }
+        : { ...f, permissions: [...f.permissions, name] },
+    )
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setSubmitting(true)
     setFormErrors({})
     try {
+      const payload = { name: form.name, permissions: form.permissions }
       if (modalMode === 'create') {
-        const created = await usersService.create({
-          name: form.name,
-          email: form.email,
-          password: form.password,
-          ...(form.role_id && { role_id: Number(form.role_id) }),
-        })
-        setUsers((prev) => (prev ? [created, ...prev] : [created]))
-      } else if (modalMode === 'edit' && editingUser) {
-        const payload: { name: string; email: string; password?: string; role_id?: number } = {
-          name: form.name,
-          email: form.email,
-        }
-        if (form.password) payload.password = form.password
-        if (form.role_id) payload.role_id = Number(form.role_id)
-        const updated = await usersService.update(editingUser.id, payload)
-        setUsers((prev) => prev?.map((u) => (u.id === updated.id ? updated : u)) ?? null)
+        const created = await rolesService.create(payload)
+        setRoles((prev) => (prev ? [created, ...prev] : [created]))
+      } else if (modalMode === 'edit' && editingRole) {
+        const updated = await rolesService.update(editingRole.id, payload)
+        setRoles((prev) => prev?.map((r) => (r.id === updated.id ? updated : r)) ?? null)
       }
       setModalMode(null)
     } catch (err) {
@@ -124,25 +130,25 @@ export default function Users() {
     setDeleting(true)
     setDeleteError(null)
     try {
-      await usersService.remove(deleteTarget.id)
-      setUsers((prev) => prev?.filter((u) => u.id !== deleteTarget.id) ?? null)
+      await rolesService.remove(deleteTarget.id)
+      setRoles((prev) => prev?.filter((r) => r.id !== deleteTarget.id) ?? null)
       setDeleteTarget(null)
     } catch (err) {
-      setDeleteError(err instanceof ApiError ? err.message : 'Failed to delete user.')
+      setDeleteError(err instanceof ApiError ? err.message : 'Failed to delete role.')
     } finally {
       setDeleting(false)
     }
   }
 
-  function openDeleteModal(user: User) {
-    setDeleteTarget(user)
+  function openDeleteModal(role: Role) {
+    setDeleteTarget(role)
     setDeleteError(null)
   }
 
-  const filteredUsers = users?.filter((u) => {
+  const filteredRoles = roles?.filter((r) => {
     const q = search.trim().toLowerCase()
     if (!q) return true
-    return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
+    return r.name.toLowerCase().includes(q) || r.permissions.some((p) => p.toLowerCase().includes(q))
   })
 
   const headerActions = (
@@ -156,7 +162,7 @@ export default function Users() {
             <input
               type="text"
               className="form-control form-control-default"
-              placeholder="Search by name or email"
+              placeholder="Search by name or permission"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -172,16 +178,16 @@ export default function Users() {
   )
 
   return (
-    <AppShell title="Users" actions={headerActions}>
+    <AppShell title="Roles" actions={headerActions}>
       <div className="row">
         <div className="col-12">
           <div className="contact-list-wrap mb-25">
             <div className="contact-list bg-white radius-xl w-100">
               {loadError && <p className="hx-form-error m-20">{loadError}</p>}
-              {users === null && !loadError && <p className="hx-users-empty">Loading users…</p>}
-              {filteredUsers && filteredUsers.length === 0 && <p className="hx-users-empty">No users found.</p>}
+              {roles === null && !loadError && <p className="hx-roles-empty">Loading roles…</p>}
+              {filteredRoles && filteredRoles.length === 0 && <p className="hx-roles-empty">No roles found.</p>}
 
-              {filteredUsers && filteredUsers.length > 0 && (
+              {filteredRoles && filteredRoles.length > 0 && (
                 <div className="table-responsive">
                   <table className="table mb-0 table-borderless table-rounded">
                     <thead>
@@ -190,10 +196,7 @@ export default function Users() {
                           <span className="userDatatable-title">Name</span>
                         </th>
                         <th className="c-email">
-                          <span>Email</span>
-                        </th>
-                        <th className="c-position">
-                          <span>Role</span>
+                          <span>Permissions</span>
                         </th>
                         <th className="c-position">
                           <span>Created</span>
@@ -204,39 +207,51 @@ export default function Users() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredUsers.map((u) => (
-                        <tr key={u.id}>
+                      {filteredRoles.map((r) => (
+                        <tr key={r.id}>
                           <td>
                             <div className="contact_title">
-                              <h6>{u.name}</h6>
+                              <h6>{r.name}</h6>
                             </div>
                           </td>
                           <td>
-                            <span className="email">{u.email}</span>
+                            {r.permissions.length > 0 ? (
+                              <div className="hx-role-badges">
+                                {r.permissions.slice(0, PERMISSIONS_PREVIEW_LIMIT).map((p) => (
+                                  <span key={p} className="hx-role-badge">
+                                    {p}
+                                  </span>
+                                ))}
+                                {r.permissions.length > PERMISSIONS_PREVIEW_LIMIT && (
+                                  <span className="hx-role-badge hx-role-badge--more">
+                                    +{r.permissions.length - PERMISSIONS_PREVIEW_LIMIT} more
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="position">No permissions</span>
+                            )}
                           </td>
                           <td>
-                            <span className="position">{u.roles.length > 0 ? u.roles.join(', ') : '—'}</span>
-                          </td>
-                          <td>
-                            <span className="position">{formatDate(u.created_at)}</span>
+                            <span className="position">{formatDate(r.created_at)}</span>
                           </td>
                           <td>
                             <div className="table-actions d-flex">
                               <button
                                 type="button"
                                 className="hx-icon-btn hx-icon-btn--edit"
-                                aria-label="Edit user"
+                                aria-label="Edit role"
                                 title="Edit"
-                                onClick={() => openEditModal(u)}
+                                onClick={() => openEditModal(r)}
                               >
                                 <i className="la la-edit"></i>
                               </button>
                               <button
                                 type="button"
                                 className="hx-icon-btn hx-icon-btn--delete"
-                                aria-label="Delete user"
+                                aria-label="Delete role"
                                 title="Delete"
-                                onClick={() => openDeleteModal(u)}
+                                onClick={() => openDeleteModal(r)}
                               >
                                 <i className="la la-trash"></i>
                               </button>
@@ -259,7 +274,7 @@ export default function Users() {
             <div className="modal-dialog modal-dialog-centered">
               <div className="modal-content radius-xl">
                 <div className="modal-header">
-                  <h6 className="modal-title fw-500">{modalMode === 'create' ? 'Add New User' : 'Edit User'}</h6>
+                  <h6 className="modal-title fw-500">{modalMode === 'create' ? 'Add New Role' : 'Edit Role'}</h6>
                   <button type="button" className="btn-close" onClick={closeModal} aria-label="Close">
                     <i className="las la-times"></i>
                   </button>
@@ -274,7 +289,7 @@ export default function Users() {
                         <input
                           type="text"
                           className="form-control form-control-lg"
-                          placeholder="Full name"
+                          placeholder="Role name"
                           value={form.name}
                           onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                           autoComplete="off"
@@ -284,54 +299,36 @@ export default function Users() {
                       </div>
 
                       <div className="form-group mb-20">
-                        <label>Email Address:</label>
-                        <input
-                          type="email"
-                          className="form-control form-control-lg"
-                          placeholder="Email address"
-                          value={form.email}
-                          onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                          autoComplete="off"
-                          required
-                        />
-                        {formErrors.email && <small className="hx-field-error">{formErrors.email[0]}</small>}
-                      </div>
-
-                      <div className="form-group mb-20">
-                        <label>Role:</label>
-                        <select
-                          className="form-control form-control-lg"
-                          value={form.role_id}
-                          onChange={(e) => setForm((f) => ({ ...f, role_id: e.target.value }))}
-                        >
-                          <option value="">Select a role</option>
-                          {roles?.map((role) => (
-                            <option key={role.id} value={role.id}>
-                              {role.name}
-                            </option>
-                          ))}
-                        </select>
-                        {formErrors.role_id && <small className="hx-field-error">{formErrors.role_id[0]}</small>}
-                      </div>
-
-                      <div className="form-group mb-20">
-                        <label>{modalMode === 'create' ? 'Password:' : 'New Password (leave blank to keep current):'}</label>
-                        <div className="hx-password-field">
-                          <input
-                            type={showPassword ? 'text' : 'password'}
-                            className="form-control form-control-lg"
-                            placeholder={modalMode === 'create' ? 'Password' : 'New password'}
-                            value={form.password}
-                            onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                            minLength={modalMode === 'create' ? 8 : undefined}
-                            required={modalMode === 'create'}
-                            autoComplete="new-password"
-                          />
-                          <button type="button" className="hx-password-toggle" onClick={() => setShowPassword((v) => !v)}>
-                            <i className={`las ${showPassword ? 'la-eye-slash' : 'la-eye'}`}></i>
-                          </button>
-                        </div>
-                        {formErrors.password && <small className="hx-field-error">{formErrors.password[0]}</small>}
+                        <label>Permissions:</label>
+                        {permissionsError && <p className="hx-form-error">{permissionsError}</p>}
+                        {permissionGroups === null && !permissionsError && (
+                          <p className="hx-roles-empty">Loading permissions…</p>
+                        )}
+                        {permissionGroups && permissionGroups.length === 0 && (
+                          <p className="hx-roles-empty">No permissions available.</p>
+                        )}
+                        {permissionGroups && permissionGroups.length > 0 && (
+                          <div className="hx-permission-groups">
+                            {permissionGroups.map((group) => (
+                              <div key={group.module} className="hx-permission-group">
+                                <span className="hx-permission-group__title">{titleCase(group.module)}</span>
+                                <div className="hx-permission-grid">
+                                  {group.permissions.map((p) => (
+                                    <label key={p.id} className="hx-permission-checkbox">
+                                      <input
+                                        type="checkbox"
+                                        checked={form.permissions.includes(p.name)}
+                                        onChange={() => togglePermission(p.name)}
+                                      />
+                                      <span>{titleCase(p.name)}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {formErrors.permissions && <small className="hx-field-error">{formErrors.permissions[0]}</small>}
                       </div>
 
                       <div className="button-group d-flex justify-content-center pt-20">
@@ -339,7 +336,7 @@ export default function Users() {
                           Cancel
                         </button>
                         <button type="submit" className="btn btn-primary btn-default btn-squared" disabled={submitting}>
-                          {submitting ? 'Saving…' : modalMode === 'create' ? 'Add New User' : 'Save Changes'}
+                          {submitting ? 'Saving…' : modalMode === 'create' ? 'Add New Role' : 'Save Changes'}
                         </button>
                       </div>
                     </form>
@@ -358,7 +355,7 @@ export default function Users() {
             <div className="modal-dialog modal-dialog-centered">
               <div className="modal-content radius-xl">
                 <div className="modal-header">
-                  <h6 className="modal-title fw-500">Delete user?</h6>
+                  <h6 className="modal-title fw-500">Delete role?</h6>
                   <button
                     type="button"
                     className="btn-close"
