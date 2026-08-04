@@ -48,6 +48,15 @@ function injectDashboardAssets(): Promise<void> {
 const MIN_LOADER_MS = 500
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
+// Sidebar links whose target module requires a "view <module>" permission to be visible.
+// Links with no entry here (e.g. Dashboard) are always shown.
+const SIDEBAR_PERMISSIONS: Record<string, string> = {
+  '/users': 'view users',
+  '/roles': 'view roles',
+  '/companies': 'view companies',
+  '/orders': 'view orders',
+}
+
 interface AppShellProps {
   title: string
   /** Rendered inside the shared header's .breadcrumb-action slot (search box, "Add New", etc). */
@@ -103,6 +112,18 @@ export default function AppShell({ title, actions, children }: AppShellProps) {
         const emailEl = header.querySelector<HTMLElement>('.nav-author__info span')
         if (nameEl && nameEl.textContent !== user.name) nameEl.textContent = user.name
         if (emailEl && emailEl.textContent !== user.email) emailEl.textContent = user.email
+      }
+
+      if (sidebar && user) {
+        sidebar.querySelectorAll<HTMLAnchorElement>('.sidebar_nav a[href]').forEach((link) => {
+          const href = link.getAttribute('href') ?? ''
+          const entry = Object.entries(SIDEBAR_PERMISSIONS).find(([path]) => href.endsWith(path))
+          if (!entry) return
+          const li = link.closest('li')
+          if (!li) return
+          const [, permission] = entry
+          li.style.display = user.permissions.includes(permission) ? '' : 'none'
+        })
       }
 
       syncing = false

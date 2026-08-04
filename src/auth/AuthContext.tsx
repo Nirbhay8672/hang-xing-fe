@@ -12,6 +12,7 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
   updateUser: (user: User) => void
+  can: (permission: string) => boolean
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -47,9 +48,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   async function login(email: string, password: string) {
-    const me = await authService.login({ email, password })
+    // The login response only carries id/name/email — roles/permissions come from
+    // /me, so fetch it right away instead of leaving them empty until the next
+    // full-page navigation re-bootstraps the app.
+    await authService.login({ email, password })
+    const me = await authService.fetchMe()
     setUser(me)
     setStatus('authenticated')
+  }
+
+  function can(permission: string): boolean {
+    return user?.permissions.includes(permission) ?? false
   }
 
   async function logout() {
@@ -62,7 +71,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, status, login, logout, updateUser: setUser }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ user, status, login, logout, updateUser: setUser, can }}>
+      {children}
+    </AuthContext.Provider>
   )
 }
 

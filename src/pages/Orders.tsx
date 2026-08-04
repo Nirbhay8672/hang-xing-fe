@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { ApiError } from '../auth/apiClient'
+import { useAuth } from '../auth/AuthContext'
 import AppShell from '../components/AppShell'
 import '../components/formStyles.css'
 import '../components/iconButtons.css'
@@ -62,6 +63,7 @@ function extractErrors(error: unknown, fallback: string): Record<string, string[
 }
 
 export default function Orders() {
+  const { can } = useAuth()
   const [orders, setOrders] = useState<Order[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -323,25 +325,29 @@ export default function Orders() {
                           </td>
                           <td>
                             <div className="table-actions d-flex">
-                              <button
-                                type="button"
-                                className="hx-icon-btn hx-icon-btn--edit"
-                                aria-label="Edit order"
-                                title="Edit"
-                                disabled={editLoadingId === o.id}
-                                onClick={() => openEditModal(o)}
-                              >
-                                <i className={editLoadingId === o.id ? 'la la-spinner la-spin' : 'la la-edit'}></i>
-                              </button>
-                              <button
-                                type="button"
-                                className="hx-icon-btn hx-icon-btn--delete"
-                                aria-label="Delete order"
-                                title="Delete"
-                                onClick={() => openDeleteModal(o)}
-                              >
-                                <i className="la la-trash"></i>
-                              </button>
+                              {can('edit orders') && (
+                                <button
+                                  type="button"
+                                  className="hx-icon-btn hx-icon-btn--edit"
+                                  aria-label="Edit order"
+                                  title="Edit"
+                                  disabled={editLoadingId === o.id}
+                                  onClick={() => openEditModal(o)}
+                                >
+                                  <i className={editLoadingId === o.id ? 'la la-spinner la-spin' : 'la la-edit'}></i>
+                                </button>
+                              )}
+                              {can('delete orders') && (
+                                <button
+                                  type="button"
+                                  className="hx-icon-btn hx-icon-btn--delete"
+                                  aria-label="Delete order"
+                                  title="Delete"
+                                  onClick={() => openDeleteModal(o)}
+                                >
+                                  <i className="la la-trash"></i>
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>

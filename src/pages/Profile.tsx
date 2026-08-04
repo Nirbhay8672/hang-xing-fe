@@ -78,7 +78,7 @@ export default function ProfilePage() {
       const updated = await profileService.update(payload)
       setProfile(updated)
       setForm({ name: updated.name, email: updated.email, currentPassword: '', newPassword: '' })
-      updateUser({ id: updated.id, name: updated.name, email: updated.email })
+      updateUser(updated)
       setSuccessMessage('Profile updated successfully.')
     } catch (err) {
       setFormErrors(extractErrors(err, 'Something went wrong. Please try again.'))

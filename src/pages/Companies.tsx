@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { ApiError } from '../auth/apiClient'
+import { useAuth } from '../auth/AuthContext'
 import AppShell from '../components/AppShell'
 import '../components/formStyles.css'
 import '../components/iconButtons.css'
@@ -47,6 +48,7 @@ function extractErrors(error: unknown, fallback: string): Record<string, string[
 }
 
 export default function Companies() {
+  const { can } = useAuth()
   const [companies, setCompanies] = useState<Company[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -312,25 +314,29 @@ export default function Companies() {
                           </td>
                           <td>
                             <div className="table-actions d-flex">
-                              <button
-                                type="button"
-                                className="hx-icon-btn hx-icon-btn--edit"
-                                aria-label="Edit company"
-                                title="Edit"
-                                disabled={editLoadingId === c.id}
-                                onClick={() => openEditModal(c)}
-                              >
-                                <i className={editLoadingId === c.id ? 'la la-spinner la-spin' : 'la la-edit'}></i>
-                              </button>
-                              <button
-                                type="button"
-                                className="hx-icon-btn hx-icon-btn--delete"
-                                aria-label="Delete company"
-                                title="Delete"
-                                onClick={() => openDeleteModal(c)}
-                              >
-                                <i className="la la-trash"></i>
-                              </button>
+                              {can('edit companies') && (
+                                <button
+                                  type="button"
+                                  className="hx-icon-btn hx-icon-btn--edit"
+                                  aria-label="Edit company"
+                                  title="Edit"
+                                  disabled={editLoadingId === c.id}
+                                  onClick={() => openEditModal(c)}
+                                >
+                                  <i className={editLoadingId === c.id ? 'la la-spinner la-spin' : 'la la-edit'}></i>
+                                </button>
+                              )}
+                              {can('delete companies') && (
+                                <button
+                                  type="button"
+                                  className="hx-icon-btn hx-icon-btn--delete"
+                                  aria-label="Delete company"
+                                  title="Delete"
+                                  onClick={() => openDeleteModal(c)}
+                                >
+                                  <i className="la la-trash"></i>
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
