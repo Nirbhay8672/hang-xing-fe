@@ -234,8 +234,8 @@ export default function Companies() {
         </div>
       </div>
       <div className="action-btn">
-        <button type="button" className="btn btn-sm btn-primary btn-add" onClick={openCreateModal}>
-          <i className="la la-plus"></i> Add New
+        <button type="button" className="btn btn-sm btn-primary btn-add" onClick={openCreateModal} aria-label="Add New">
+          <i className="la la-plus"></i>
         </button>
       </div>
     </>
@@ -286,9 +286,7 @@ export default function Companies() {
                       {filteredCompanies.map((c) => (
                         <tr key={c.id}>
                           <td>
-                            <div className="contact_title">
-                              <h6>{c.name}</h6>
-                            </div>
+                            <span className="position">{c.name}</span>
                           </td>
                           <td>
                             <span className="position">{c.address}</span>
@@ -497,10 +495,10 @@ export default function Companies() {
                       </div>
 
                       <div className="button-group d-flex justify-content-center pt-20">
-                        <button type="button" className="btn hx-btn-secondary btn-squared me-10" onClick={closeModal} disabled={submitting}>
+                        <button type="button" className="btn btn-sm hx-btn-secondary btn-rounded me-10" onClick={closeModal} disabled={submitting}>
                           Cancel
                         </button>
-                        <button type="submit" className="btn btn-primary btn-default btn-squared" disabled={submitting}>
+                        <button type="submit" className="btn btn-sm btn-primary btn-rounded" disabled={submitting}>
                           {submitting ? 'Saving…' : modalMode === 'create' ? 'Add New Company' : 'Save Changes'}
                         </button>
                       </div>
@@ -597,13 +595,13 @@ export default function Companies() {
                   <div className="button-group d-flex justify-content-center pt-20">
                     <button
                       type="button"
-                      className="btn hx-btn-secondary btn-squared me-10"
+                      className="btn btn-sm hx-btn-secondary btn-rounded me-10"
                       onClick={() => setDeleteTarget(null)}
                       disabled={deleting}
                     >
                       Cancel
                     </button>
-                    <button type="button" className="btn btn-danger btn-squared" onClick={handleDelete} disabled={deleting}>
+                    <button type="button" className="btn btn-sm btn-danger btn-rounded" onClick={handleDelete} disabled={deleting}>
                       {deleting ? 'Deleting…' : 'Delete'}
                     </button>
                   </div>

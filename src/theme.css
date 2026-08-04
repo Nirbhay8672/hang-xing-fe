@@ -1,0 +1,121 @@
+/* Brand theme override — navy blue + gold, matching the Heng Xing logo.
+   The vendor admin theme (public/html/style.css + bootstrap.css) ships its own blue
+   (#1c467b / #18345a) as "primary". Rather than hand-editing that ~23k-line vendor
+   bundle, this file is imported once (after it, so cascade order wins at equal
+   specificity — the same technique formStyles.css already uses for .btn-danger) and
+   retunes the handful of surfaces this app actually renders to the brand palette:
+   blue as the base/active color, gold as the hover/accent color. */
+
+:root {
+  --brand-blue: #2e3175;
+  --brand-blue-dark: #23255f;
+  --brand-gold: #a9904a;
+  --brand-gold-dark: #957f41;
+}
+
+a {
+  color: var(--brand-blue);
+}
+a:hover,
+a:focus {
+  color: var(--brand-gold);
+}
+
+/* Bootstrap 5 buttons expose their colors as per-component CSS variables, but the
+   vendor theme (style.css) also hardcodes its own `.btn-primary:hover`/`:focus`
+   background-color directly (not via var()), which shadows the variable-only override
+   below at equal specificity. Both layers are set here so neither vendor rule wins. */
+.btn-primary {
+  --bs-btn-color: #fff;
+  --bs-btn-bg: var(--brand-blue);
+  --bs-btn-border-color: var(--brand-blue);
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-bg: var(--brand-gold);
+  --bs-btn-hover-border-color: var(--brand-gold);
+  --bs-btn-focus-shadow-rgb: 169, 144, 74;
+  --bs-btn-active-color: #fff;
+  --bs-btn-active-bg: var(--brand-gold-dark);
+  --bs-btn-active-border-color: var(--brand-gold-dark);
+  --bs-btn-disabled-color: #fff;
+  --bs-btn-disabled-bg: var(--brand-blue);
+  --bs-btn-disabled-border-color: var(--brand-blue);
+}
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active,
+.btn-primary.active {
+  color: #fff;
+  background-color: var(--brand-gold);
+  border-color: var(--brand-gold);
+}
+
+/* The breadcrumb "Add New" icon button hardcodes its own focus/active background at
+   higher specificity than Bootstrap's component variables, so it needs its own line
+   to follow the same blue/gold split instead of staying stuck on the vendor blue.
+   Icon stays the vendor's own white (`.btn-add i { color: #fff }`) for contrast against
+   the blue fill. Sized/reshaped into a proper square (the vendor's own padding produces
+   a wide pill, not a square) to match the other small icon-only action buttons. */
+.breadcrumb-main .breadcrumb-action .action-btn .btn-add:focus,
+.breadcrumb-main .breadcrumb-action .action-btn .btn-add:active {
+  background: var(--brand-gold-dark);
+}
+.breadcrumb-main .breadcrumb-action .action-btn .btn-add {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 8px;
+}
+/* The vendor's `.btn i` rule (`line-height: 2.65rem` — sized for icon+label buttons,
+   plus a now-unused `margin-right: 8px` for the label that's gone) throws the glyph off
+   center in this icon-only button; reset both so the flex centering above actually works. */
+.breadcrumb-main .breadcrumb-action .action-btn .btn-add i {
+  margin-right: 0;
+  line-height: 1;
+  font-size: 16px;
+}
+
+/* Sidebar nav: blue by default (vendor default is a pale gray-blue, #adb4d2) and for
+   the current page, gold on hover — same split as the buttons. */
+.sidebar__menu-group ul.sidebar_nav li > a .nav-icon {
+  color: var(--brand-blue);
+}
+.sidebar__menu-group ul.sidebar_nav li > a.active,
+.sidebar__menu-group ul.sidebar_nav li > a.active .nav-icon,
+.sidebar__menu-group ul.sidebar_nav li > a.active .toggle-icon {
+  color: var(--brand-blue);
+}
+.sidebar__menu-group ul.sidebar_nav li > a:hover,
+.sidebar__menu-group ul.sidebar_nav li > a:hover .nav-icon,
+.sidebar__menu-group ul.sidebar_nav li > a:hover .toggle-icon {
+  color: var(--brand-gold);
+}
+
+.form-control:focus {
+  box-shadow: 0 5px 20px rgba(46, 49, 117, 0.15);
+}
+
+/* Modal close (X) button: same square/blue/white-icon look as the Add New button and
+   the table row-action icon buttons (see iconButtons.css), so every icon-only button
+   in the app reads as one consistent style. */
+.modal-header button.btn-close {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--brand-blue);
+  transition: background-color 0.15s ease;
+}
+.modal-header button.btn-close i {
+  color: #fff;
+  font-size: 15px;
+}
+.modal-header button.btn-close:hover {
+  background: var(--brand-gold);
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--brand-blue);
+}

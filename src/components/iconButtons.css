@@ -3,19 +3,23 @@
    redeclare the same class names in their own CSS. Vite concatenates all
    component CSS into a single global stylesheet (these aren't CSS Modules),
    so two pages defining an identically-named class would collide and the one
-   loaded later in the bundle would silently win. */
+   loaded later in the bundle would silently win.
+
+   Same square footprint as the breadcrumb "Add New" button (see theme.css's
+   .btn-add override), but outlined rather than filled, and color-coded by
+   action: blue for edit, danger red for delete. */
 .hx-icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 34px;
+  height: 34px;
   border: 1.5px solid currentColor;
-  border-radius: 6px;
+  border-radius: 8px;
   background: transparent;
   font-size: 14px;
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .hx-icon-btn + .hx-icon-btn {
@@ -23,11 +27,11 @@
 }
 
 .hx-icon-btn--edit {
-  color: #2e3175;
+  color: var(--brand-blue, #2e3175);
 }
 
 .hx-icon-btn--edit:hover:not(:disabled) {
-  background: #2e3175;
+  background: var(--brand-blue, #2e3175);
   color: #fff;
 }
 

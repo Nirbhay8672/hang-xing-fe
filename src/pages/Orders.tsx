@@ -235,8 +235,8 @@ export default function Orders() {
         </div>
       </div>
       <div className="action-btn">
-        <button type="button" className="btn btn-sm btn-primary btn-add" onClick={openCreateModal}>
-          <i className="la la-plus"></i> Add New
+        <button type="button" className="btn btn-sm btn-primary btn-add" onClick={openCreateModal} aria-label="Add New">
+          <i className="la la-plus"></i>
         </button>
       </div>
     </>
@@ -294,9 +294,7 @@ export default function Orders() {
                       {filteredOrders.map((o) => (
                         <tr key={o.id}>
                           <td>
-                            <div className="contact_title">
-                              <h6>{o.order_no}</h6>
-                            </div>
+                            <span className="position">{o.order_no}</span>
                           </td>
                           <td>
                             <span className="position">{o.company?.name}</span>
@@ -544,10 +542,10 @@ export default function Orders() {
                       </div>
 
                       <div className="button-group d-flex justify-content-center pt-20">
-                        <button type="button" className="btn hx-btn-secondary btn-squared me-10" onClick={closeModal} disabled={submitting}>
+                        <button type="button" className="btn btn-sm hx-btn-secondary btn-rounded me-10" onClick={closeModal} disabled={submitting}>
                           Cancel
                         </button>
-                        <button type="submit" className="btn btn-primary btn-default btn-squared" disabled={submitting}>
+                        <button type="submit" className="btn btn-sm btn-primary btn-rounded" disabled={submitting}>
                           {submitting ? 'Saving…' : modalMode === 'create' ? 'Create Order' : 'Save Changes'}
                         </button>
                       </div>
@@ -585,13 +583,13 @@ export default function Orders() {
                   <div className="button-group d-flex justify-content-center pt-20">
                     <button
                       type="button"
-                      className="btn hx-btn-secondary btn-squared me-10"
+                      className="btn btn-sm hx-btn-secondary btn-rounded me-10"
                       onClick={() => setDeleteTarget(null)}
                       disabled={deleting}
                     >
                       Cancel
                     </button>
-                    <button type="button" className="btn btn-danger btn-squared" onClick={handleDelete} disabled={deleting}>
+                    <button type="button" className="btn btn-sm btn-danger btn-rounded" onClick={handleDelete} disabled={deleting}>
                       {deleting ? 'Deleting…' : 'Delete'}
                     </button>
                   </div>

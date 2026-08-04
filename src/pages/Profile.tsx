@@ -178,7 +178,7 @@ export default function ProfilePage() {
                     </div>
 
                     <div className="button-group d-flex pt-10">
-                      <button type="submit" className="btn btn-primary btn-default btn-squared" disabled={submitting}>
+                      <button type="submit" className="btn btn-sm btn-primary btn-rounded" disabled={submitting}>
                         {submitting ? 'Saving…' : 'Save Changes'}
                       </button>
                     </div>

@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './index.css'
+import './theme.css'
 import { AuthProvider, RequireAuth } from './auth/AuthContext.tsx'
 import Layout from './components/Layout.tsx'
 import Companies from './pages/Companies.tsx'
