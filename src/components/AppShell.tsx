@@ -89,9 +89,12 @@ export default function AppShell({ title, actions, children }: AppShellProps) {
   // (a re-render of this component resets it back to the pristine template), and a few of
   // the vendored jQuery plugins do their own async DOM rebuilding on top of that — either
   // way, anything imperatively patched in (feather's SVG swap, the logged-in user's
-  // name/email) gets wiped back to placeholder content. Watching the two containers and
-  // re-applying both fixups any time they change makes this self-healing instead of a
-  // one-shot timing bet.
+  // name/email, the active-link marking below) gets wiped back to placeholder content.
+  // Watching the two containers and re-applying every fixup any time they change makes
+  // this self-healing instead of a one-shot timing bet — the active-link marking used to
+  // live in its own one-shot `[location.pathname]` effect, which lost the race against
+  // this reset (it only fires once per navigation, before `assetsReady` flips the reset),
+  // so the highlight silently vanished a few hundred ms after every page load.
   useEffect(() => {
     const header = headerRef.current
     const sidebar = sidebarRef.current
@@ -126,6 +129,19 @@ export default function AppShell({ title, actions, children }: AppShellProps) {
         })
       }
 
+      if (sidebar) {
+        sidebar.querySelectorAll<HTMLAnchorElement>('.sidebar_nav a.active').forEach((el) => el.classList.remove('active'))
+        sidebar.querySelectorAll<HTMLLIElement>('.sidebar_nav li.open').forEach((el) => el.classList.remove('open'))
+
+        const activeLink = sidebar.querySelector<HTMLAnchorElement>(`a[href="${location.pathname}"]`)
+        if (activeLink) {
+          activeLink.classList.add('active')
+          const parentLi = activeLink.closest('li.has-child')
+          parentLi?.classList.add('open')
+          parentLi?.querySelector<HTMLElement>(':scope > a')?.classList.add('active')
+        }
+      }
+
       syncing = false
     }
 
@@ -134,7 +150,7 @@ export default function AppShell({ title, actions, children }: AppShellProps) {
     resync()
 
     return () => observer.disconnect()
-  }, [user])
+  }, [user, location.pathname])
 
   // Sign-out and the sidebar-collapse toggle both live inside the header's raw HTML, so a
   // listener attached directly to those inner elements (or main.js's own vendored wiring
@@ -166,28 +182,6 @@ export default function AppShell({ title, actions, children }: AppShellProps) {
     header.addEventListener('click', handleClick)
     return () => header.removeEventListener('click', handleClick)
   }, [logout, navigate])
-
-  // Marks whichever sidebar link matches the current route as active/open, mirroring how
-  // the theme's own static pages ship each with their own nav item pre-marked active.
-  useEffect(() => {
-    const sidebar = sidebarRef.current
-    if (!sidebar) return
-
-    const activeLink = sidebar.querySelector<HTMLAnchorElement>(`a[href="${location.pathname}"]`)
-    if (!activeLink) return
-
-    activeLink.classList.add('active')
-    const parentLi = activeLink.closest('li.has-child')
-    const toggle = parentLi?.querySelector<HTMLElement>(':scope > a')
-    parentLi?.classList.add('open')
-    toggle?.classList.add('active')
-
-    return () => {
-      activeLink.classList.remove('active')
-      parentLi?.classList.remove('open')
-      toggle?.classList.remove('active')
-    }
-  }, [location.pathname])
 
   return (
     <>

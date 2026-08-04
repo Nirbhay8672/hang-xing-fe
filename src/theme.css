@@ -79,6 +79,10 @@ a:focus {
 .sidebar__menu-group ul.sidebar_nav li > a .nav-icon {
   color: var(--brand-blue);
 }
+.sidebar__menu-group ul.sidebar_nav li > a.active {
+  background: rgba(46, 49, 117, 0.1);
+  border-radius: 0 24px 24px 0;
+}
 .sidebar__menu-group ul.sidebar_nav li > a.active,
 .sidebar__menu-group ul.sidebar_nav li > a.active .nav-icon,
 .sidebar__menu-group ul.sidebar_nav li > a.active .toggle-icon {
