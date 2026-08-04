@@ -197,24 +197,14 @@ export default function AppShell({ title, actions, children }: AppShellProps) {
             <div className="row">
               <div className="col-md-6">
                 <div className="footer-copyright">
-                  <p>
-                    2026 @<a href="#">Mr web</a>
-                  </p>
+                  <p>© 2026 Heng Xing Pvt. Ltd. All Right Reserved.</p>
                 </div>
               </div>
               <div className="col-md-6">
-                <div className="footer-menu text-end">
-                  <ul>
-                    <li>
-                      <a href="#">About</a>
-                    </li>
-                    <li>
-                      <a href="#">Team</a>
-                    </li>
-                    <li>
-                      <a href="#">Contact</a>
-                    </li>
-                  </ul>
+                <div className="footer-copyright text-end">
+                  <p>
+                    Made with <span className="text-danger">&#10084;</span> in India by <a href="#">Mr. Web</a>.
+                  </p>
                 </div>
               </div>
             </div>
