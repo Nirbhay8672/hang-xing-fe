@@ -1,7 +1,7 @@
 import { tokenStorage } from './tokenStorage'
 import type { ApiErrorBody, RefreshResponse } from './types'
 
-const API_BASE_URL = 'http://127.0.0.1:8000/api'
+const API_BASE_URL = 'http://updates.mrweb.co.in/hengxing/public/api'
 
 export class ApiError extends Error {
   status: number
