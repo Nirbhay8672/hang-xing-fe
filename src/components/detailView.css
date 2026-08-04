@@ -1,0 +1,65 @@
+/* Shared read-only "View Detail" modal building blocks for admin list pages (Users,
+   Roles, Companies, Orders). Defined once here — imported by each page that needs them —
+   so pages never redeclare the same class names in their own CSS. Vite concatenates all
+   component CSS into a single global stylesheet (these aren't CSS Modules), so two pages
+   defining an identically-named class would collide and the one loaded later in the
+   bundle would silently win.
+
+   Field-grid look lifted from Orders.tsx's original .hx-order-section/.hx-order-spec-grid
+   (used there to show a company's read-only spec data inside the order form) — generalized
+   here under an .hx-detail- prefix so every "View Detail" modal can share it. */
+.hx-detail-section {
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #eef0f4;
+}
+
+.hx-detail-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.hx-detail-section__title {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #9299b8;
+  margin-bottom: 14px;
+}
+
+.hx-detail-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  background: #fbfbfd;
+  border: 1px solid #eef0f4;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.hx-detail-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 0 110px;
+}
+
+.hx-detail-grid > div.hx-detail-grid__full {
+  flex-basis: 100%;
+}
+
+.hx-detail-grid__label {
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #9299b8;
+}
+
+.hx-detail-grid__value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2e3175;
+}

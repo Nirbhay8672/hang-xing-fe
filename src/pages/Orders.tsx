@@ -3,6 +3,7 @@ import { ApiError } from '../auth/apiClient'
 import { useAuth } from '../auth/AuthContext'
 import AppShell from '../components/AppShell'
 import { FloatingInput, FloatingSelect, FloatingTextarea } from '../components/FloatingField'
+import '../components/detailView.css'
 import '../components/formStyles.css'
 import '../components/iconButtons.css'
 import type { Company, ManufacturingSpecification } from '../companies/types'
@@ -72,6 +73,10 @@ export default function Orders() {
   const [companies, setCompanies] = useState<Company[]>([])
   const [users, setUsers] = useState<User[]>([])
 
+  const [viewTarget, setViewTarget] = useState<Order | null>(null)
+  const [viewLoadingId, setViewLoadingId] = useState<number | null>(null)
+  const [viewFetchError, setViewFetchError] = useState<string | null>(null)
+
   const [modalMode, setModalMode] = useState<'create' | 'edit' | null>(null)
   const [editingOrder, setEditingOrder] = useState<Order | null>(null)
   const [editLoadingId, setEditLoadingId] = useState<number | null>(null)
@@ -123,6 +128,19 @@ export default function Orders() {
     setForm(EMPTY_FORM)
     setFormErrors({})
     setModalMode('create')
+  }
+
+  async function openViewModal(order: Order) {
+    setViewFetchError(null)
+    setViewLoadingId(order.id)
+    try {
+      const fresh = await ordersService.get(order.id)
+      setViewTarget(fresh)
+    } catch (err) {
+      setViewFetchError(err instanceof ApiError ? err.message : 'Failed to load order.')
+    } finally {
+      setViewLoadingId(null)
+    }
   }
 
   async function openEditModal(order: Order) {
@@ -250,6 +268,7 @@ export default function Orders() {
             <div className="contact-list bg-white radius-xl w-100">
               {loadError && <p className="hx-form-error m-20">{loadError}</p>}
               {editFetchError && <p className="hx-form-error m-20">{editFetchError}</p>}
+              {viewFetchError && <p className="hx-form-error m-20">{viewFetchError}</p>}
               {orders === null && !loadError && <p className="hx-orders-empty">Loading orders…</p>}
               {filteredOrders && filteredOrders.length === 0 && <p className="hx-orders-empty">No orders found.</p>}
 
@@ -324,6 +343,16 @@ export default function Orders() {
                           </td>
                           <td>
                             <div className="table-actions d-flex">
+                              <button
+                                type="button"
+                                className="hx-icon-btn hx-icon-btn--view"
+                                aria-label="View order"
+                                title="View"
+                                disabled={viewLoadingId === o.id}
+                                onClick={() => openViewModal(o)}
+                              >
+                                <i className={viewLoadingId === o.id ? 'la la-spinner la-spin' : 'la la-eye'}></i>
+                              </button>
                               {can('edit orders') && (
                                 <button
                                   type="button"
@@ -556,6 +585,97 @@ export default function Orders() {
             </div>
           </div>
           <div className="modal-backdrop fade show" onClick={closeModal}></div>
+        </>
+      )}
+
+      {viewTarget && (
+        <>
+          <div className="modal fade show d-block" role="dialog" aria-modal="true">
+            <div className="modal-dialog modal-dialog-centered modal-lg">
+              <div className="modal-content radius-xl">
+                <div className="modal-header">
+                  <h6 className="modal-title fw-500">Order Details</h6>
+                  <button type="button" className="btn-close" onClick={() => setViewTarget(null)} aria-label="Close">
+                    <i className="las la-times"></i>
+                  </button>
+                </div>
+                <div className="modal-body">
+                  <div className="hx-detail-section">
+                    <span className="hx-detail-section__title">Order</span>
+                    <div className="hx-detail-grid">
+                      <div>
+                        <span className="hx-detail-grid__label">Order No.</span>
+                        <span className="hx-detail-grid__value">{viewTarget.order_no}</span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Company</span>
+                        <span className="hx-detail-grid__value">{viewTarget.company?.name}</span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Size</span>
+                        <span className="hx-detail-grid__value">{viewTarget.size}</span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Punch Type</span>
+                        <span className="hx-detail-grid__value">{viewTarget.punch_type}</span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Order Type</span>
+                        <span className="hx-detail-grid__value">{viewTarget.order_type}</span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Quantity</span>
+                        <span className="hx-detail-grid__value">{viewTarget.quantity}</span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Order By</span>
+                        <span className="hx-detail-grid__value">{viewTarget.user?.name}</span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Expected Delivery</span>
+                        <span className="hx-detail-grid__value">
+                          {viewTarget.expected_delivery_date ? formatDate(viewTarget.expected_delivery_date) : '—'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Master Number</span>
+                        <span className="hx-detail-grid__value">{viewTarget.master_number}</span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Created</span>
+                        <span className="hx-detail-grid__value">{formatDate(viewTarget.created_at)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {(viewTarget.punch_numbers ?? []).length > 0 && (
+                    <div className="hx-detail-section">
+                      <span className="hx-detail-section__title">Punch Numbers</span>
+                      <div className="hx-order-badges">
+                        {(viewTarget.punch_numbers ?? []).map((n) => (
+                          <span key={n} className="hx-order-badge">
+                            {n}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="hx-detail-section">
+                    <span className="hx-detail-section__title">Remarks</span>
+                    <span className="hx-detail-grid__value">{viewTarget.remarks || '—'}</span>
+                  </div>
+
+                  <div className="button-group d-flex justify-content-center pt-20">
+                    <button type="button" className="btn btn-sm hx-btn-secondary btn-rounded" onClick={() => setViewTarget(null)}>
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show" onClick={() => setViewTarget(null)}></div>
         </>
       )}
 

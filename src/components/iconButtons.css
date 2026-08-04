@@ -7,7 +7,7 @@
 
    Same square footprint as the breadcrumb "Add New" button (see theme.css's
    .btn-add override), but outlined rather than filled, and color-coded by
-   action: blue for edit, danger red for delete. */
+   action: neutral gray for view, blue for edit, danger red for delete. */
 .hx-icon-btn {
   display: inline-flex;
   align-items: center;
@@ -24,6 +24,15 @@
 
 .hx-icon-btn + .hx-icon-btn {
   margin-left: 6px;
+}
+
+.hx-icon-btn--view {
+  color: #5a5f7d;
+}
+
+.hx-icon-btn--view:hover:not(:disabled) {
+  background: #5a5f7d;
+  color: #fff;
 }
 
 .hx-icon-btn--edit {

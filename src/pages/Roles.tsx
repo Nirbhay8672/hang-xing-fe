@@ -3,6 +3,7 @@ import { ApiError } from '../auth/apiClient'
 import { useAuth } from '../auth/AuthContext'
 import AppShell from '../components/AppShell'
 import { FloatingInput } from '../components/FloatingField'
+import '../components/detailView.css'
 import '../components/formStyles.css'
 import '../components/iconButtons.css'
 import type { PermissionGroup } from '../permissions/types'
@@ -45,6 +46,8 @@ export default function Roles() {
   const [permissionGroups, setPermissionGroups] = useState<PermissionGroup[] | null>(null)
   const [permissionsError, setPermissionsError] = useState<string | null>(null)
 
+  const [viewTarget, setViewTarget] = useState<Role | null>(null)
+
   const [modalMode, setModalMode] = useState<'create' | 'edit' | null>(null)
   const [editingRole, setEditingRole] = useState<Role | null>(null)
   const [form, setForm] = useState<RoleFormState>(EMPTY_FORM)
@@ -85,6 +88,10 @@ export default function Roles() {
     setEditingRole(null)
     setForm(EMPTY_FORM)
     setFormErrors({})
+  }
+
+  function openViewModal(role: Role) {
+    setViewTarget(role)
   }
 
   function openEditModal(role: Role) {
@@ -238,6 +245,15 @@ export default function Roles() {
                           </td>
                           <td>
                             <div className="table-actions d-flex">
+                              <button
+                                type="button"
+                                className="hx-icon-btn hx-icon-btn--view"
+                                aria-label="View role"
+                                title="View"
+                                onClick={() => openViewModal(r)}
+                              >
+                                <i className="la la-eye"></i>
+                              </button>
                               {can('edit roles') && (
                                 <button
                                   type="button"
@@ -347,6 +363,64 @@ export default function Roles() {
             </div>
           </div>
           <div className="modal-backdrop fade show" onClick={closeModal}></div>
+        </>
+      )}
+
+      {viewTarget && (
+        <>
+          <div className="modal fade show d-block" role="dialog" aria-modal="true">
+            <div className="modal-dialog modal-dialog-centered modal-lg">
+              <div className="modal-content radius-xl">
+                <div className="modal-header">
+                  <h6 className="modal-title fw-500">Role Details</h6>
+                  <button type="button" className="btn-close" onClick={() => setViewTarget(null)} aria-label="Close">
+                    <i className="las la-times"></i>
+                  </button>
+                </div>
+                <div className="modal-body">
+                  <div className="hx-detail-section">
+                    <span className="hx-detail-section__title">Role</span>
+                    <div className="hx-detail-grid">
+                      <div>
+                        <span className="hx-detail-grid__label">Name</span>
+                        <span className="hx-detail-grid__value">{viewTarget.name}</span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Created</span>
+                        <span className="hx-detail-grid__value">{formatDate(viewTarget.created_at)}</span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Last Updated</span>
+                        <span className="hx-detail-grid__value">{formatDate(viewTarget.updated_at)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="hx-detail-section">
+                    <span className="hx-detail-section__title">Permissions</span>
+                    {viewTarget.permissions.length > 0 ? (
+                      <div className="hx-role-badges">
+                        {viewTarget.permissions.map((p) => (
+                          <span key={p} className="hx-role-badge">
+                            {titleCase(p)}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="hx-roles-empty">No permissions assigned.</span>
+                    )}
+                  </div>
+
+                  <div className="button-group d-flex justify-content-center pt-20">
+                    <button type="button" className="btn btn-sm hx-btn-secondary btn-rounded" onClick={() => setViewTarget(null)}>
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show" onClick={() => setViewTarget(null)}></div>
         </>
       )}
 

@@ -3,10 +3,13 @@ import { ApiError } from '../auth/apiClient'
 import { useAuth } from '../auth/AuthContext'
 import AppShell from '../components/AppShell'
 import { FloatingInput } from '../components/FloatingField'
+import '../components/detailView.css'
 import '../components/formStyles.css'
 import '../components/iconButtons.css'
 import type { Company, ManufacturingSpecificationInput } from '../companies/types'
 import { companiesService } from '../companies/companiesService'
+import type { Order } from '../orders/types'
+import { ordersService } from '../orders/ordersService'
 import './Companies.css'
 
 interface CompanyFormState {
@@ -55,6 +58,10 @@ export default function Companies() {
   const [search, setSearch] = useState('')
   const [specsTarget, setSpecsTarget] = useState<Company | null>(null)
 
+  const [viewTarget, setViewTarget] = useState<Company | null>(null)
+  const [viewOrders, setViewOrders] = useState<Order[] | null>(null)
+  const [viewOrdersError, setViewOrdersError] = useState<string | null>(null)
+
   const [modalMode, setModalMode] = useState<'create' | 'edit' | null>(null)
   const [editingCompany, setEditingCompany] = useState<Company | null>(null)
   const [editLoadingId, setEditLoadingId] = useState<number | null>(null)
@@ -98,6 +105,22 @@ export default function Companies() {
           }))
         : [{ ...EMPTY_SPEC }],
     }
+  }
+
+  function openViewModal(company: Company) {
+    setViewTarget(company)
+    setViewOrders(null)
+    setViewOrdersError(null)
+    ordersService
+      .list()
+      .then((orders) => setViewOrders(orders.filter((o) => o.company_id === company.id)))
+      .catch((err) => setViewOrdersError(err instanceof ApiError ? err.message : 'Failed to load related orders.'))
+  }
+
+  function closeViewModal() {
+    setViewTarget(null)
+    setViewOrders(null)
+    setViewOrdersError(null)
   }
 
   function openCreateModal() {
@@ -313,6 +336,15 @@ export default function Companies() {
                           </td>
                           <td>
                             <div className="table-actions d-flex">
+                              <button
+                                type="button"
+                                className="hx-icon-btn hx-icon-btn--view"
+                                aria-label="View company"
+                                title="View"
+                                onClick={() => openViewModal(c)}
+                              >
+                                <i className="la la-eye"></i>
+                              </button>
                               {can('edit companies') && (
                                 <button
                                   type="button"
@@ -509,6 +541,154 @@ export default function Companies() {
             </div>
           </div>
           <div className="modal-backdrop fade show" onClick={closeModal}></div>
+        </>
+      )}
+
+      {viewTarget && (
+        <>
+          <div className="modal fade show d-block" role="dialog" aria-modal="true">
+            <div className="modal-dialog modal-dialog-centered modal-xl">
+              <div className="modal-content radius-xl">
+                <div className="modal-header">
+                  <h6 className="modal-title fw-500">Company Details</h6>
+                  <button type="button" className="btn-close" onClick={closeViewModal} aria-label="Close">
+                    <i className="las la-times"></i>
+                  </button>
+                </div>
+                <div className="modal-body">
+                  <div className="hx-detail-section">
+                    <span className="hx-detail-section__title">Company</span>
+                    <div className="hx-detail-grid">
+                      <div>
+                        <span className="hx-detail-grid__label">Name</span>
+                        <span className="hx-detail-grid__value">{viewTarget.name}</span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Director Name</span>
+                        <span className="hx-detail-grid__value">{viewTarget.director_name}</span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Director Contact</span>
+                        <span className="hx-detail-grid__value">{viewTarget.director_contact}</span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Created</span>
+                        <span className="hx-detail-grid__value">{formatDate(viewTarget.created_at)}</span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Last Updated</span>
+                        <span className="hx-detail-grid__value">{formatDate(viewTarget.updated_at)}</span>
+                      </div>
+                      <div className="hx-detail-grid__full">
+                        <span className="hx-detail-grid__label">Address</span>
+                        <span className="hx-detail-grid__value">{viewTarget.address}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="hx-detail-section">
+                    <span className="hx-detail-section__title">Manufacturing Specifications</span>
+                    {viewTarget.manufacturing_specifications.length === 0 ? (
+                      <p className="hx-companies-empty">No specifications added.</p>
+                    ) : (
+                      <div className="table-responsive">
+                        <table className="table mb-0 table-borderless table-rounded">
+                          <thead>
+                            <tr>
+                              <th>
+                                <span>Size</span>
+                              </th>
+                              <th>
+                                <span>Greentile Thick</span>
+                              </th>
+                              <th>
+                                <span>Upper Punch</span>
+                              </th>
+                              <th>
+                                <span>Lower Punch</span>
+                              </th>
+                              <th>
+                                <span>Cavity</span>
+                              </th>
+                              <th>
+                                <span>Master No.</span>
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {viewTarget.manufacturing_specifications.map((spec) => (
+                              <tr key={spec.id}>
+                                <td>{spec.size}</td>
+                                <td>{spec.greentile_thick}</td>
+                                <td>{spec.upper_punch}</td>
+                                <td>{spec.lower_punch}</td>
+                                <td>{spec.cavity}</td>
+                                <td>{spec.master_no}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="hx-detail-section">
+                    <span className="hx-detail-section__title">Related Orders</span>
+                    {viewOrdersError && <p className="hx-form-error">{viewOrdersError}</p>}
+                    {viewOrders === null && !viewOrdersError && <p className="hx-companies-empty">Loading orders…</p>}
+                    {viewOrders && viewOrders.length === 0 && (
+                      <p className="hx-companies-empty">No orders found for this company.</p>
+                    )}
+                    {viewOrders && viewOrders.length > 0 && (
+                      <div className="table-responsive">
+                        <table className="table mb-0 table-borderless table-rounded">
+                          <thead>
+                            <tr>
+                              <th>
+                                <span>Order No.</span>
+                              </th>
+                              <th>
+                                <span>Size</span>
+                              </th>
+                              <th>
+                                <span>Punch Type</span>
+                              </th>
+                              <th>
+                                <span>Qty</span>
+                              </th>
+                              <th>
+                                <span>Delivery</span>
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {viewOrders.map((o) => (
+                              <tr key={o.id}>
+                                <td>{o.order_no}</td>
+                                <td>{o.size}</td>
+                                <td>
+                                  <span className="hx-order-badge">{o.punch_type}</span>
+                                </td>
+                                <td>{o.quantity}</td>
+                                <td>{o.expected_delivery_date ? formatDate(o.expected_delivery_date) : '—'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="button-group d-flex justify-content-center pt-20">
+                    <button type="button" className="btn btn-sm hx-btn-secondary btn-rounded" onClick={closeViewModal}>
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show" onClick={closeViewModal}></div>
         </>
       )}
 

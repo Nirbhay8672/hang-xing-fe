@@ -5,6 +5,12 @@
   padding: 20px;
 }
 
+.hx-order-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .hx-order-badge {
   display: inline-flex;
   align-items: center;

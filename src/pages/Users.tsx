@@ -3,6 +3,7 @@ import { ApiError } from '../auth/apiClient'
 import { useAuth } from '../auth/AuthContext'
 import AppShell from '../components/AppShell'
 import { FloatingInput, FloatingSelect } from '../components/FloatingField'
+import '../components/detailView.css'
 import '../components/formStyles.css'
 import '../components/iconButtons.css'
 import type { Role } from '../roles/types'
@@ -41,6 +42,8 @@ export default function Users() {
 
   const [roles, setRoles] = useState<Role[] | null>(null)
 
+  const [viewTarget, setViewTarget] = useState<User | null>(null)
+
   const [modalMode, setModalMode] = useState<'create' | 'edit' | null>(null)
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [form, setForm] = useState<UserFormState>(EMPTY_FORM)
@@ -76,6 +79,10 @@ export default function Users() {
     setForm(EMPTY_FORM)
     setFormErrors({})
     setShowPassword(false)
+  }
+
+  function openViewModal(user: User) {
+    setViewTarget(user)
   }
 
   function openEditModal(user: User) {
@@ -223,6 +230,15 @@ export default function Users() {
                           </td>
                           <td>
                             <div className="table-actions d-flex">
+                              <button
+                                type="button"
+                                className="hx-icon-btn hx-icon-btn--view"
+                                aria-label="View user"
+                                title="View"
+                                onClick={() => openViewModal(u)}
+                              >
+                                <i className="la la-eye"></i>
+                              </button>
                               {can('edit users') && (
                                 <button
                                   type="button"
@@ -339,6 +355,59 @@ export default function Users() {
             </div>
           </div>
           <div className="modal-backdrop fade show" onClick={closeModal}></div>
+        </>
+      )}
+
+      {viewTarget && (
+        <>
+          <div className="modal fade show d-block" role="dialog" aria-modal="true">
+            <div className="modal-dialog modal-dialog-centered modal-lg">
+              <div className="modal-content radius-xl">
+                <div className="modal-header">
+                  <h6 className="modal-title fw-500">User Details</h6>
+                  <button type="button" className="btn-close" onClick={() => setViewTarget(null)} aria-label="Close">
+                    <i className="las la-times"></i>
+                  </button>
+                </div>
+                <div className="modal-body">
+                  <div className="hx-detail-section">
+                    <span className="hx-detail-section__title">Account</span>
+                    <div className="hx-detail-grid">
+                      <div>
+                        <span className="hx-detail-grid__label">Name</span>
+                        <span className="hx-detail-grid__value">{viewTarget.name}</span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Email</span>
+                        <span className="hx-detail-grid__value">{viewTarget.email}</span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Role</span>
+                        <span className="hx-detail-grid__value">
+                          {viewTarget.roles.length > 0 ? viewTarget.roles.join(', ') : '—'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Created</span>
+                        <span className="hx-detail-grid__value">{formatDate(viewTarget.created_at)}</span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Last Updated</span>
+                        <span className="hx-detail-grid__value">{formatDate(viewTarget.updated_at)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="button-group d-flex justify-content-center pt-20">
+                    <button type="button" className="btn btn-sm hx-btn-secondary btn-rounded" onClick={() => setViewTarget(null)}>
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show" onClick={() => setViewTarget(null)}></div>
         </>
       )}
 
