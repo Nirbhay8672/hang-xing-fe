@@ -100,7 +100,7 @@ export default function Login() {
                   <input
                     id="login-password"
                     type={showPassword ? 'text' : 'password'}
-                    autoComplete="current-password"
+                    autoComplete="new-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required

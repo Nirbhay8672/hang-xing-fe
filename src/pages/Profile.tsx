@@ -90,59 +90,20 @@ export default function ProfilePage() {
 
   return (
     <AppShell title="My Profile">
-      <div className="row">
-        <div className="col-12">
-          {loadError && <p className="hx-form-error">{loadError}</p>}
-          {profile === null && !loadError && <p className="hx-profile-loading">Loading profile…</p>}
+      {loadError && <p className="hx-form-error">{loadError}</p>}
+      {profile === null && !loadError && <p className="hx-profile-loading">Loading profile…</p>}
 
-          {profile && (
-            <>
-              <div className="card radius-xl mb-25">
-                <div className="card-header px-sm-25 px-3">
-                  <div className="edit-profile__title">
-                    <h6>Roles &amp; Permissions</h6>
-                  </div>
-                </div>
-                <div className="card-body">
-                  <div className="hx-profile-section">
-                    <span className="hx-profile-section__title">Roles</span>
-                    {profile.roles.length > 0 ? (
-                      <div className="hx-profile-badges">
-                        {profile.roles.map((r) => (
-                          <span key={r} className="hx-profile-badge">
-                            {titleCase(r)}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="hx-profile-empty-text">No roles assigned.</span>
-                    )}
-                  </div>
-                  <div className="hx-profile-section">
-                    <span className="hx-profile-section__title">Permissions</span>
-                    {profile.permissions.length > 0 ? (
-                      <div className="hx-profile-badges">
-                        {profile.permissions.map((p) => (
-                          <span key={p} className="hx-profile-badge">
-                            {titleCase(p)}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="hx-profile-empty-text">No permissions assigned.</span>
-                    )}
-                  </div>
+      {profile && (
+        <div className="row">
+          <div className="col-lg-8 col-12">
+            <div className="card radius-xl mb-25">
+              <div className="card-header px-sm-25 px-3">
+                <div className="edit-profile__title">
+                  <h6>Edit Profile</h6>
                 </div>
               </div>
-
-              <div className="card radius-xl mb-25">
-                <div className="card-header px-sm-25 px-3">
-                  <div className="edit-profile__title">
-                    <h6>Edit Profile</h6>
-                  </div>
-                </div>
-                <div className="card-body">
-                  <form onSubmit={handleSubmit} autoComplete="off">
+              <div className="card-body">
+                <form onSubmit={handleSubmit} autoComplete="off">
                     {formErrors[GENERAL_ERROR_KEY] && <p className="hx-form-error">{formErrors[GENERAL_ERROR_KEY][0]}</p>}
                     {successMessage && <p className="hx-form-success">{successMessage}</p>}
 
@@ -181,7 +142,7 @@ export default function ProfilePage() {
                           type={showCurrentPassword ? 'text' : 'password'}
                           value={form.currentPassword}
                           onChange={(e) => setForm((f) => ({ ...f, currentPassword: e.target.value }))}
-                          autoComplete="current-password"
+                          autoComplete="off"
                           error={formErrors.current_password?.[0]}
                           endAdornment={
                             <button
@@ -221,13 +182,52 @@ export default function ProfilePage() {
                         {submitting ? 'Saving…' : 'Save Changes'}
                       </button>
                     </div>
-                  </form>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <div className="col-lg-4 col-12">
+            <div className="card radius-xl mb-25">
+              <div className="card-header px-sm-25 px-3">
+                <div className="edit-profile__title">
+                  <h6>Roles &amp; Permissions</h6>
                 </div>
               </div>
-            </>
-          )}
+              <div className="card-body">
+                <div className="hx-profile-section">
+                  <span className="hx-profile-section__title">Roles</span>
+                  {profile.roles.length > 0 ? (
+                    <div className="hx-profile-badges">
+                      {profile.roles.map((r) => (
+                        <span key={r} className="hx-profile-badge">
+                          {titleCase(r)}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="hx-profile-empty-text">No roles assigned.</span>
+                  )}
+                </div>
+                <div className="hx-profile-section">
+                  <span className="hx-profile-section__title">Permissions</span>
+                  {profile.permissions.length > 0 ? (
+                    <div className="hx-profile-badges">
+                      {profile.permissions.map((p) => (
+                        <span key={p} className="hx-profile-badge">
+                          {titleCase(p)}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="hx-profile-empty-text">No permissions assigned.</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </AppShell>
   )
 }

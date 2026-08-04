@@ -15,6 +15,9 @@ export default function Layout({ children }: { children: ReactNode }) {
     // typography) needed regardless of route, so they're set once here rather than
     // toggled per-page. "loaded" specifically defeats the theme's own unconditional
     // `body::after` full-screen overlay (see PageLoader for the replacement loader).
+    // "overlayScroll" maps to `overflow: hidden` in the theme CSS — the vendor theme
+    // only keeps it on body while its own preloader is visible, then removes it once
+    // the page finishes loading (see theme_assets/js/main.js's `window load` handler).
     document.body.classList.add('layout-light', 'side-menu', 'overlayScroll', 'loaded')
   }, [])
 
@@ -24,6 +27,12 @@ export default function Layout({ children }: { children: ReactNode }) {
   }, [])
 
   const showLoader = status === 'loading' || !minTimeElapsed
+
+  useEffect(() => {
+    if (!showLoader) {
+      document.body.classList.remove('overlayScroll')
+    }
+  }, [showLoader])
 
   return (
     <>
