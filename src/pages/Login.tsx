@@ -2,8 +2,6 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { ApiError } from '../auth/apiClient'
 import { useAuth } from '../auth/AuthContext'
-import { FloatingInput } from '../components/FloatingField'
-import '../components/formStyles.css'
 import './Login.css'
 
 const SLIDESHOW_IMAGES = ['images/product/product.jpg', 'images/product/product1.jpg'].map(
@@ -24,31 +22,6 @@ function EyeIcon({ open }: { open: boolean }) {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a20.3 20.3 0 0 1 5.06-6.06M9.9 4.24A10.4 10.4 0 0 1 12 4c7 0 11 8 11 8a20.3 20.3 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24" />
         <line x1="1" y1="1" x2="23" y2="23" />
-    </svg>
-  )
-}
-
-function GoogleIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 20 20">
-      <path fill="#fbbb00" d="M4.432 144.953l-.7 2.6-2.544.054a10.017 10.017 0 0 1-.074-9.338h0l2.265.415.992 2.252a5.968 5.968 0 0 0 .056 4.018Z" transform="translate(0 -132.867)" />
-      <path fill="#518ef8" d="M271.233 208.176a10 10 0 0 1-3.565 9.666h0l-2.853-.146-.4-2.521a5.96 5.96 0 0 0 2.564-3.043h-5.347v-3.956h9.605Z" transform="translate(-251.408 -200.044)" />
-      <path fill="#28b446" d="M45.577 315.121h0a10 10 0 0 1-15.069-3.059l3.241-2.653a5.947 5.947 0 0 0 8.57 3.045Z" transform="translate(-29.317 -297.323)" />
-      <path fill="#f14336" d="M43.889 2.3l-3.24 2.652a5.947 5.947 0 0 0-8.767 3.114L28.625 5.4h0A10 10 0 0 1 43.889 2.3Z" transform="translate(-27.506)" />
-    </svg>
-  )
-}
-
-function ApertureIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <circle cx="12" cy="12" r="10" />
-      <line x1="14.31" y1="8" x2="20.05" y2="17.94" />
-      <line x1="9.69" y1="8" x2="21.17" y2="8" />
-      <line x1="7.38" y1="12" x2="13.12" y2="2.06" />
-      <line x1="9.69" y1="16" x2="3.95" y2="6.06" />
-      <line x1="14.31" y1="16" x2="2.83" y2="16" />
-      <line x1="16.62" y1="12" x2="10.88" y2="21.94" />
     </svg>
   )
 }
@@ -105,33 +78,33 @@ export default function Login() {
         <div className="login-card__form">
           <div className="login-card__form-inner">
             <img className="login-logo" src={`${import.meta.env.BASE_URL}images/logo.png`} alt="Heng Xing" />
-            <h1>Sign in</h1>
-            <p className="login-subtitle">Heng Xing Pvt. Ltd.</p>
 
             <form onSubmit={handleSubmit}>
               {error && <p className="form-error">{error}</p>}
 
-              <FloatingInput
-                label="Email"
-                type="email"
-                variant="bare"
-                wrapperClassName="form-field"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+              <div className="form-field">
+                <label htmlFor="login-email">Email</label>
+                <input
+                  id="login-email"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
 
-              <FloatingInput
-                label="Password"
-                type={showPassword ? 'text' : 'password'}
-                variant="bare"
-                wrapperClassName="form-field form-field--password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                endAdornment={
+              <div className="form-field form-field--password">
+                <label htmlFor="login-password">Password</label>
+                <div className="password-input">
+                  <input
+                    id="login-password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
                   <button
                     type="button"
                     className="password-toggle"
@@ -140,23 +113,13 @@ export default function Login() {
                   >
                     <EyeIcon open={showPassword} />
                   </button>
-                }
-              />
+                </div>
+              </div>
 
               <button type="submit" className="btn-signin" disabled={submitting}>
                 {submitting ? 'Signing in…' : 'Sign In'}
               </button>
             </form>
-
-            <div className="login-divider">
-              <span>Or continue with</span>
-            </div>
-
-            <div className="social-row">
-              <button type="button" className="social-btn" aria-label="Continue with Google">
-                <GoogleIcon />
-              </button>
-            </div>
           </div>
         </div>
 
@@ -176,10 +139,6 @@ export default function Login() {
           </div>
         </div>
       </div>
-
-      <button type="button" className="login-page__fab" aria-label="Settings">
-        <ApertureIcon />
-      </button>
     </main>
   )
 }
