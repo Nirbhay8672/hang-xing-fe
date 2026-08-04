@@ -80,3 +80,104 @@
   --bs-btn-active-color: #fff;
   --bs-btn-disabled-color: #fff;
 }
+
+/* ---------- floating-label fields (Material "outlined" style) ----------
+   Used by every form field via the FloatingInput/FloatingSelect/FloatingTextarea
+   components (see FloatingField.tsx). Deliberately targets bare <input>/<select>/
+   <textarea> elements rather than `.form-control`, so it works both for the admin
+   theme's Bootstrap-based fields and for Login's bespoke-styled fields.
+
+   At rest the label sits centered over the control, reading like a placeholder. On
+   focus, or once the field has a value, it hops up to straddle the top border with a
+   cut-out background behind it — so the input's own padding never has to change to make
+   room for the label, which is what made the earlier "inside the box" version fragile
+   across pages with different paddings.
+
+   Whether a field is "active" (floated) is decided in JS (focus/value state via
+   FloatingField.tsx), not the CSS :placeholder-shown trick, so it also behaves
+   correctly for autofill and for always-has-a-value controls like <select> and date
+   inputs — see ALWAYS_FLOAT_TYPES there. */
+.hx-floating {
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.hx-floating > input,
+.hx-floating > select,
+.hx-floating > textarea {
+  width: 100%;
+}
+
+.hx-floating > textarea {
+  min-height: 4.5rem;
+  resize: vertical;
+}
+
+.hx-floating.hx-floating--with-adornment > input {
+  padding-right: 46px !important;
+}
+
+.hx-floating > label {
+  position: absolute;
+  left: calc(1.2rem - 4px);
+  top: 50%;
+  transform: translateY(-50%);
+  transform-origin: left center;
+  margin: 0;
+  padding: 0 4px;
+  max-width: calc(100% - 2.4rem);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 0.875rem;
+  color: #9299b8;
+  background: transparent;
+  pointer-events: none;
+  z-index: 1;
+  transition: top 0.15s ease, transform 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+}
+
+.hx-floating > .form-control-lg ~ label {
+  left: calc(1rem - 4px);
+}
+
+.hx-floating--textarea > label {
+  top: 1.5rem;
+}
+
+/* Position (floated onto the border) and color (accent blue) are separate modifiers,
+   not one combined state: a <select>/date field is always kept floated so its label
+   never overlaps the browser's own "— Select —"/mm-dd-yyyy text, but it should only
+   turn accent-colored once it's genuinely focused or has a real value — see `floated`
+   vs `accented` in FloatingField.tsx. Text/textarea fields flip both together.
+
+   The cut-out needs an opaque background matching whatever sits behind the field —
+   plain white for cards/modals, but the manufacturing-spec rows sit on an off-white
+   panel, so that context gets its own override right below. */
+.hx-floating--floated > label {
+  top: 0;
+  transform: translateY(-50%) scale(0.8);
+  background: #fff;
+}
+
+.hx-spec-row .hx-floating--floated > label {
+  background: #fbfbfd;
+}
+
+.hx-floating--accent > label {
+  color: #2e3175;
+}
+
+.hx-floating--invalid > label {
+  color: #dc3545;
+}
+
+.hx-floating--invalid > input,
+.hx-floating--invalid > select,
+.hx-floating--invalid > textarea {
+  border-color: #dc3545;
+}
+
+.hx-floating--with-adornment .hx-password-toggle {
+  z-index: 2;
+}

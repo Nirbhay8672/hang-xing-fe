@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { ApiError } from '../auth/apiClient'
 import { useAuth } from '../auth/AuthContext'
 import AppShell from '../components/AppShell'
+import { FloatingInput } from '../components/FloatingField'
 import '../components/formStyles.css'
 import type { Profile } from '../profile/types'
 import { profileService } from '../profile/profileService'
@@ -147,32 +148,26 @@ export default function ProfilePage() {
 
                     <div className="row">
                       <div className="col-md-6">
-                        <div className="form-group mb-20">
-                          <label>Name:</label>
-                          <input
-                            type="text"
-                            className="form-control form-control-lg"
-                            value={form.name}
-                            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                            autoComplete="off"
-                            required
-                          />
-                          {formErrors.name && <small className="hx-field-error">{formErrors.name[0]}</small>}
-                        </div>
+                        <FloatingInput
+                          label="Name"
+                          type="text"
+                          value={form.name}
+                          onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                          autoComplete="off"
+                          required
+                          error={formErrors.name?.[0]}
+                        />
                       </div>
                       <div className="col-md-6">
-                        <div className="form-group mb-20">
-                          <label>Email Address:</label>
-                          <input
-                            type="email"
-                            className="form-control form-control-lg"
-                            value={form.email}
-                            onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                            autoComplete="off"
-                            required
-                          />
-                          {formErrors.email && <small className="hx-field-error">{formErrors.email[0]}</small>}
-                        </div>
+                        <FloatingInput
+                          label="Email Address"
+                          type="email"
+                          value={form.email}
+                          onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                          autoComplete="off"
+                          required
+                          error={formErrors.email?.[0]}
+                        />
                       </div>
                     </div>
 
@@ -181,17 +176,14 @@ export default function ProfilePage() {
 
                     <div className="row">
                       <div className="col-md-6">
-                        <div className="form-group mb-20">
-                          <label>Current Password:</label>
-                          <div className="hx-password-field">
-                            <input
-                              type={showCurrentPassword ? 'text' : 'password'}
-                              className="form-control form-control-lg"
-                              placeholder="Current password"
-                              value={form.currentPassword}
-                              onChange={(e) => setForm((f) => ({ ...f, currentPassword: e.target.value }))}
-                              autoComplete="current-password"
-                            />
+                        <FloatingInput
+                          label="Current Password"
+                          type={showCurrentPassword ? 'text' : 'password'}
+                          value={form.currentPassword}
+                          onChange={(e) => setForm((f) => ({ ...f, currentPassword: e.target.value }))}
+                          autoComplete="current-password"
+                          error={formErrors.current_password?.[0]}
+                          endAdornment={
                             <button
                               type="button"
                               className="hx-password-toggle"
@@ -199,25 +191,19 @@ export default function ProfilePage() {
                             >
                               <i className={`las ${showCurrentPassword ? 'la-eye-slash' : 'la-eye'}`}></i>
                             </button>
-                          </div>
-                          {formErrors.current_password && (
-                            <small className="hx-field-error">{formErrors.current_password[0]}</small>
-                          )}
-                        </div>
+                          }
+                        />
                       </div>
                       <div className="col-md-6">
-                        <div className="form-group mb-20">
-                          <label>New Password:</label>
-                          <div className="hx-password-field">
-                            <input
-                              type={showNewPassword ? 'text' : 'password'}
-                              className="form-control form-control-lg"
-                              placeholder="New password"
-                              value={form.newPassword}
-                              onChange={(e) => setForm((f) => ({ ...f, newPassword: e.target.value }))}
-                              minLength={8}
-                              autoComplete="new-password"
-                            />
+                        <FloatingInput
+                          label="New Password"
+                          type={showNewPassword ? 'text' : 'password'}
+                          value={form.newPassword}
+                          onChange={(e) => setForm((f) => ({ ...f, newPassword: e.target.value }))}
+                          minLength={8}
+                          autoComplete="new-password"
+                          error={formErrors.password?.[0]}
+                          endAdornment={
                             <button
                               type="button"
                               className="hx-password-toggle"
@@ -225,9 +211,8 @@ export default function ProfilePage() {
                             >
                               <i className={`las ${showNewPassword ? 'la-eye-slash' : 'la-eye'}`}></i>
                             </button>
-                          </div>
-                          {formErrors.password && <small className="hx-field-error">{formErrors.password[0]}</small>}
-                        </div>
+                          }
+                        />
                       </div>
                     </div>
 

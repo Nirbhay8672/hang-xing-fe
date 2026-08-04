@@ -86,10 +86,16 @@
   align-items: flex-start;
   gap: 12px;
   overflow-x: auto;
+  /* `overflow-x: auto` forces `overflow-y` to compute as `auto` too (CSS can't have one
+     axis scrollable and the other visible), which clips the top half of each floated
+     label — the outlined style deliberately lets it sit half above the input's own
+     border. This top padding reserves room for that inside the scroll container so it
+     doesn't get cut off, instead of clipping into the fields themselves. */
+  padding-top: 10px;
   padding-bottom: 2px;
 }
 
-.hx-spec-row__fields .form-group {
+.hx-spec-row__fields .hx-floating {
   flex: 1 0 140px;
   min-width: 140px;
 }

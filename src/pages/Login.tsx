@@ -2,6 +2,8 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { ApiError } from '../auth/apiClient'
 import { useAuth } from '../auth/AuthContext'
+import { FloatingInput } from '../components/FloatingField'
+import '../components/formStyles.css'
 import './Login.css'
 
 const SLIDESHOW_IMAGES = ['images/product/product.jpg', 'images/product/product1.jpg'].map(
@@ -109,35 +111,37 @@ export default function Login() {
             <form onSubmit={handleSubmit}>
               {error && <p className="form-error">{error}</p>}
 
-              <div className="form-field">
-                <input
-                  type="email"
-                  placeholder="Email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
+              <FloatingInput
+                label="Email"
+                type="email"
+                variant="bare"
+                wrapperClassName="form-field"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
 
-              <div className="form-field form-field--password">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Password"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-                <button
-                  type="button"
-                  className="password-toggle"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  onClick={() => setShowPassword((v) => !v)}
-                >
-                  <EyeIcon open={showPassword} />
-                </button>
-              </div>
+              <FloatingInput
+                label="Password"
+                type={showPassword ? 'text' : 'password'}
+                variant="bare"
+                wrapperClassName="form-field form-field--password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                endAdornment={
+                  <button
+                    type="button"
+                    className="password-toggle"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    onClick={() => setShowPassword((v) => !v)}
+                  >
+                    <EyeIcon open={showPassword} />
+                  </button>
+                }
+              />
 
               <button type="submit" className="btn-signin" disabled={submitting}>
                 {submitting ? 'Signing in…' : 'Sign In'}

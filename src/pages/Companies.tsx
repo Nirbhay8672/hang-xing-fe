@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { ApiError } from '../auth/apiClient'
 import { useAuth } from '../auth/AuthContext'
 import AppShell from '../components/AppShell'
+import { FloatingInput } from '../components/FloatingField'
 import '../components/formStyles.css'
 import '../components/iconButtons.css'
 import type { Company, ManufacturingSpecificationInput } from '../companies/types'
@@ -368,64 +369,44 @@ export default function Companies() {
 
                       <div className="row">
                         <div className="col-md-6">
-                          <div className="form-group mb-20">
-                            <label>Company Name</label>
-                            <input
-                              type="text"
-                              className="form-control form-control-lg"
-                              placeholder="Company name"
-                              value={form.name}
-                              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                              required
-                            />
-                            {formErrors.name && <small className="hx-field-error">{formErrors.name[0]}</small>}
-                          </div>
+                          <FloatingInput
+                            label="Company Name"
+                            type="text"
+                            value={form.name}
+                            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                            required
+                            error={formErrors.name?.[0]}
+                          />
                         </div>
                         <div className="col-md-6">
-                          <div className="form-group mb-20">
-                            <label>Address</label>
-                            <input
-                              type="text"
-                              className="form-control form-control-lg"
-                              placeholder="Address"
-                              value={form.address}
-                              onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-                              required
-                            />
-                            {formErrors.address && <small className="hx-field-error">{formErrors.address[0]}</small>}
-                          </div>
+                          <FloatingInput
+                            label="Address"
+                            type="text"
+                            value={form.address}
+                            onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+                            required
+                            error={formErrors.address?.[0]}
+                          />
                         </div>
                         <div className="col-md-6">
-                          <div className="form-group mb-20">
-                            <label>Director Name</label>
-                            <input
-                              type="text"
-                              className="form-control form-control-lg"
-                              placeholder="Director name"
-                              value={form.director_name}
-                              onChange={(e) => setForm((f) => ({ ...f, director_name: e.target.value }))}
-                              required
-                            />
-                            {formErrors.director_name && (
-                              <small className="hx-field-error">{formErrors.director_name[0]}</small>
-                            )}
-                          </div>
+                          <FloatingInput
+                            label="Director Name"
+                            type="text"
+                            value={form.director_name}
+                            onChange={(e) => setForm((f) => ({ ...f, director_name: e.target.value }))}
+                            required
+                            error={formErrors.director_name?.[0]}
+                          />
                         </div>
                         <div className="col-md-6">
-                          <div className="form-group mb-20">
-                            <label>Director Contact</label>
-                            <input
-                              type="text"
-                              className="form-control form-control-lg"
-                              placeholder="Director contact"
-                              value={form.director_contact}
-                              onChange={(e) => setForm((f) => ({ ...f, director_contact: e.target.value }))}
-                              required
-                            />
-                            {formErrors.director_contact && (
-                              <small className="hx-field-error">{formErrors.director_contact[0]}</small>
-                            )}
-                          </div>
+                          <FloatingInput
+                            label="Director Contact"
+                            type="text"
+                            value={form.director_contact}
+                            onChange={(e) => setForm((f) => ({ ...f, director_contact: e.target.value }))}
+                            required
+                            error={formErrors.director_contact?.[0]}
+                          />
                         </div>
                       </div>
 
@@ -456,78 +437,60 @@ export default function Companies() {
                               </button>
                             </div>
                             <div className="hx-spec-row__fields">
-                              <div className="form-group mb-15">
-                                <label>Size</label>
-                                <input
-                                  type="text"
-                                  className="form-control"
-                                  value={spec.size}
-                                  onChange={(e) => updateSpecField(index, 'size', e.target.value)}
-                                />
-                                {specError(index, 'size') && (
-                                  <small className="hx-field-error">{specError(index, 'size')}</small>
-                                )}
-                              </div>
-                              <div className="form-group mb-15">
-                                <label>Greentile Thick</label>
-                                <input
-                                  type="text"
-                                  className="form-control"
-                                  value={spec.greentile_thick}
-                                  onChange={(e) => updateSpecField(index, 'greentile_thick', e.target.value)}
-                                />
-                                {specError(index, 'greentile_thick') && (
-                                  <small className="hx-field-error">{specError(index, 'greentile_thick')}</small>
-                                )}
-                              </div>
-                              <div className="form-group mb-15">
-                                <label>Upper Punch</label>
-                                <input
-                                  type="text"
-                                  className="form-control"
-                                  value={spec.upper_punch}
-                                  onChange={(e) => updateSpecField(index, 'upper_punch', e.target.value)}
-                                />
-                                {specError(index, 'upper_punch') && (
-                                  <small className="hx-field-error">{specError(index, 'upper_punch')}</small>
-                                )}
-                              </div>
-                              <div className="form-group mb-15">
-                                <label>Lower Punch</label>
-                                <input
-                                  type="text"
-                                  className="form-control"
-                                  value={spec.lower_punch}
-                                  onChange={(e) => updateSpecField(index, 'lower_punch', e.target.value)}
-                                />
-                                {specError(index, 'lower_punch') && (
-                                  <small className="hx-field-error">{specError(index, 'lower_punch')}</small>
-                                )}
-                              </div>
-                              <div className="form-group mb-15">
-                                <label>Cavity</label>
-                                <input
-                                  type="text"
-                                  className="form-control"
-                                  value={spec.cavity}
-                                  onChange={(e) => updateSpecField(index, 'cavity', e.target.value)}
-                                />
-                                {specError(index, 'cavity') && (
-                                  <small className="hx-field-error">{specError(index, 'cavity')}</small>
-                                )}
-                              </div>
-                              <div className="form-group mb-15">
-                                <label>Master No.</label>
-                                <input
-                                  type="text"
-                                  className="form-control"
-                                  value={spec.master_no}
-                                  onChange={(e) => updateSpecField(index, 'master_no', e.target.value)}
-                                />
-                                {specError(index, 'master_no') && (
-                                  <small className="hx-field-error">{specError(index, 'master_no')}</small>
-                                )}
-                              </div>
+                              <FloatingInput
+                                label="Size"
+                                type="text"
+                                variant="default"
+                                wrapperClassName="mb-0"
+                                value={spec.size}
+                                onChange={(e) => updateSpecField(index, 'size', e.target.value)}
+                                error={specError(index, 'size')}
+                              />
+                              <FloatingInput
+                                label="Greentile Thick"
+                                type="text"
+                                variant="default"
+                                wrapperClassName="mb-0"
+                                value={spec.greentile_thick}
+                                onChange={(e) => updateSpecField(index, 'greentile_thick', e.target.value)}
+                                error={specError(index, 'greentile_thick')}
+                              />
+                              <FloatingInput
+                                label="Upper Punch"
+                                type="text"
+                                variant="default"
+                                wrapperClassName="mb-0"
+                                value={spec.upper_punch}
+                                onChange={(e) => updateSpecField(index, 'upper_punch', e.target.value)}
+                                error={specError(index, 'upper_punch')}
+                              />
+                              <FloatingInput
+                                label="Lower Punch"
+                                type="text"
+                                variant="default"
+                                wrapperClassName="mb-0"
+                                value={spec.lower_punch}
+                                onChange={(e) => updateSpecField(index, 'lower_punch', e.target.value)}
+                                error={specError(index, 'lower_punch')}
+                              />
+                              <FloatingInput
+                                label="Cavity"
+                                type="text"
+                                variant="default"
+                                wrapperClassName="mb-0"
+                                value={spec.cavity}
+                                onChange={(e) => updateSpecField(index, 'cavity', e.target.value)}
+                                error={specError(index, 'cavity')}
+                              />
+                              <FloatingInput
+                                label="Master No."
+                                type="text"
+                                variant="default"
+                                wrapperClassName="mb-0"
+                                value={spec.master_no}
+                                onChange={(e) => updateSpecField(index, 'master_no', e.target.value)}
+                                error={specError(index, 'master_no')}
+                              />
                             </div>
                           </div>
                         ))}

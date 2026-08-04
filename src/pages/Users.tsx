@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { ApiError } from '../auth/apiClient'
 import { useAuth } from '../auth/AuthContext'
 import AppShell from '../components/AppShell'
+import { FloatingInput, FloatingSelect } from '../components/FloatingField'
 import '../components/formStyles.css'
 import '../components/iconButtons.css'
 import type { Role } from '../roles/types'
@@ -275,70 +276,55 @@ export default function Users() {
                     <form onSubmit={handleSubmit} autoComplete="off">
                       {formErrors[GENERAL_ERROR_KEY] && <p className="hx-form-error">{formErrors[GENERAL_ERROR_KEY][0]}</p>}
 
-                      <div className="form-group mb-20">
-                        <label>Name:</label>
-                        <input
-                          type="text"
-                          className="form-control form-control-lg"
-                          placeholder="Full name"
-                          value={form.name}
-                          onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                          autoComplete="off"
-                          required
-                        />
-                        {formErrors.name && <small className="hx-field-error">{formErrors.name[0]}</small>}
-                      </div>
+                      <FloatingInput
+                        label="Name"
+                        type="text"
+                        value={form.name}
+                        onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                        autoComplete="off"
+                        required
+                        error={formErrors.name?.[0]}
+                      />
 
-                      <div className="form-group mb-20">
-                        <label>Email Address:</label>
-                        <input
-                          type="email"
-                          className="form-control form-control-lg"
-                          placeholder="Email address"
-                          value={form.email}
-                          onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                          autoComplete="off"
-                          required
-                        />
-                        {formErrors.email && <small className="hx-field-error">{formErrors.email[0]}</small>}
-                      </div>
+                      <FloatingInput
+                        label="Email Address"
+                        type="email"
+                        value={form.email}
+                        onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                        autoComplete="off"
+                        required
+                        error={formErrors.email?.[0]}
+                      />
 
-                      <div className="form-group mb-20">
-                        <label>Role:</label>
-                        <select
-                          className="form-control form-control-lg"
-                          value={form.role_id}
-                          onChange={(e) => setForm((f) => ({ ...f, role_id: e.target.value }))}
-                        >
-                          <option value="">Select a role</option>
-                          {roles?.map((role) => (
-                            <option key={role.id} value={role.id}>
-                              {role.name}
-                            </option>
-                          ))}
-                        </select>
-                        {formErrors.role_id && <small className="hx-field-error">{formErrors.role_id[0]}</small>}
-                      </div>
+                      <FloatingSelect
+                        label="Role"
+                        value={form.role_id}
+                        onChange={(e) => setForm((f) => ({ ...f, role_id: e.target.value }))}
+                        error={formErrors.role_id?.[0]}
+                      >
+                        <option value="">Select a role</option>
+                        {roles?.map((role) => (
+                          <option key={role.id} value={role.id}>
+                            {role.name}
+                          </option>
+                        ))}
+                      </FloatingSelect>
 
-                      <div className="form-group mb-20">
-                        <label>{modalMode === 'create' ? 'Password:' : 'New Password (leave blank to keep current):'}</label>
-                        <div className="hx-password-field">
-                          <input
-                            type={showPassword ? 'text' : 'password'}
-                            className="form-control form-control-lg"
-                            placeholder={modalMode === 'create' ? 'Password' : 'New password'}
-                            value={form.password}
-                            onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                            minLength={modalMode === 'create' ? 8 : undefined}
-                            required={modalMode === 'create'}
-                            autoComplete="new-password"
-                          />
+                      <FloatingInput
+                        label={modalMode === 'create' ? 'Password' : 'New Password (leave blank to keep current)'}
+                        type={showPassword ? 'text' : 'password'}
+                        value={form.password}
+                        onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                        minLength={modalMode === 'create' ? 8 : undefined}
+                        required={modalMode === 'create'}
+                        autoComplete="new-password"
+                        error={formErrors.password?.[0]}
+                        endAdornment={
                           <button type="button" className="hx-password-toggle" onClick={() => setShowPassword((v) => !v)}>
                             <i className={`las ${showPassword ? 'la-eye-slash' : 'la-eye'}`}></i>
                           </button>
-                        </div>
-                        {formErrors.password && <small className="hx-field-error">{formErrors.password[0]}</small>}
-                      </div>
+                        }
+                      />
 
                       <div className="button-group d-flex justify-content-center pt-20">
                         <button type="button" className="btn hx-btn-secondary btn-squared me-10" onClick={closeModal} disabled={submitting}>

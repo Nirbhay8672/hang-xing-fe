@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { ApiError } from '../auth/apiClient'
 import { useAuth } from '../auth/AuthContext'
 import AppShell from '../components/AppShell'
+import { FloatingInput, FloatingSelect, FloatingTextarea } from '../components/FloatingField'
 import '../components/formStyles.css'
 import '../components/iconButtons.css'
 import type { Company, ManufacturingSpecification } from '../companies/types'
@@ -381,87 +382,69 @@ export default function Orders() {
                         <span className="hx-order-section__title">Order Details</span>
                         <div className="row">
                           <div className="col-md-6">
-                            <div className="form-group mb-20">
-                              <label>Company</label>
-                              <select
-                                className="form-control form-control-lg"
-                                value={form.company_id}
-                                onChange={(e) => handleCompanyChange(e.target.value)}
-                                required
-                              >
-                                <option value="">— Select —</option>
-                                {companies.map((c) => (
-                                  <option key={c.id} value={c.id}>
-                                    {c.name}
-                                  </option>
-                                ))}
-                              </select>
-                              {formErrors.company_id && (
-                                <small className="hx-field-error">{formErrors.company_id[0]}</small>
-                              )}
-                            </div>
+                            <FloatingSelect
+                              label="Company"
+                              value={form.company_id}
+                              onChange={(e) => handleCompanyChange(e.target.value)}
+                              required
+                              error={formErrors.company_id?.[0]}
+                            >
+                              <option value="">— Select —</option>
+                              {companies.map((c) => (
+                                <option key={c.id} value={c.id}>
+                                  {c.name}
+                                </option>
+                              ))}
+                            </FloatingSelect>
                           </div>
                           <div className="col-md-6">
-                            <div className="form-group mb-20">
-                              <label>Size</label>
-                              <select
-                                className="form-control form-control-lg"
-                                value={form.size}
-                                onChange={(e) => handleSizeChange(e.target.value)}
-                                disabled={!selectedCompany}
-                                required
-                              >
-                                <option value="">— Select —</option>
-                                {selectedCompany?.manufacturing_specifications.map((spec) => (
-                                  <option key={spec.id} value={spec.size}>
-                                    {spec.size}
-                                  </option>
-                                ))}
-                              </select>
-                              {formErrors.size && <small className="hx-field-error">{formErrors.size[0]}</small>}
-                            </div>
+                            <FloatingSelect
+                              label="Size"
+                              value={form.size}
+                              onChange={(e) => handleSizeChange(e.target.value)}
+                              disabled={!selectedCompany}
+                              required
+                              error={formErrors.size?.[0]}
+                            >
+                              <option value="">— Select —</option>
+                              {selectedCompany?.manufacturing_specifications.map((spec) => (
+                                <option key={spec.id} value={spec.size}>
+                                  {spec.size}
+                                </option>
+                              ))}
+                            </FloatingSelect>
                           </div>
                           <div className="col-md-6">
-                            <div className="form-group mb-20">
-                              <label>Punch Type</label>
-                              <select
-                                className="form-control form-control-lg"
-                                value={form.punch_type}
-                                onChange={(e) => setForm((f) => ({ ...f, punch_type: e.target.value }))}
-                                required
-                              >
-                                <option value="">— Select —</option>
-                                {PUNCH_TYPE_OPTIONS.map((opt) => (
-                                  <option key={opt} value={opt}>
-                                    {opt}
-                                  </option>
-                                ))}
-                              </select>
-                              {formErrors.punch_type && (
-                                <small className="hx-field-error">{formErrors.punch_type[0]}</small>
-                              )}
-                            </div>
+                            <FloatingSelect
+                              label="Punch Type"
+                              value={form.punch_type}
+                              onChange={(e) => setForm((f) => ({ ...f, punch_type: e.target.value }))}
+                              required
+                              error={formErrors.punch_type?.[0]}
+                            >
+                              <option value="">— Select —</option>
+                              {PUNCH_TYPE_OPTIONS.map((opt) => (
+                                <option key={opt} value={opt}>
+                                  {opt}
+                                </option>
+                              ))}
+                            </FloatingSelect>
                           </div>
                           <div className="col-md-6">
-                            <div className="form-group mb-20">
-                              <label>Order Type</label>
-                              <select
-                                className="form-control form-control-lg"
-                                value={form.order_type}
-                                onChange={(e) => setForm((f) => ({ ...f, order_type: e.target.value }))}
-                                required
-                              >
-                                <option value="">— Select —</option>
-                                {ORDER_TYPE_OPTIONS.map((opt) => (
-                                  <option key={opt} value={opt}>
-                                    {opt}
-                                  </option>
-                                ))}
-                              </select>
-                              {formErrors.order_type && (
-                                <small className="hx-field-error">{formErrors.order_type[0]}</small>
-                              )}
-                            </div>
+                            <FloatingSelect
+                              label="Order Type"
+                              value={form.order_type}
+                              onChange={(e) => setForm((f) => ({ ...f, order_type: e.target.value }))}
+                              required
+                              error={formErrors.order_type?.[0]}
+                            >
+                              <option value="">— Select —</option>
+                              {ORDER_TYPE_OPTIONS.map((opt) => (
+                                <option key={opt} value={opt}>
+                                  {opt}
+                                </option>
+                              ))}
+                            </FloatingSelect>
                           </div>
                         </div>
                       </div>
@@ -500,84 +483,64 @@ export default function Orders() {
                         <span className="hx-order-section__title">Quantity &amp; Assignment</span>
                         <div className="row">
                           <div className="col-md-6">
-                            <div className="form-group mb-20">
-                              <label>Quantity (pieces)</label>
-                              <input
-                                type="number"
-                                min={1}
-                                className="form-control form-control-lg"
-                                value={form.quantity}
-                                onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))}
-                                required
-                              />
-                              {formErrors.quantity && <small className="hx-field-error">{formErrors.quantity[0]}</small>}
-                            </div>
+                            <FloatingInput
+                              label="Quantity (pieces)"
+                              type="number"
+                              min={1}
+                              value={form.quantity}
+                              onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))}
+                              required
+                              error={formErrors.quantity?.[0]}
+                            />
                           </div>
                           <div className="col-md-6">
-                            <div className="form-group mb-20">
-                              <label>Order By</label>
-                              <select
-                                className="form-control form-control-lg"
-                                value={form.user_id}
-                                onChange={(e) => setForm((f) => ({ ...f, user_id: e.target.value }))}
-                                required
-                              >
-                                <option value="">— Select —</option>
-                                {users.map((u) => (
-                                  <option key={u.id} value={u.id}>
-                                    {u.name}
-                                  </option>
-                                ))}
-                              </select>
-                              {formErrors.user_id && <small className="hx-field-error">{formErrors.user_id[0]}</small>}
-                            </div>
+                            <FloatingSelect
+                              label="Order By"
+                              value={form.user_id}
+                              onChange={(e) => setForm((f) => ({ ...f, user_id: e.target.value }))}
+                              required
+                              error={formErrors.user_id?.[0]}
+                            >
+                              <option value="">— Select —</option>
+                              {users.map((u) => (
+                                <option key={u.id} value={u.id}>
+                                  {u.name}
+                                </option>
+                              ))}
+                            </FloatingSelect>
                           </div>
                           <div className="col-md-6">
-                            <div className="form-group mb-20">
-                              <label>Expected Delivery Date</label>
-                              <input
-                                type="date"
-                                className="form-control form-control-lg"
-                                value={form.expected_delivery_date}
-                                onChange={(e) => setForm((f) => ({ ...f, expected_delivery_date: e.target.value }))}
-                                required
-                              />
-                              {formErrors.expected_delivery_date && (
-                                <small className="hx-field-error">{formErrors.expected_delivery_date[0]}</small>
-                              )}
-                            </div>
+                            <FloatingInput
+                              label="Expected Delivery Date"
+                              type="date"
+                              value={form.expected_delivery_date}
+                              onChange={(e) => setForm((f) => ({ ...f, expected_delivery_date: e.target.value }))}
+                              required
+                              error={formErrors.expected_delivery_date?.[0]}
+                            />
                           </div>
                           <div className="col-md-6">
-                            <div className="form-group mb-20">
-                              <label>Master Number</label>
-                              <input
-                                type="text"
-                                className="form-control form-control-lg"
-                                placeholder="Enter or from company"
-                                value={form.master_number}
-                                onChange={(e) => setForm((f) => ({ ...f, master_number: e.target.value }))}
-                                required
-                              />
-                              {formErrors.master_number && (
-                                <small className="hx-field-error">{formErrors.master_number[0]}</small>
-                              )}
-                            </div>
+                            <FloatingInput
+                              label="Master Number"
+                              type="text"
+                              value={form.master_number}
+                              onChange={(e) => setForm((f) => ({ ...f, master_number: e.target.value }))}
+                              required
+                              error={formErrors.master_number?.[0]}
+                            />
                           </div>
                         </div>
                       </div>
 
                       <div className="hx-order-section">
                         <span className="hx-order-section__title">Remarks</span>
-                        <div className="form-group mb-20">
-                          <textarea
-                            className="form-control"
-                            rows={3}
-                            placeholder="Additional notes..."
-                            value={form.remarks}
-                            onChange={(e) => setForm((f) => ({ ...f, remarks: e.target.value }))}
-                          />
-                          {formErrors.remarks && <small className="hx-field-error">{formErrors.remarks[0]}</small>}
-                        </div>
+                        <FloatingTextarea
+                          label="Additional notes"
+                          rows={3}
+                          value={form.remarks}
+                          onChange={(e) => setForm((f) => ({ ...f, remarks: e.target.value }))}
+                          error={formErrors.remarks?.[0]}
+                        />
                       </div>
 
                       <div className="button-group d-flex justify-content-center pt-20">

@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { ApiError } from '../auth/apiClient'
 import { useAuth } from '../auth/AuthContext'
 import AppShell from '../components/AppShell'
+import { FloatingInput } from '../components/FloatingField'
 import '../components/formStyles.css'
 import '../components/iconButtons.css'
 import type { PermissionGroup } from '../permissions/types'
@@ -290,19 +291,15 @@ export default function Roles() {
                     <form onSubmit={handleSubmit} autoComplete="off">
                       {formErrors[GENERAL_ERROR_KEY] && <p className="hx-form-error">{formErrors[GENERAL_ERROR_KEY][0]}</p>}
 
-                      <div className="form-group mb-20">
-                        <label>Name:</label>
-                        <input
-                          type="text"
-                          className="form-control form-control-lg"
-                          placeholder="Role name"
-                          value={form.name}
-                          onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                          autoComplete="off"
-                          required
-                        />
-                        {formErrors.name && <small className="hx-field-error">{formErrors.name[0]}</small>}
-                      </div>
+                      <FloatingInput
+                        label="Name"
+                        type="text"
+                        value={form.name}
+                        onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                        autoComplete="off"
+                        required
+                        error={formErrors.name?.[0]}
+                      />
 
                       <div className="form-group mb-20">
                         <label>Permissions:</label>

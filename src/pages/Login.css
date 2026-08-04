@@ -68,9 +68,8 @@
   font-size: 13px;
 }
 
-.form-field {
-  margin-bottom: 16px;
-}
+/* .form-field's spacing/positioning comes from the shared .hx-floating class
+   (formStyles.css) — every field here is also a floating-label field. */
 
 .form-field input {
   width: 100%;
@@ -85,17 +84,19 @@
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.form-field input::placeholder {
-  color: #a9a3ae;
-}
-
 .form-field input:focus {
   border-color: #2e3175;
   box-shadow: 0 0 0 3px rgba(46, 49, 117, 0.18);
 }
 
-.form-field--password {
-  position: relative;
+/* Floating label position tuned to Login's 16px-based spacing (the shared default in
+   formStyles.css is tuned to the admin theme's rem-based .form-control instead). Color
+   is intentionally left to the shared .hx-floating--accent/--invalid rules — overriding
+   it here would need to out-rank those on specificity, which would also swallow the
+   focus/filled accent color they're responsible for. */
+.form-field.hx-floating > label {
+  left: 12px;
+  max-width: calc(100% - 24px);
 }
 
 .password-toggle {
