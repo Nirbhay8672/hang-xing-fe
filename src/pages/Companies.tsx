@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { ApiError } from '../auth/apiClient'
 import { useAuth } from '../auth/AuthContext'
 import AppShell from '../components/AppShell'
-import { FloatingInput } from '../components/FloatingField'
+import { FloatingInput, FloatingSelect } from '../components/FloatingField'
 import '../components/detailView.css'
 import '../components/formStyles.css'
 import '../components/iconButtons.css'
@@ -36,6 +36,44 @@ const EMPTY_FORM: CompanyFormState = {
   director_contact: '',
   manufacturing_specifications: [{ ...EMPTY_SPEC }],
 }
+
+const SIZE_OPTIONS = [
+  '150 x 150',
+  '150 x 900',
+  '200 x 200',
+  '200 x 300',
+  '200 x 600',
+  '300 x 300',
+  '300 x 450',
+  '300 x 600',
+  '300 x 900',
+  '300 x 1200',
+  '400 x 400',
+  '400 x 800',
+  '400 x 1200',
+  '450 x 450',
+  '450 x 900',
+  '500 x 500',
+  '600 x 600',
+  '600 x 900',
+  '600 x 1000',
+  '600 x 1200',
+  '600 x 1520',
+  '750 x 1400',
+  '750 x 1500',
+  '800 x 800',
+  '800 x 1200',
+  '800 x 1600',
+  '800 x 1800',
+  '800 x 2400',
+  '800 x 2600',
+  '900 x 1800',
+  '1000 x 1000',
+  '1000 x 2000',
+  '1200 x 1200',
+  '1200 x 1800',
+  '1200 x 2400',
+]
 
 const GENERAL_ERROR_KEY = '_general'
 
@@ -467,15 +505,21 @@ export default function Companies() {
                               </button>
                             </div>
                             <div className="hx-spec-row__fields">
-                              <FloatingInput
+                              <FloatingSelect
                                 label="Size"
-                                type="text"
                                 variant="default"
                                 wrapperClassName="mb-0"
                                 value={spec.size}
                                 onChange={(e) => updateSpecField(index, 'size', e.target.value)}
                                 error={specError(index, 'size')}
-                              />
+                              >
+                                <option value="">— Select —</option>
+                                {SIZE_OPTIONS.map((opt) => (
+                                  <option key={opt} value={opt}>
+                                    {opt}
+                                  </option>
+                                ))}
+                              </FloatingSelect>
                               <FloatingInput
                                 label="Greentile Thick"
                                 type="text"
