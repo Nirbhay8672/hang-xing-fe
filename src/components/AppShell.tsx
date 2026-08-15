@@ -57,6 +57,15 @@ const SIDEBAR_PERMISSIONS: Record<string, string> = {
   '/orders': 'view orders',
 }
 
+// Users and Roles manage accounts/permissions for the whole app, so they're restricted to
+// the Admin role in the sidebar on top of the permission check above, regardless of what
+// permissions a non-admin role happens to be granted.
+const SIDEBAR_ADMIN_ONLY = new Set(['/users', '/roles'])
+
+function isAdmin(user: { roles: string[] }): boolean {
+  return user.roles.some((role) => role.toLowerCase() === 'admin')
+}
+
 interface AppShellProps {
   title: string
   /** Rendered inside the shared header's .breadcrumb-action slot (search box, "Add New", etc). */
@@ -124,8 +133,9 @@ export default function AppShell({ title, actions, children }: AppShellProps) {
           if (!entry) return
           const li = link.closest('li')
           if (!li) return
-          const [, permission] = entry
-          li.style.display = user.permissions.includes(permission) ? '' : 'none'
+          const [path, permission] = entry
+          const allowed = user.permissions.includes(permission) && (!SIDEBAR_ADMIN_ONLY.has(path) || isAdmin(user))
+          li.style.display = allowed ? '' : 'none'
         })
       }
 

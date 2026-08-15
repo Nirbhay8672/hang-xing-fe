@@ -1,7 +1,7 @@
 import { tokenStorage } from './tokenStorage'
 import type { ApiErrorBody, RefreshResponse } from './types'
 
-const API_BASE_URL = 'https://updates.mrweb.co.in/hengxing/public/api'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
 
 export class ApiError extends Error {
   status: number
