@@ -14,6 +14,37 @@ import type { User } from '../users/types'
 import { usersService } from '../users/usersService'
 import './Orders.css'
 
+type SortField = 'order_no' | 'company' | 'size' | 'created_at' | 'expected_delivery_date'
+type SortDir = 'asc' | 'desc'
+
+function sortValue(order: Order, field: SortField): string | number | null {
+  switch (field) {
+    case 'order_no':
+      return order.order_no ?? ''
+    case 'company':
+      return order.company?.name ?? ''
+    case 'size':
+      return order.size ?? ''
+    case 'created_at':
+      return new Date(order.created_at).getTime()
+    case 'expected_delivery_date':
+      return order.expected_delivery_date ? new Date(order.expected_delivery_date).getTime() : null
+  }
+}
+
+function sortOrders(list: Order[], field: SortField | null, dir: SortDir): Order[] {
+  if (!field) return list
+  const factor = dir === 'asc' ? 1 : -1
+  return [...list].sort((a, b) => {
+    const va = sortValue(a, field)
+    const vb = sortValue(b, field)
+    // Orders without a delivery date always sink to the bottom, regardless of direction.
+    if (va === null || vb === null) return va === vb ? 0 : va === null ? 1 : -1
+    if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * factor
+    return String(va).localeCompare(String(vb), undefined, { numeric: true, sensitivity: 'base' }) * factor
+  })
+}
+
 const ORDER_TYPE_OPTIONS = ['New', 'RC']
 const PUNCH_TYPE_OPTIONS = [
   'U - ISO',
@@ -69,6 +100,8 @@ export default function Orders() {
   const [orders, setOrders] = useState<Order[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [sortField, setSortField] = useState<SortField | null>(null)
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
 
   const [companies, setCompanies] = useState<Company[]>([])
   const [users, setUsers] = useState<User[]>([])
@@ -184,6 +217,15 @@ export default function Orders() {
     }
   }
 
+  function handleSort(field: SortField) {
+    if (sortField === field) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortField(field)
+      setSortDir('asc')
+    }
+  }
+
   function handleCompanyChange(companyId: string) {
     setForm((f) => ({ ...f, company_id: companyId, size: '', master_number: '' }))
   }
@@ -224,7 +266,7 @@ export default function Orders() {
     }
   }
 
-  const filteredOrders = orders?.filter((o) => {
+  const searchedOrders = orders?.filter((o) => {
     const q = search.trim().toLowerCase()
     if (!q) return true
     return (
@@ -233,6 +275,12 @@ export default function Orders() {
       o.master_number?.toLowerCase().includes(q)
     )
   })
+  const filteredOrders = searchedOrders && sortOrders(searchedOrders, sortField, sortDir)
+
+  function sortIconClass(field: SortField): string {
+    if (sortField !== field) return 'la la-sort hx-sort-icon'
+    return sortDir === 'asc' ? 'la la-sort-up hx-sort-icon hx-sort-icon--active' : 'la la-sort-down hx-sort-icon hx-sort-icon--active'
+  }
 
   const headerActions = (
     <>
@@ -278,13 +326,22 @@ export default function Orders() {
                     <thead>
                       <tr>
                         <th>
-                          <span className="userDatatable-title">Order No.</span>
+                          <button type="button" className="hx-sort-th" onClick={() => handleSort('order_no')}>
+                            <span className="userDatatable-title">Order No.</span>
+                            <i className={sortIconClass('order_no')}></i>
+                          </button>
                         </th>
                         <th>
-                          <span>Company</span>
+                          <button type="button" className="hx-sort-th" onClick={() => handleSort('company')}>
+                            <span>Company</span>
+                            <i className={sortIconClass('company')}></i>
+                          </button>
                         </th>
                         <th>
-                          <span>Size</span>
+                          <button type="button" className="hx-sort-th" onClick={() => handleSort('size')}>
+                            <span>Size</span>
+                            <i className={sortIconClass('size')}></i>
+                          </button>
                         </th>
                         <th>
                           <span>Punch Type</span>
@@ -299,10 +356,16 @@ export default function Orders() {
                           <span>Order By</span>
                         </th>
                         <th>
-                          <span>Delivery</span>
+                          <button type="button" className="hx-sort-th" onClick={() => handleSort('expected_delivery_date')}>
+                            <span>Delivery</span>
+                            <i className={sortIconClass('expected_delivery_date')}></i>
+                          </button>
                         </th>
                         <th>
-                          <span>Created</span>
+                          <button type="button" className="hx-sort-th" onClick={() => handleSort('created_at')}>
+                            <span>Created</span>
+                            <i className={sortIconClass('created_at')}></i>
+                          </button>
                         </th>
                         <th className="c-action">
                           <span className="float-right"></span>

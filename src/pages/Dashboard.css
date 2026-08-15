@@ -33,3 +33,22 @@
 .hx-stat-card__icon--rose {
   color: #dc3545;
 }
+
+.hx-stat-card__icon--teal {
+  color: #0d9488;
+}
+
+.hx-stat-card__icon--indigo {
+  color: #4f46e5;
+}
+
+.hx-stat-card__icon--slate {
+  color: #64748b;
+}
+
+.hx-dashboard-panel-title {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #202020;
+}
