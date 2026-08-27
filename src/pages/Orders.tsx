@@ -8,6 +8,7 @@ import '../components/formStyles.css'
 import '../components/iconButtons.css'
 import type { Company, ManufacturingSpecification } from '../companies/types'
 import { companiesService } from '../companies/companiesService'
+import { masterNumbersService } from '../masterNumbers/masterNumbersService'
 import type { CreateOrderRequest, Order } from '../orders/types'
 import { ordersService } from '../orders/ordersService'
 import type { User } from '../users/types'
@@ -66,6 +67,7 @@ interface OrderFormState {
   user_id: string
   expected_delivery_date: string
   master_number: string
+  punch_numbers: string[]
   remarks: string
 }
 
@@ -78,7 +80,20 @@ const EMPTY_FORM: OrderFormState = {
   user_id: '',
   expected_delivery_date: '',
   master_number: '',
+  punch_numbers: [],
   remarks: '',
+}
+
+const PUNCH_NUMBER_PREFIX = 'HXN-'
+const PUNCH_NUMBER_PAD = 4
+
+function extractPunchSeq(punchNumber: string): number | null {
+  const match = new RegExp(`^${PUNCH_NUMBER_PREFIX}(\\d+)$`).exec(punchNumber)
+  return match ? parseInt(match[1], 10) : null
+}
+
+function formatPunchNumber(seq: number): string {
+  return `${PUNCH_NUMBER_PREFIX}${String(seq).padStart(PUNCH_NUMBER_PAD, '0')}`
 }
 
 const GENERAL_ERROR_KEY = '_general'
@@ -122,6 +137,11 @@ export default function Orders() {
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
 
+  const [masterNoModalOpen, setMasterNoModalOpen] = useState(false)
+  const [newMasterNo, setNewMasterNo] = useState('')
+  const [masterNoError, setMasterNoError] = useState<string | null>(null)
+  const [masterNoSubmitting, setMasterNoSubmitting] = useState(false)
+
   useEffect(() => {
     loadOrders()
     companiesService.list().then(setCompanies).catch(() => setCompanies([]))
@@ -139,8 +159,10 @@ export default function Orders() {
   }
 
   const selectedCompany = companies.find((c) => c.id === Number(form.company_id)) ?? null
-  const selectedSpec: ManufacturingSpecification | null =
-    selectedCompany?.manufacturing_specifications.find((spec) => spec.size === form.size) ?? null
+
+  const sizeOptions = Array.from(new Set(selectedCompany?.manufacturing_specifications.map((spec) => spec.size) ?? []))
+
+  const matchingSizeSpecs = selectedCompany?.manufacturing_specifications.filter((spec) => spec.size === form.size) ?? []
 
   function getMasterNoOptions(company: Company | null, size: string, punchType: string): string[] {
     if (!company || !size || !punchType) return []
@@ -155,7 +177,10 @@ export default function Orders() {
   }
 
   const masterNoOptions = Array.from(
-    new Set([...(form.master_number ? [form.master_number] : []), ...getMasterNoOptions(selectedCompany, form.size, form.punch_type)]),
+    new Set([
+      ...(form.master_number ? [form.master_number] : []),
+      ...getMasterNoOptions(selectedCompany, form.size, form.punch_type),
+    ]),
   )
 
   function orderToForm(order: Order): OrderFormState {
@@ -168,6 +193,12 @@ export default function Orders() {
       user_id: String(order.user_id),
       expected_delivery_date: order.expected_delivery_date?.slice(0, 10) ?? '',
       master_number: order.master_number,
+      // RC orders always show one input per piece, even if fewer (or none) were actually
+      // saved — e.g. an RC order created with every field left blank has zero saved rows.
+      punch_numbers:
+        order.order_type === 'RC'
+          ? resizeBlankPunchNumbers(order.quantity, (order.punch_numbers ?? []).map((p) => p.punch_number))
+          : (order.punch_numbers ?? []).map((p) => p.punch_number),
       remarks: order.remarks ?? '',
     }
   }
@@ -256,11 +287,125 @@ export default function Orders() {
     setForm((f) => ({ ...f, punch_type: punchType, master_number: options[0] ?? '' }))
   }
 
+  // Punch numbers are a running sequence shared across every "New" order ever placed, so the
+  // next batch has to continue from the highest HXN-#### seen anywhere in the already-loaded
+  // orders (plus whatever this form has already generated for itself).
+  function syncPunchNumbers(quantity: number, current: string[]): string[] {
+    if (quantity <= 0) return []
+    if (current.length === quantity) return current
+    if (current.length > quantity) return current.slice(0, quantity)
+
+    const seenSeqs = (orders ?? []).flatMap((o) => (o.punch_numbers ?? []).map((p) => extractPunchSeq(p.punch_number)))
+    const currentSeqs = current.map(extractPunchSeq)
+    const maxSeq = Math.max(0, ...[...seenSeqs, ...currentSeqs].filter((n): n is number => n !== null))
+
+    const additional: string[] = []
+    for (let i = 1; i <= quantity - current.length; i++) {
+      additional.push(formatPunchNumber(maxSeq + i))
+    }
+    return [...current, ...additional]
+  }
+
+  // RC punch numbers aren't part of the HXN-#### sequence — they're optional, freely-typed
+  // per-piece fields, so resizing just pads/trims with blanks instead of generating anything.
+  function resizeBlankPunchNumbers(quantity: number, current: string[]): string[] {
+    if (quantity <= 0) return []
+    if (current.length === quantity) return current
+    if (current.length > quantity) return current.slice(0, quantity)
+    return [...current, ...Array.from({ length: quantity - current.length }, () => '')]
+  }
+
+  function punchNumbersForOrderType(orderType: string, quantity: number, current: string[]): string[] {
+    if (orderType === 'New') return syncPunchNumbers(quantity, current)
+    if (orderType === 'RC') return resizeBlankPunchNumbers(quantity, current)
+    return []
+  }
+
+  function handleQuantityChange(quantity: string) {
+    setForm((f) => ({
+      ...f,
+      quantity,
+      punch_numbers: punchNumbersForOrderType(f.order_type, Number(quantity) || 0, f.punch_numbers),
+    }))
+  }
+
+  function handleOrderTypeChange(orderType: string) {
+    setForm((f) => ({
+      ...f,
+      order_type: orderType,
+      // Switching type changes what the list even means (auto sequence vs. free text), so
+      // start each type fresh rather than reinterpreting the other type's values.
+      punch_numbers: punchNumbersForOrderType(orderType, Number(f.quantity) || 0, []),
+    }))
+  }
+
+  function handlePunchNumberInputChange(index: number, value: string) {
+    setForm((f) => ({
+      ...f,
+      punch_numbers: f.punch_numbers.map((n, i) => (i === index ? value : n)),
+    }))
+  }
+
+  function openAddMasterNoModal() {
+    setNewMasterNo('')
+    setMasterNoError(null)
+    setMasterNoModalOpen(true)
+  }
+
+  function closeAddMasterNoModal() {
+    if (masterNoSubmitting) return
+    setMasterNoModalOpen(false)
+  }
+
+  async function handleAddMasterNo(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setMasterNoSubmitting(true)
+    setMasterNoError(null)
+    try {
+      const companyId = Number(form.company_id)
+      const created = await masterNumbersService.create({
+        company_id: companyId,
+        size: form.size,
+        punch_type: form.punch_type,
+        master_number: newMasterNo,
+      })
+      const isUpper = form.punch_type.startsWith('U')
+      const newSpec: ManufacturingSpecification = {
+        id: -created.id,
+        company_id: companyId,
+        size: form.size,
+        greentile_thick: '',
+        upper_punch: '',
+        up_master_no: isUpper ? created.master_number : '',
+        lower_punch: '',
+        lp_master_no: isUpper ? '' : created.master_number,
+        cavity: '',
+      }
+      // Merge straight into `companies` (rather than a side list) so the newly added row shows
+      // up immediately in both the Size Details table and the Master Number dropdown, which both
+      // read directly off `selectedCompany.manufacturing_specifications`.
+      setCompanies((prev) =>
+        prev.map((c) =>
+          c.id === companyId ? { ...c, manufacturing_specifications: [...c.manufacturing_specifications, newSpec] } : c,
+        ),
+      )
+      setForm((f) => ({ ...f, master_number: created.master_number }))
+      setMasterNoModalOpen(false)
+    } catch (err) {
+      setMasterNoError(err instanceof ApiError ? err.message : 'Failed to add master number.')
+    } finally {
+      setMasterNoSubmitting(false)
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setSubmitting(true)
     setFormErrors({})
     try {
+      // RC punch numbers are optional per-piece fields, so blanks the user left empty are
+      // dropped rather than sent as empty strings.
+      const punchNumbers = form.punch_numbers.filter((n) => n.trim() !== '')
       const payload: CreateOrderRequest = {
         company_id: Number(form.company_id),
         user_id: Number(form.user_id),
@@ -270,6 +415,7 @@ export default function Orders() {
         quantity: Number(form.quantity),
         expected_delivery_date: form.expected_delivery_date,
         master_number: form.master_number,
+        punch_numbers: punchNumbers.length > 0 ? punchNumbers : undefined,
         remarks: form.remarks || undefined,
       }
       if (modalMode === 'edit' && editingOrder) {
@@ -518,9 +664,9 @@ export default function Orders() {
                               error={formErrors.size?.[0]}
                             >
                               <option value="">— Select —</option>
-                              {selectedCompany?.manufacturing_specifications.map((spec) => (
-                                <option key={spec.id} value={spec.size}>
-                                  {spec.size}
+                              {sizeOptions.map((size) => (
+                                <option key={size} value={size}>
+                                  {size}
                                 </option>
                               ))}
                             </FloatingSelect>
@@ -545,7 +691,7 @@ export default function Orders() {
                             <FloatingSelect
                               label="Order Type"
                               value={form.order_type}
-                              onChange={(e) => setForm((f) => ({ ...f, order_type: e.target.value }))}
+                              onChange={(e) => handleOrderTypeChange(e.target.value)}
                               required
                               error={formErrors.order_type?.[0]}
                             >
@@ -562,32 +708,32 @@ export default function Orders() {
 
                       <div className="hx-order-section">
                         <span className="hx-order-section__title">Size Details (from company record)</span>
-                        {selectedSpec ? (
-                          <div className="hx-order-spec-grid">
-                            <div>
-                              <span className="hx-order-spec-grid__label">Greentile Thick</span>
-                              <span className="hx-order-spec-grid__value">{selectedSpec.greentile_thick}</span>
-                            </div>
-                            <div>
-                              <span className="hx-order-spec-grid__label">Upper Punch</span>
-                              <span className="hx-order-spec-grid__value">{selectedSpec.upper_punch}</span>
-                            </div>
-                            <div>
-                              <span className="hx-order-spec-grid__label">Up Master No.</span>
-                              <span className="hx-order-spec-grid__value">{selectedSpec.up_master_no}</span>
-                            </div>
-                            <div>
-                              <span className="hx-order-spec-grid__label">Lower Punch</span>
-                              <span className="hx-order-spec-grid__value">{selectedSpec.lower_punch}</span>
-                            </div>
-                            <div>
-                              <span className="hx-order-spec-grid__label">LP Master No.</span>
-                              <span className="hx-order-spec-grid__value">{selectedSpec.lp_master_no}</span>
-                            </div>
-                            <div>
-                              <span className="hx-order-spec-grid__label">Cavity</span>
-                              <span className="hx-order-spec-grid__value">{selectedSpec.cavity}</span>
-                            </div>
+                        {matchingSizeSpecs.length > 0 ? (
+                          <div className="table-responsive">
+                            <table className="hx-order-spec-table">
+                              <thead>
+                                <tr>
+                                  <th>Greentile Thick</th>
+                                  <th>Upper Punch</th>
+                                  <th>Up Master No.</th>
+                                  <th>Lower Punch</th>
+                                  <th>LP Master No.</th>
+                                  <th>Cavity</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {matchingSizeSpecs.map((spec) => (
+                                  <tr key={spec.id}>
+                                    <td>{spec.greentile_thick || '-'}</td>
+                                    <td>{spec.upper_punch || '-'}</td>
+                                    <td>{spec.up_master_no || '-'}</td>
+                                    <td>{spec.lower_punch || '-'}</td>
+                                    <td>{spec.lp_master_no || '-'}</td>
+                                    <td>{spec.cavity || '-'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
                           </div>
                         ) : (
                           <p className="hx-orders-empty">Select company and size above to auto-fill specifications.</p>
@@ -603,7 +749,7 @@ export default function Orders() {
                               type="number"
                               min={1}
                               value={form.quantity}
-                              onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))}
+                              onChange={(e) => handleQuantityChange(e.target.value)}
                               required
                               error={formErrors.quantity?.[0]}
                             />
@@ -651,7 +797,45 @@ export default function Orders() {
                                 </option>
                               ))}
                             </FloatingSelect>
+                            {form.size && form.punch_type && (
+                              <button type="button" className="hx-add-master-btn" onClick={openAddMasterNoModal}>
+                                <i className="la la-plus"></i> Add New Master Number
+                              </button>
+                            )}
                           </div>
+                          {form.order_type === 'New' && form.punch_numbers.length > 0 && (
+                            <div className="col-12">
+                              <div className="hx-punch-numbers">
+                                <span className="hx-punch-numbers__label">Punch Numbers</span>
+                                <div className="hx-order-badges">
+                                  {form.punch_numbers.map((n) => (
+                                    <span key={n} className="hx-order-badge">
+                                      {n}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          {form.order_type === 'RC' && form.punch_numbers.length > 0 && (
+                            <div className="col-12">
+                              <div className="hx-punch-numbers">
+                                <span className="hx-punch-numbers__label">Punch Numbers (optional)</span>
+                                <div className="hx-punch-inputs">
+                                  {form.punch_numbers.map((n, i) => (
+                                    <input
+                                      key={i}
+                                      type="text"
+                                      className="form-control hx-punch-input"
+                                      placeholder={`Punch ${i + 1}`}
+                                      value={n}
+                                      onChange={(e) => handlePunchNumberInputChange(i, e.target.value)}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -684,6 +868,49 @@ export default function Orders() {
         </>
       )}
 
+      {masterNoModalOpen && (
+        <>
+          <div className="modal fade show d-block" role="dialog" aria-modal="true">
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content radius-xl">
+                <div className="modal-header">
+                  <h6 className="modal-title fw-500">Add New Master Number</h6>
+                  <button type="button" className="btn-close" onClick={closeAddMasterNoModal} aria-label="Close">
+                    <i className="las la-times"></i>
+                  </button>
+                </div>
+                <div className="modal-body">
+                  <form onSubmit={handleAddMasterNo} autoComplete="off">
+                    {masterNoError && <p className="hx-form-error">{masterNoError}</p>}
+                    <FloatingInput
+                      label="Master Number"
+                      type="text"
+                      value={newMasterNo}
+                      onChange={(e) => setNewMasterNo(e.target.value)}
+                      required
+                    />
+                    <div className="button-group d-flex justify-content-center pt-20">
+                      <button
+                        type="button"
+                        className="btn btn-sm hx-btn-secondary btn-rounded me-10"
+                        onClick={closeAddMasterNoModal}
+                        disabled={masterNoSubmitting}
+                      >
+                        Cancel
+                      </button>
+                      <button type="submit" className="btn btn-sm btn-primary btn-rounded" disabled={masterNoSubmitting}>
+                        {masterNoSubmitting ? 'Saving…' : 'Save'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show" onClick={closeAddMasterNoModal}></div>
+        </>
+      )}
+
       {viewTarget && (
         <>
           <div className="modal fade show d-block" role="dialog" aria-modal="true">
@@ -696,32 +923,38 @@ export default function Orders() {
                   </button>
                 </div>
                 <div className="modal-body">
+                  <div className="hx-order-detail-hero">
+                    <div>
+                      <span className="hx-order-detail-hero__order-no">{viewTarget.order_no}</span>
+                      <span className="hx-order-detail-hero__company">
+                        <i className="la la-building"></i>
+                        {viewTarget.company?.name}
+                      </span>
+                    </div>
+                    <div className="hx-order-detail-hero__badges">
+                      <span
+                        className={`hx-status-pill ${viewTarget.order_type === 'New' ? 'hx-status-pill--new' : 'hx-status-pill--rc'}`}
+                      >
+                        {viewTarget.order_type}
+                      </span>
+                      <span className="hx-order-badge">{viewTarget.punch_type}</span>
+                    </div>
+                  </div>
+
                   <div className="hx-detail-section">
-                    <span className="hx-detail-section__title">Order</span>
-                    <div className="hx-detail-grid">
-                      <div>
-                        <span className="hx-detail-grid__label">Order No.</span>
-                        <span className="hx-detail-grid__value">{viewTarget.order_no}</span>
-                      </div>
-                      <div>
-                        <span className="hx-detail-grid__label">Company</span>
-                        <span className="hx-detail-grid__value">{viewTarget.company?.name}</span>
-                      </div>
+                    <span className="hx-detail-section__title">Order Info</span>
+                    <div className="hx-detail-grid hx-order-detail-grid">
                       <div>
                         <span className="hx-detail-grid__label">Size</span>
                         <span className="hx-detail-grid__value">{viewTarget.size}</span>
                       </div>
                       <div>
-                        <span className="hx-detail-grid__label">Punch Type</span>
-                        <span className="hx-detail-grid__value">{viewTarget.punch_type}</span>
-                      </div>
-                      <div>
-                        <span className="hx-detail-grid__label">Order Type</span>
-                        <span className="hx-detail-grid__value">{viewTarget.order_type}</span>
-                      </div>
-                      <div>
                         <span className="hx-detail-grid__label">Quantity</span>
                         <span className="hx-detail-grid__value">{viewTarget.quantity}</span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Master Number</span>
+                        <span className="hx-detail-grid__value">{viewTarget.master_number}</span>
                       </div>
                       <div>
                         <span className="hx-detail-grid__label">Order By</span>
@@ -734,10 +967,6 @@ export default function Orders() {
                         </span>
                       </div>
                       <div>
-                        <span className="hx-detail-grid__label">Master Number</span>
-                        <span className="hx-detail-grid__value">{viewTarget.master_number}</span>
-                      </div>
-                      <div>
                         <span className="hx-detail-grid__label">Created</span>
                         <span className="hx-detail-grid__value">{formatDate(viewTarget.created_at)}</span>
                       </div>
@@ -748,9 +977,9 @@ export default function Orders() {
                     <div className="hx-detail-section">
                       <span className="hx-detail-section__title">Punch Numbers</span>
                       <div className="hx-order-badges">
-                        {(viewTarget.punch_numbers ?? []).map((n) => (
-                          <span key={n} className="hx-order-badge">
-                            {n}
+                        {(viewTarget.punch_numbers ?? []).map((p) => (
+                          <span key={p.id} className="hx-order-badge">
+                            {p.punch_number}
                           </span>
                         ))}
                       </div>

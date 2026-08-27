@@ -96,3 +96,138 @@
   font-weight: 600;
   color: #2e3175;
 }
+
+.hx-order-spec-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fbfbfd;
+  border: 1px solid #eef0f4;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.hx-order-spec-table th,
+.hx-order-spec-table td {
+  padding: 10px 16px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.hx-order-spec-table th {
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #9299b8;
+  font-weight: 600;
+}
+
+.hx-order-spec-table td {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2e3175;
+}
+
+.hx-order-spec-table tbody tr:not(:last-child) td {
+  border-bottom: 1px solid #eef0f4;
+}
+
+.hx-add-master-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 5px 12px;
+  border: 1px dashed rgba(46, 49, 117, 0.35);
+  border-radius: 8px;
+  background: transparent;
+  color: #2e3175;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.hx-add-master-btn:hover {
+  background: rgba(46, 49, 117, 0.08);
+}
+
+.hx-punch-numbers {
+  margin-top: 16px;
+}
+
+.hx-punch-numbers__label {
+  display: block;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #9299b8;
+  margin-bottom: 8px;
+}
+
+.hx-punch-inputs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.hx-punch-input {
+  flex: 1 0 120px;
+  max-width: 160px;
+}
+
+.hx-order-detail-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #eef0f4;
+}
+
+.hx-order-detail-hero__order-no {
+  display: block;
+  font-size: 20px;
+  font-weight: 700;
+  color: #2e3175;
+}
+
+.hx-order-detail-hero__company {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  color: #6b7280;
+  font-size: 13.5px;
+}
+
+.hx-order-detail-hero__badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.hx-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.hx-status-pill--new {
+  background: rgba(46, 49, 117, 0.1);
+  color: #2e3175;
+}
+
+.hx-status-pill--rc {
+  background: rgba(169, 144, 74, 0.12);
+  color: #957f41;
+}
+
+.hx-order-detail-grid > div {
+  flex: 1 0 150px;
+}

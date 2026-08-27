@@ -1,6 +1,14 @@
 import type { Company } from '../companies/types'
 import type { User } from '../users/types'
 
+export interface PunchNumber {
+  id: number
+  order_id: number
+  punch_number: string
+  created_at: string
+  updated_at: string
+}
+
 export interface Order {
   id: number
   order_no: string
@@ -12,7 +20,7 @@ export interface Order {
   punch_type: string
   order_type: string
   quantity: number
-  punch_numbers: string[]
+  punch_numbers: PunchNumber[]
   expected_delivery_date: string
   master_number: string
   remarks: string | null
@@ -29,6 +37,7 @@ export interface CreateOrderRequest {
   quantity: number
   expected_delivery_date: string
   master_number: string
+  punch_numbers?: string[]
   remarks?: string
 }
 
