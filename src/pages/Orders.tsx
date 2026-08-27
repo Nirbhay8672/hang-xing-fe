@@ -230,9 +230,20 @@ export default function Orders() {
     setForm((f) => ({ ...f, company_id: companyId, size: '', master_number: '' }))
   }
 
+  function masterNoForPunchType(spec: ManufacturingSpecification | null, punchType: string): string | undefined {
+    if (!spec) return undefined
+    if (punchType.startsWith('U')) return spec.up_master_no
+    if (punchType.startsWith('L')) return spec.lp_master_no
+    return undefined
+  }
+
   function handleSizeChange(size: string) {
     const spec = selectedCompany?.manufacturing_specifications.find((s) => s.size === size) ?? null
-    setForm((f) => ({ ...f, size, master_number: spec?.master_no ?? f.master_number }))
+    setForm((f) => ({ ...f, size, master_number: masterNoForPunchType(spec, f.punch_type) ?? f.master_number }))
+  }
+
+  function handlePunchTypeChange(punchType: string) {
+    setForm((f) => ({ ...f, punch_type: punchType, master_number: masterNoForPunchType(selectedSpec, punchType) ?? f.master_number }))
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -508,7 +519,7 @@ export default function Orders() {
                             <FloatingSelect
                               label="Punch Type"
                               value={form.punch_type}
-                              onChange={(e) => setForm((f) => ({ ...f, punch_type: e.target.value }))}
+                              onChange={(e) => handlePunchTypeChange(e.target.value)}
                               required
                               error={formErrors.punch_type?.[0]}
                             >
@@ -552,16 +563,20 @@ export default function Orders() {
                               <span className="hx-order-spec-grid__value">{selectedSpec.upper_punch}</span>
                             </div>
                             <div>
+                              <span className="hx-order-spec-grid__label">Up Master No.</span>
+                              <span className="hx-order-spec-grid__value">{selectedSpec.up_master_no}</span>
+                            </div>
+                            <div>
                               <span className="hx-order-spec-grid__label">Lower Punch</span>
                               <span className="hx-order-spec-grid__value">{selectedSpec.lower_punch}</span>
                             </div>
                             <div>
-                              <span className="hx-order-spec-grid__label">Cavity</span>
-                              <span className="hx-order-spec-grid__value">{selectedSpec.cavity}</span>
+                              <span className="hx-order-spec-grid__label">LP Master No.</span>
+                              <span className="hx-order-spec-grid__value">{selectedSpec.lp_master_no}</span>
                             </div>
                             <div>
-                              <span className="hx-order-spec-grid__label">Master No.</span>
-                              <span className="hx-order-spec-grid__value">{selectedSpec.master_no}</span>
+                              <span className="hx-order-spec-grid__label">Cavity</span>
+                              <span className="hx-order-spec-grid__value">{selectedSpec.cavity}</span>
                             </div>
                           </div>
                         ) : (

@@ -24,9 +24,10 @@ const EMPTY_SPEC: ManufacturingSpecificationInput = {
   size: '',
   greentile_thick: '',
   upper_punch: '',
+  up_master_no: '',
   lower_punch: '',
+  lp_master_no: '',
   cavity: '',
-  master_no: '',
 }
 
 const EMPTY_FORM: CompanyFormState = {
@@ -137,9 +138,10 @@ export default function Companies() {
             size: spec.size,
             greentile_thick: spec.greentile_thick,
             upper_punch: spec.upper_punch,
+            up_master_no: spec.up_master_no,
             lower_punch: spec.lower_punch,
+            lp_master_no: spec.lp_master_no,
             cavity: spec.cavity,
-            master_no: spec.master_no,
           }))
         : [{ ...EMPTY_SPEC }],
     }
@@ -422,7 +424,7 @@ export default function Companies() {
       {modalMode && (
         <>
           <div className="modal fade show d-block" role="dialog" aria-modal="true">
-            <div className="modal-dialog modal-dialog-centered modal-xl">
+            <div className="modal-dialog modal-dialog-centered modal-xl hx-modal-wide">
               <div className="modal-content radius-xl">
                 <div className="modal-header">
                   <h6 className="modal-title fw-500">{modalMode === 'create' ? 'Add New Company' : 'Edit Company'}</h6>
@@ -539,6 +541,15 @@ export default function Companies() {
                                 error={specError(index, 'upper_punch')}
                               />
                               <FloatingInput
+                                label="Up Master No."
+                                type="text"
+                                variant="default"
+                                wrapperClassName="mb-0"
+                                value={spec.up_master_no}
+                                onChange={(e) => updateSpecField(index, 'up_master_no', e.target.value)}
+                                error={specError(index, 'up_master_no')}
+                              />
+                              <FloatingInput
                                 label="Lower Punch"
                                 type="text"
                                 variant="default"
@@ -548,6 +559,15 @@ export default function Companies() {
                                 error={specError(index, 'lower_punch')}
                               />
                               <FloatingInput
+                                label="LP Master No."
+                                type="text"
+                                variant="default"
+                                wrapperClassName="mb-0"
+                                value={spec.lp_master_no}
+                                onChange={(e) => updateSpecField(index, 'lp_master_no', e.target.value)}
+                                error={specError(index, 'lp_master_no')}
+                              />
+                              <FloatingInput
                                 label="Cavity"
                                 type="text"
                                 variant="default"
@@ -555,15 +575,6 @@ export default function Companies() {
                                 value={spec.cavity}
                                 onChange={(e) => updateSpecField(index, 'cavity', e.target.value)}
                                 error={specError(index, 'cavity')}
-                              />
-                              <FloatingInput
-                                label="Master No."
-                                type="text"
-                                variant="default"
-                                wrapperClassName="mb-0"
-                                value={spec.master_no}
-                                onChange={(e) => updateSpecField(index, 'master_no', e.target.value)}
-                                error={specError(index, 'master_no')}
                               />
                             </div>
                           </div>
@@ -649,13 +660,16 @@ export default function Companies() {
                                 <span>Upper Punch</span>
                               </th>
                               <th>
+                                <span>Up Master No.</span>
+                              </th>
+                              <th>
                                 <span>Lower Punch</span>
                               </th>
                               <th>
-                                <span>Cavity</span>
+                                <span>LP Master No.</span>
                               </th>
                               <th>
-                                <span>Master No.</span>
+                                <span>Cavity</span>
                               </th>
                             </tr>
                           </thead>
@@ -665,9 +679,10 @@ export default function Companies() {
                                 <td>{spec.size}</td>
                                 <td>{spec.greentile_thick}</td>
                                 <td>{spec.upper_punch}</td>
+                                <td>{spec.up_master_no}</td>
                                 <td>{spec.lower_punch}</td>
+                                <td>{spec.lp_master_no}</td>
                                 <td>{spec.cavity}</td>
-                                <td>{spec.master_no}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -762,13 +777,16 @@ export default function Companies() {
                             <span>Upper Punch</span>
                           </th>
                           <th>
+                            <span>Up Master No.</span>
+                          </th>
+                          <th>
                             <span>Lower Punch</span>
                           </th>
                           <th>
-                            <span>Cavity</span>
+                            <span>LP Master No.</span>
                           </th>
                           <th>
-                            <span>Master No.</span>
+                            <span>Cavity</span>
                           </th>
                         </tr>
                       </thead>
@@ -778,9 +796,10 @@ export default function Companies() {
                             <td>{spec.size}</td>
                             <td>{spec.greentile_thick}</td>
                             <td>{spec.upper_punch}</td>
+                            <td>{spec.up_master_no}</td>
                             <td>{spec.lower_punch}</td>
+                            <td>{spec.lp_master_no}</td>
                             <td>{spec.cavity}</td>
-                            <td>{spec.master_no}</td>
                           </tr>
                         ))}
                       </tbody>

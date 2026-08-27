@@ -4,9 +4,10 @@ export interface ManufacturingSpecification {
   size: string
   greentile_thick: string
   upper_punch: string
+  up_master_no: string
   lower_punch: string
+  lp_master_no: string
   cavity: string
-  master_no: string
 }
 
 export interface Company {
@@ -24,9 +25,10 @@ export interface ManufacturingSpecificationInput {
   size: string
   greentile_thick: string
   upper_punch: string
+  up_master_no: string
   lower_punch: string
+  lp_master_no: string
   cavity: string
-  master_no: string
 }
 
 export interface CreateCompanyRequest {

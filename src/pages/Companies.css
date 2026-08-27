@@ -60,6 +60,18 @@
   background: rgba(46, 49, 117, 0.08);
 }
 
+@media (min-width: 992px) {
+  .modal-dialog.hx-modal-wide {
+    max-width: 960px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .modal-dialog.hx-modal-wide {
+    max-width: 1400px;
+  }
+}
+
 .hx-spec-row {
   border: 1px solid #eef0f4;
   border-radius: 12px;
