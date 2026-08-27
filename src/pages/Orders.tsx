@@ -96,7 +96,7 @@ function extractErrors(error: unknown, fallback: string): Record<string, string[
 }
 
 export default function Orders() {
-  const { can } = useAuth()
+  const { can, user } = useAuth()
   const [orders, setOrders] = useState<Order[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -142,6 +142,22 @@ export default function Orders() {
   const selectedSpec: ManufacturingSpecification | null =
     selectedCompany?.manufacturing_specifications.find((spec) => spec.size === form.size) ?? null
 
+  function getMasterNoOptions(company: Company | null, size: string, punchType: string): string[] {
+    if (!company || !size || !punchType) return []
+    const isUpper = punchType.startsWith('U')
+    const isLower = punchType.startsWith('L')
+    if (!isUpper && !isLower) return []
+    const values = company.manufacturing_specifications
+      .filter((spec) => spec.size === size)
+      .map((spec) => (isUpper ? spec.up_master_no : spec.lp_master_no))
+      .filter((v): v is string => Boolean(v))
+    return Array.from(new Set(values))
+  }
+
+  const masterNoOptions = Array.from(
+    new Set([...(form.master_number ? [form.master_number] : []), ...getMasterNoOptions(selectedCompany, form.size, form.punch_type)]),
+  )
+
   function orderToForm(order: Order): OrderFormState {
     return {
       company_id: String(order.company_id),
@@ -158,7 +174,7 @@ export default function Orders() {
 
   function openCreateModal() {
     setEditingOrder(null)
-    setForm(EMPTY_FORM)
+    setForm({ ...EMPTY_FORM, user_id: user ? String(user.id) : '' })
     setFormErrors({})
     setModalMode('create')
   }
@@ -230,20 +246,14 @@ export default function Orders() {
     setForm((f) => ({ ...f, company_id: companyId, size: '', master_number: '' }))
   }
 
-  function masterNoForPunchType(spec: ManufacturingSpecification | null, punchType: string): string | undefined {
-    if (!spec) return undefined
-    if (punchType.startsWith('U')) return spec.up_master_no
-    if (punchType.startsWith('L')) return spec.lp_master_no
-    return undefined
-  }
-
   function handleSizeChange(size: string) {
-    const spec = selectedCompany?.manufacturing_specifications.find((s) => s.size === size) ?? null
-    setForm((f) => ({ ...f, size, master_number: masterNoForPunchType(spec, f.punch_type) ?? f.master_number }))
+    const options = getMasterNoOptions(selectedCompany, size, form.punch_type)
+    setForm((f) => ({ ...f, size, master_number: options[0] ?? '' }))
   }
 
   function handlePunchTypeChange(punchType: string) {
-    setForm((f) => ({ ...f, punch_type: punchType, master_number: masterNoForPunchType(selectedSpec, punchType) ?? f.master_number }))
+    const options = getMasterNoOptions(selectedCompany, form.size, punchType)
+    setForm((f) => ({ ...f, punch_type: punchType, master_number: options[0] ?? '' }))
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -603,6 +613,7 @@ export default function Orders() {
                               label="Order By"
                               value={form.user_id}
                               onChange={(e) => setForm((f) => ({ ...f, user_id: e.target.value }))}
+                              disabled
                               required
                               error={formErrors.user_id?.[0]}
                             >
@@ -625,14 +636,21 @@ export default function Orders() {
                             />
                           </div>
                           <div className="col-md-6">
-                            <FloatingInput
+                            <FloatingSelect
                               label="Master Number"
-                              type="text"
                               value={form.master_number}
                               onChange={(e) => setForm((f) => ({ ...f, master_number: e.target.value }))}
+                              disabled={!form.size || !form.punch_type}
                               required
                               error={formErrors.master_number?.[0]}
-                            />
+                            >
+                              <option value="">— Select —</option>
+                              {masterNoOptions.map((opt) => (
+                                <option key={opt} value={opt}>
+                                  {opt}
+                                </option>
+                              ))}
+                            </FloatingSelect>
                           </div>
                         </div>
                       </div>
