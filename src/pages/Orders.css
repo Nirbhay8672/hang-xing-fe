@@ -209,25 +209,6 @@
   flex-wrap: wrap;
 }
 
-.hx-status-pill {
-  display: inline-flex;
-  align-items: center;
-  padding: 5px 14px;
-  border-radius: 20px;
-  font-size: 12.5px;
-  font-weight: 600;
-}
-
-.hx-status-pill--new {
-  background: rgba(46, 49, 117, 0.1);
-  color: #2e3175;
-}
-
-.hx-status-pill--rc {
-  background: rgba(169, 144, 74, 0.12);
-  color: #957f41;
-}
-
 .hx-order-detail-grid > div {
   flex: 1 0 150px;
 }

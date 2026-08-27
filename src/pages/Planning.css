@@ -1,0 +1,30 @@
+.hx-page-subtitle {
+  color: #6b7280;
+  font-size: 13.5px;
+  margin: -8px 0 16px;
+}
+
+.hx-planning-order-no {
+  color: #a9762d;
+  font-weight: 600;
+}
+
+.hx-plan-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid #dde1ea;
+  border-radius: 8px;
+  background: #fff;
+  color: #2e3175;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.hx-plan-btn:hover {
+  background: rgba(46, 49, 117, 0.06);
+  border-color: rgba(46, 49, 117, 0.35);
+}

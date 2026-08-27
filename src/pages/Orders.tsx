@@ -6,6 +6,7 @@ import { FloatingInput, FloatingSelect, FloatingTextarea } from '../components/F
 import '../components/detailView.css'
 import '../components/formStyles.css'
 import '../components/iconButtons.css'
+import '../components/statusPill.css'
 import type { Company, ManufacturingSpecification } from '../companies/types'
 import { companiesService } from '../companies/companiesService'
 import { masterNumbersService } from '../masterNumbers/masterNumbersService'
@@ -15,7 +16,7 @@ import type { User } from '../users/types'
 import { usersService } from '../users/usersService'
 import './Orders.css'
 
-type SortField = 'order_no' | 'company' | 'size' | 'created_at' | 'expected_delivery_date'
+type SortField = 'order_no' | 'company' | 'size' | 'expected_delivery_date'
 type SortDir = 'asc' | 'desc'
 
 function sortValue(order: Order, field: SortField): string | number | null {
@@ -26,11 +27,21 @@ function sortValue(order: Order, field: SortField): string | number | null {
       return order.company?.name ?? ''
     case 'size':
       return order.size ?? ''
-    case 'created_at':
-      return new Date(order.created_at).getTime()
     case 'expected_delivery_date':
       return order.expected_delivery_date ? new Date(order.expected_delivery_date).getTime() : null
   }
+}
+
+function orderTypePillClass(orderType: string): string {
+  return orderType === 'New' ? 'hx-status-pill--new' : 'hx-status-pill--rc'
+}
+
+function statusPillClass(status: string): string {
+  return status === 'Planned' ? 'hx-status-pill--planned' : 'hx-status-pill--pending'
+}
+
+function planningStatusPillClass(status: string): string {
+  return status === 'Planned' ? 'hx-status-pill--planned' : 'hx-status-pill--review'
 }
 
 function sortOrders(list: Order[], field: SortField | null, dir: SortDir): Order[] {
@@ -514,13 +525,10 @@ export default function Orders() {
                           <span>Punch Type</span>
                         </th>
                         <th>
-                          <span>Order Type</span>
+                          <span>Type</span>
                         </th>
                         <th>
                           <span>Qty</span>
-                        </th>
-                        <th>
-                          <span>Order By</span>
                         </th>
                         <th>
                           <button type="button" className="hx-sort-th" onClick={() => handleSort('expected_delivery_date')}>
@@ -529,10 +537,7 @@ export default function Orders() {
                           </button>
                         </th>
                         <th>
-                          <button type="button" className="hx-sort-th" onClick={() => handleSort('created_at')}>
-                            <span>Created</span>
-                            <i className={sortIconClass('created_at')}></i>
-                          </button>
+                          <span>Status</span>
                         </th>
                         <th className="c-action">
                           <span className="float-right"></span>
@@ -555,13 +560,10 @@ export default function Orders() {
                             <span className="hx-order-badge">{o.punch_type}</span>
                           </td>
                           <td>
-                            <span className="hx-order-badge">{o.order_type}</span>
+                            <span className={`hx-status-pill ${orderTypePillClass(o.order_type)}`}>{o.order_type}</span>
                           </td>
                           <td>
                             <span className="position">{o.quantity}</span>
-                          </td>
-                          <td>
-                            <span className="position">{o.user?.name}</span>
                           </td>
                           <td>
                             <span className="position">
@@ -569,7 +571,7 @@ export default function Orders() {
                             </span>
                           </td>
                           <td>
-                            <span className="position">{formatDate(o.created_at)}</span>
+                            <span className={`hx-status-pill ${statusPillClass(o.status)}`}>{o.status}</span>
                           </td>
                           <td>
                             <div className="table-actions d-flex">
@@ -932,11 +934,7 @@ export default function Orders() {
                       </span>
                     </div>
                     <div className="hx-order-detail-hero__badges">
-                      <span
-                        className={`hx-status-pill ${viewTarget.order_type === 'New' ? 'hx-status-pill--new' : 'hx-status-pill--rc'}`}
-                      >
-                        {viewTarget.order_type}
-                      </span>
+                      <span className={`hx-status-pill ${orderTypePillClass(viewTarget.order_type)}`}>{viewTarget.order_type}</span>
                       <span className="hx-order-badge">{viewTarget.punch_type}</span>
                     </div>
                   </div>
@@ -969,6 +967,16 @@ export default function Orders() {
                       <div>
                         <span className="hx-detail-grid__label">Created</span>
                         <span className="hx-detail-grid__value">{formatDate(viewTarget.created_at)}</span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Status</span>
+                        <span className={`hx-status-pill ${statusPillClass(viewTarget.status)}`}>{viewTarget.status}</span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Planning Status</span>
+                        <span className={`hx-status-pill ${planningStatusPillClass(viewTarget.planning_status)}`}>
+                          {viewTarget.planning_status}
+                        </span>
                       </div>
                     </div>
                   </div>

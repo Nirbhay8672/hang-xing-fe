@@ -1,0 +1,30 @@
+.hx-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 160px;
+}
+
+.hx-progress__track {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: #eef0f4;
+  overflow: hidden;
+}
+
+.hx-progress__fill {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #a9762d, #d99a3f);
+  transition: width 0.2s ease;
+}
+
+.hx-progress__label {
+  flex-shrink: 0;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #a9762d;
+  min-width: 32px;
+  text-align: right;
+}

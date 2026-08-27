@@ -8,6 +8,8 @@ import Companies from './pages/Companies.tsx'
 import Dashboard from './pages/Dashboard.tsx'
 import Login from './pages/Login.tsx'
 import Orders from './pages/Orders.tsx'
+import Planning from './pages/Planning.tsx'
+import Production from './pages/Production.tsx'
 import Profile from './pages/Profile.tsx'
 import Roles from './pages/Roles.tsx'
 import Users from './pages/Users.tsx'
@@ -68,6 +70,22 @@ createRoot(document.getElementById('root')!).render(
             element={
               <RequireAuth>
                 <Orders />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/planning"
+            element={
+              <RequireAuth>
+                <Planning />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/production"
+            element={
+              <RequireAuth>
+                <Production />
               </RequireAuth>
             }
           />
