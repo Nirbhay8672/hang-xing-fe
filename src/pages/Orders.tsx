@@ -7,7 +7,7 @@ import '../components/detailView.css'
 import '../components/formStyles.css'
 import '../components/iconButtons.css'
 import '../components/statusPill.css'
-import type { Company, ManufacturingSpecification } from '../companies/types'
+import type { Company } from '../companies/types'
 import { companiesService } from '../companies/companiesService'
 import { masterNumbersService } from '../masterNumbers/masterNumbersService'
 import type { CreateOrderRequest, Order } from '../orders/types'
@@ -191,10 +191,17 @@ export default function Orders() {
     const isUpper = punchType.startsWith('U')
     const isLower = punchType.startsWith('L')
     if (!isUpper && !isLower) return []
-    const values = company.manufacturing_specifications
-      .filter((spec) => spec.size === size)
-      .map((spec) => (isUpper ? spec.up_master_no : spec.lp_master_no))
-      .filter((v): v is string => Boolean(v))
+    const values: string[] = []
+    for (const spec of company.manufacturing_specifications) {
+      if (spec.size !== size) continue
+      // The plain Upper/Lower slot applies broadly to any punch-type variant on that side...
+      if (isUpper && spec.up_master_no) values.push(spec.up_master_no)
+      if (isLower && spec.lp_master_no) values.push(spec.lp_master_no)
+      // ...while an "other master" is scoped to one exact punch-type variant (e.g. "U - DIN").
+      for (const other of spec.other_masters ?? []) {
+        if (other.punch_type === punchType) values.push(other.master_number)
+      }
+    }
     return Array.from(new Set(values))
   }
 
@@ -385,33 +392,28 @@ export default function Orders() {
     setMasterNoError(null)
     try {
       const companyId = Number(form.company_id)
-      const created = await masterNumbersService.create({
+      const updatedSpec = await masterNumbersService.create({
         company_id: companyId,
         size: form.size,
         punch_type: form.punch_type,
         master_number: newMasterNo,
       })
-      const isUpper = form.punch_type.startsWith('U')
-      const newSpec: ManufacturingSpecification = {
-        id: -created.id,
-        company_id: companyId,
-        size: form.size,
-        greentile_thick: '',
-        upper_punch: '',
-        up_master_no: isUpper ? created.master_number : '',
-        lower_punch: '',
-        lp_master_no: isUpper ? '' : created.master_number,
-        cavity: '',
-      }
-      // Merge straight into `companies` (rather than a side list) so the newly added row shows
-      // up immediately in both the Size Details table and the Master Number dropdown, which both
-      // read directly off `selectedCompany.manufacturing_specifications`.
+      // The backend attaches the new master number onto the existing specification and hands
+      // it back — replace that row in place (rather than appending a new one) so the Size
+      // Details table and Master Number dropdown both pick it up immediately.
       setCompanies((prev) =>
         prev.map((c) =>
-          c.id === companyId ? { ...c, manufacturing_specifications: [...c.manufacturing_specifications, newSpec] } : c,
+          c.id === companyId
+            ? {
+                ...c,
+                manufacturing_specifications: c.manufacturing_specifications.map((s) =>
+                  s.id === updatedSpec.id ? updatedSpec : s,
+                ),
+              }
+            : c,
         ),
       )
-      setForm((f) => ({ ...f, master_number: created.master_number }))
+      setForm((f) => ({ ...f, master_number: newMasterNo }))
       setMasterNoModalOpen(false)
     } catch (err) {
       setMasterNoError(err instanceof ApiError ? err.message : 'Failed to add master number.')
@@ -737,6 +739,7 @@ export default function Orders() {
                                   <th>Up Master No.</th>
                                   <th>Lower Punch</th>
                                   <th>LP Master No.</th>
+                                  <th>Other Master Nos.</th>
                                   <th>Cavity</th>
                                 </tr>
                               </thead>
@@ -748,6 +751,19 @@ export default function Orders() {
                                     <td>{spec.up_master_no || '-'}</td>
                                     <td>{spec.lower_punch || '-'}</td>
                                     <td>{spec.lp_master_no || '-'}</td>
+                                    <td>
+                                      {spec.other_masters.length > 0 ? (
+                                        <div className="hx-order-badges">
+                                          {spec.other_masters.map((om, i) => (
+                                            <span key={i} className="hx-order-badge">
+                                              {om.punch_type}: {om.master_number}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        '-'
+                                      )}
+                                    </td>
                                     <td>{spec.cavity || '-'}</td>
                                   </tr>
                                 ))}

@@ -1,3 +1,12 @@
+/** A master number for a punch-type variant that doesn't fit the plain Upper/Lower slots
+ * (e.g. "U - DIN" alongside the spec's default "U - ISO" up_master_no). Added one at a time
+ * via the order form's "Add New Master Number" button — the backend attaches it to this
+ * existing specification rather than creating a new one. */
+export interface OtherMasterNumber {
+  punch_type: string
+  master_number: string
+}
+
 export interface ManufacturingSpecification {
   id: number
   company_id: number
@@ -7,7 +16,10 @@ export interface ManufacturingSpecification {
   up_master_no: string
   lower_punch: string
   lp_master_no: string
+  other_masters: OtherMasterNumber[]
   cavity: string
+  created_at: string
+  updated_at: string
 }
 
 export interface Company {

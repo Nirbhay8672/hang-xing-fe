@@ -11,6 +11,7 @@ import { companiesService } from '../companies/companiesService'
 import type { Order } from '../orders/types'
 import { ordersService } from '../orders/ordersService'
 import './Companies.css'
+import './Orders.css'
 
 interface CompanyFormState {
   name: string
@@ -670,6 +671,9 @@ export default function Companies() {
                                 <span>LP Master No.</span>
                               </th>
                               <th>
+                                <span>Other Master Nos.</span>
+                              </th>
+                              <th>
                                 <span>Cavity</span>
                               </th>
                             </tr>
@@ -683,6 +687,19 @@ export default function Companies() {
                                 <td>{spec.up_master_no}</td>
                                 <td>{spec.lower_punch}</td>
                                 <td>{spec.lp_master_no}</td>
+                                <td>
+                                  {spec.other_masters.length > 0 ? (
+                                    <div className="hx-order-badges">
+                                      {spec.other_masters.map((om, i) => (
+                                        <span key={i} className="hx-order-badge">
+                                          {om.punch_type}: {om.master_number}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    '—'
+                                  )}
+                                </td>
                                 <td>{spec.cavity}</td>
                               </tr>
                             ))}
@@ -787,6 +804,9 @@ export default function Companies() {
                             <span>LP Master No.</span>
                           </th>
                           <th>
+                            <span>Other Master Nos.</span>
+                          </th>
+                          <th>
                             <span>Cavity</span>
                           </th>
                         </tr>
@@ -800,6 +820,19 @@ export default function Companies() {
                             <td>{spec.up_master_no}</td>
                             <td>{spec.lower_punch}</td>
                             <td>{spec.lp_master_no}</td>
+                            <td>
+                              {spec.other_masters.length > 0 ? (
+                                <div className="hx-order-badges">
+                                  {spec.other_masters.map((om, i) => (
+                                    <span key={i} className="hx-order-badge">
+                                      {om.punch_type}: {om.master_number}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                '—'
+                              )}
+                            </td>
                             <td>{spec.cavity}</td>
                           </tr>
                         ))}

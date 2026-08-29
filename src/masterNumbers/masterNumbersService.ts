@@ -1,9 +1,13 @@
 import { apiRequest } from '../auth/apiClient'
-import type { CreateMasterNumberRequest, MasterNumber } from './types'
+import type { ManufacturingSpecification } from '../companies/types'
+import type { CreateMasterNumberRequest } from './types'
 
 export const masterNumbersService = {
-  async create(payload: CreateMasterNumberRequest): Promise<MasterNumber> {
-    return apiRequest<MasterNumber>('/master-numbers', {
+  // The backend attaches the new master number directly onto the matching manufacturing
+  // specification (rather than creating a new record), so it hands back that updated
+  // specification for the frontend to merge in place.
+  async create(payload: CreateMasterNumberRequest): Promise<ManufacturingSpecification> {
+    return apiRequest<ManufacturingSpecification>('/master-numbers', {
       method: 'POST',
       body: JSON.stringify(payload),
     })

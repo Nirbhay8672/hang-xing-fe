@@ -72,7 +72,16 @@ export default function TrackOrderModal({ orderId, onClose, onSaved }: TrackOrde
 
   const matchingSpec = company?.manufacturing_specifications.find((s) => s.size === order?.size) ?? null
   const isUpperPunch = order?.punch_type.startsWith('U') ?? true
-  const referenceMasterNo = matchingSpec ? (isUpperPunch ? matchingSpec.up_master_no : matchingSpec.lp_master_no) : ''
+  // An "other master" scoped to this order's exact punch-type variant (e.g. "U - DIN") takes
+  // priority over the spec's plain Upper/Lower default, which only covers the broad side.
+  const otherMasterMatch = matchingSpec?.other_masters.find((om) => om.punch_type === order?.punch_type)
+  const referenceMasterNo = otherMasterMatch
+    ? otherMasterMatch.master_number
+    : matchingSpec
+      ? isUpperPunch
+        ? matchingSpec.up_master_no
+        : matchingSpec.lp_master_no
+      : ''
   // Only tasks actually assigned during planning show up here — an order's task list is
   // whatever was checked in the Plan modal, not always all 9 fixed steps.
   const tasks = order?.planning_tasks ?? []
