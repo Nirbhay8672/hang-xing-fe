@@ -2,6 +2,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
   min-width: 160px;
 }
 
@@ -27,4 +28,20 @@
   color: #a9762d;
   min-width: 32px;
   text-align: right;
+}
+
+.hx-progress--compact {
+  margin-top: 4px;
+  min-width: 0;
+  max-width: 130px;
+  gap: 6px;
+}
+
+.hx-progress--compact .hx-progress__track {
+  height: 5px;
+}
+
+.hx-progress--compact .hx-progress__label {
+  font-size: 11px;
+  min-width: 26px;
 }

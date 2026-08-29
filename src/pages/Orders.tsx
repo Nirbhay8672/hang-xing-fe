@@ -15,6 +15,7 @@ import { ordersService } from '../orders/ordersService'
 import type { User } from '../users/types'
 import { usersService } from '../users/usersService'
 import './Orders.css'
+import './Production.css'
 
 type SortField = 'order_no' | 'company' | 'size' | 'expected_delivery_date'
 type SortDir = 'asc' | 'desc'
@@ -559,6 +560,12 @@ export default function Orders() {
                         <tr key={o.id}>
                           <td>
                             <span className="position">{o.order_no}</span>
+                            <div className="hx-progress hx-progress--compact">
+                              <div className="hx-progress__track">
+                                <div className="hx-progress__fill" style={{ width: `${o.production_progress ?? 0}%` }} />
+                              </div>
+                              <span className="hx-progress__label">{o.production_progress ?? 0}%</span>
+                            </div>
                           </td>
                           <td>
                             <span className="position">{o.company?.name}</span>
@@ -977,6 +984,15 @@ export default function Orders() {
                       <div>
                         <span className="hx-detail-grid__label">Created</span>
                         <span className="hx-detail-grid__value">{formatDate(viewTarget.created_at)}</span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Progress</span>
+                        <div className="hx-progress">
+                          <div className="hx-progress__track">
+                            <div className="hx-progress__fill" style={{ width: `${viewTarget.production_progress ?? 0}%` }} />
+                          </div>
+                          <span className="hx-progress__label">{viewTarget.production_progress ?? 0}%</span>
+                        </div>
                       </div>
                       <div>
                         <span className="hx-detail-grid__label">Status</span>
