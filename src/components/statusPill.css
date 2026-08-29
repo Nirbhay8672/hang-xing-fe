@@ -34,3 +34,8 @@
   background: rgba(169, 144, 74, 0.12);
   color: #957f41;
 }
+
+.hx-status-pill--complete {
+  background: rgba(25, 135, 84, 0.12);
+  color: #198754;
+}

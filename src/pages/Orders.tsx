@@ -40,6 +40,16 @@ function statusPillClass(status: string): string {
   return status === 'Planned' ? 'hx-status-pill--planned' : 'hx-status-pill--pending'
 }
 
+// Production reaching 100% overrides whatever `status` the backend has, since the order is
+// done regardless of what workflow stage it was last marked at.
+function displayStatus(order: Order): string {
+  return order.production_progress === 100 ? 'Complete' : order.status
+}
+
+function displayStatusPillClass(order: Order): string {
+  return order.production_progress === 100 ? 'hx-status-pill--complete' : statusPillClass(order.status)
+}
+
 function planningStatusPillClass(status: string): string {
   return status === 'Planned' ? 'hx-status-pill--planned' : 'hx-status-pill--review'
 }
@@ -571,7 +581,7 @@ export default function Orders() {
                             </span>
                           </td>
                           <td>
-                            <span className={`hx-status-pill ${statusPillClass(o.status)}`}>{o.status}</span>
+                            <span className={`hx-status-pill ${displayStatusPillClass(o)}`}>{displayStatus(o)}</span>
                           </td>
                           <td>
                             <div className="table-actions d-flex">
@@ -970,7 +980,7 @@ export default function Orders() {
                       </div>
                       <div>
                         <span className="hx-detail-grid__label">Status</span>
-                        <span className={`hx-status-pill ${statusPillClass(viewTarget.status)}`}>{viewTarget.status}</span>
+                        <span className={`hx-status-pill ${displayStatusPillClass(viewTarget)}`}>{displayStatus(viewTarget)}</span>
                       </div>
                       <div>
                         <span className="hx-detail-grid__label">Planning Status</span>

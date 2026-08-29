@@ -296,6 +296,13 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
                     </div>
                   </div>
 
+                  {order.remarks && (
+                    <div className="hx-plan-card">
+                      <span className="hx-plan-card__title">Order Remarks</span>
+                      <p className="hx-detail-grid__value m-0">{order.remarks}</p>
+                    </div>
+                  )}
+
                   <div className="hx-plan-card">
                     <span className="hx-plan-card__title">Planning Remarks</span>
                     <textarea
