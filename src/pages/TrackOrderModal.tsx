@@ -9,13 +9,15 @@ import './PlanOrderModal.css'
 import './Production.css'
 import './TrackOrderModal.css'
 
-// The backend doesn't send `completed_tasks`/`production_progress` yet, so both come back
-// undefined — default them here rather than crashing every `.includes()`/`.every()` call.
+// The backend sends `punch_numbers`/`planning_tasks` as null (not []) before an order has
+// gone through the relevant step, and doesn't send `completed_tasks`/`production_progress`
+// at all yet — default all of it here rather than crashing every `.map()`/`.includes()` call.
 function normalizeOrder(data: Order): Order {
   return {
     ...data,
     production_progress: data.production_progress ?? 0,
-    punch_numbers: data.punch_numbers.map((p) => ({ ...p, completed_tasks: p.completed_tasks ?? [] })),
+    planning_tasks: data.planning_tasks ?? [],
+    punch_numbers: (data.punch_numbers ?? []).map((p) => ({ ...p, completed_tasks: p.completed_tasks ?? [] })),
   }
 }
 
@@ -238,8 +240,15 @@ export default function TrackOrderModal({ orderId, onClose, onSaved }: TrackOrde
                     </div>
                   </div>
 
+                  {order.remarks && (
+                    <div className="hx-plan-card">
+                      <span className="hx-plan-card__title">Order Remarks</span>
+                      <p className="hx-detail-grid__value m-0">{order.remarks}</p>
+                    </div>
+                  )}
+
                   <div className="hx-plan-card">
-                    <span className="hx-plan-card__title">Remarks</span>
+                    <span className="hx-plan-card__title">Planning Remarks</span>
                     <p className="hx-detail-grid__value m-0">{order.planning_remarks || '—'}</p>
                   </div>
 

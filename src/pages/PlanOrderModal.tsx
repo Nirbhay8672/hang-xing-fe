@@ -17,6 +17,16 @@ function orderTypePillClass(orderType: string): string {
   return orderType === 'New' ? 'hx-status-pill--new' : 'hx-status-pill--rc'
 }
 
+// The backend sends `punch_numbers`/`planning_tasks` as null (not []) for an order that
+// hasn't gone through the relevant step yet, so default them here rather than crashing.
+function normalizeOrder(data: Order): Order {
+  return {
+    ...data,
+    punch_numbers: data.punch_numbers ?? [],
+    planning_tasks: data.planning_tasks ?? [],
+  }
+}
+
 // RC punch numbers were optional (and could be left blank) at order-creation time, but by
 // planning they need to be locked in — one non-empty value per piece — so this pads/trims
 // whatever was saved out to exactly `quantity` slots instead of generating anything.
@@ -56,13 +66,13 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
   async function loadOrder() {
     setLoadError(null)
     try {
-      const data = await ordersService.get(orderId)
+      const data = normalizeOrder(await ordersService.get(orderId))
       setOrder(data)
       setSize(data.size)
       setMasterNumber(data.master_number)
       setMillingSize(data.milling_size ?? '')
       setFacingThickness(data.facing_thickness ?? '')
-      setSelectedTasks(data.planning_tasks ?? [])
+      setSelectedTasks(data.planning_tasks)
       setRcPunchNumbers(resizeBlankPunchNumbers(data.quantity, data.punch_numbers.map((p) => p.punch_number)))
       setRemarks(data.planning_remarks ?? '')
       // The company embedded on an order response is a lightweight summary (no
@@ -94,7 +104,7 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!order) return
-    if (order.order_type === 'RC' && rcPunchNumbers.some((n) => n.trim() === '')) {
+    if (order.order_type !== 'New' && rcPunchNumbers.some((n) => n.trim() === '')) {
       setSaveError('Enter a punch number for every piece before saving the plan.')
       return
     }
@@ -109,7 +119,7 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
         planning_tasks: selectedTasks,
         planning_remarks: remarks,
         planning_status: 'Planned',
-        ...(order.order_type === 'RC' ? { punch_numbers: rcPunchNumbers } : {}),
+        ...(order.order_type !== 'New' ? { punch_numbers: rcPunchNumbers } : {}),
       })
       onSaved(updated)
     } catch (err) {
@@ -186,7 +196,7 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
                     </div>
                   </div>
 
-                  {order.order_type === 'RC' && (
+                  {order.order_type !== 'New' && (
                     <div className="hx-plan-card">
                       <span className="hx-plan-card__title">
                         Punch Numbers — required, {rcPunchNumbers.filter((n) => n.trim() !== '').length} / {rcPunchNumbers.length}{' '}

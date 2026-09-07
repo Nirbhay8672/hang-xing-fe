@@ -15,7 +15,6 @@ import { ordersService } from '../orders/ordersService'
 import type { User } from '../users/types'
 import { usersService } from '../users/usersService'
 import './Orders.css'
-import './Production.css'
 
 type SortField = 'order_no' | 'company' | 'size' | 'expected_delivery_date'
 type SortDir = 'asc' | 'desc'
@@ -37,22 +36,42 @@ function orderTypePillClass(orderType: string): string {
   return orderType === 'New' ? 'hx-status-pill--new' : 'hx-status-pill--rc'
 }
 
-function statusPillClass(status: string): string {
-  return status === 'Planned' ? 'hx-status-pill--planned' : 'hx-status-pill--pending'
+// A single status through the order's whole life: Pending (not yet planned) -> Planned
+// (planning saved) -> a live percentage (once any production task is checked) -> Completed
+// (100%) — one label instead of separately showing status/planning status/progress.
+function unifiedStatus(order: Order): string {
+  const progress = order.production_progress ?? 0
+  if (progress === 100) return 'Completed'
+  if (progress > 0) return `${progress}%`
+  if (order.planning_status === 'Planned') return 'Planned'
+  return 'Pending'
 }
 
-// Production reaching 100% overrides whatever `status` the backend has, since the order is
-// done regardless of what workflow stage it was last marked at.
-function displayStatus(order: Order): string {
-  return order.production_progress === 100 ? 'Complete' : order.status
+function unifiedStatusPillClass(order: Order): string {
+  const progress = order.production_progress ?? 0
+  if (progress === 100) return 'hx-status-pill--complete'
+  if (progress > 0) return 'hx-status-pill--inprogress'
+  if (order.planning_status === 'Planned') return 'hx-status-pill--planned'
+  return 'hx-status-pill--pending'
 }
 
-function displayStatusPillClass(order: Order): string {
-  return order.production_progress === 100 ? 'hx-status-pill--complete' : statusPillClass(order.status)
+// The completed/remaining breakdown only makes sense while a live percentage is showing —
+// Pending/Planned/Completed are already unambiguous on their own.
+function isInProgressStatus(order: Order): boolean {
+  const progress = order.production_progress ?? 0
+  return progress > 0 && progress < 100
 }
 
-function planningStatusPillClass(status: string): string {
-  return status === 'Planned' ? 'hx-status-pill--planned' : 'hx-status-pill--review'
+// Exact completed/remaining counts behind the percentage — assigned tasks x punch numbers is
+// the total number of (task, punch) pairs; each pair is done once that punch's
+// completed_tasks includes that task.
+function progressDetail(order: Order): string {
+  const punchNumbers = order.punch_numbers ?? []
+  const totalPairs = (order.planning_tasks ?? []).length * punchNumbers.length
+  if (totalPairs === 0) return 'No production tasks assigned yet.'
+  const completedPairs = punchNumbers.reduce((sum, p) => sum + (p.completed_tasks?.length ?? 0), 0)
+  const remaining = totalPairs - completedPairs
+  return `${completedPairs} of ${totalPairs} done · ${remaining} remaining`
 }
 
 function sortOrders(list: Order[], field: SortField | null, dir: SortDir): Order[] {
@@ -68,7 +87,7 @@ function sortOrders(list: Order[], field: SortField | null, dir: SortDir): Order
   })
 }
 
-const ORDER_TYPE_OPTIONS = ['New', 'RC']
+const ORDER_TYPE_OPTIONS = ['New', 'RC', 'RR']
 const PUNCH_TYPE_OPTIONS = [
   'U - ISO',
   'U - N ISO',
@@ -222,10 +241,10 @@ export default function Orders() {
       user_id: String(order.user_id),
       expected_delivery_date: order.expected_delivery_date?.slice(0, 10) ?? '',
       master_number: order.master_number,
-      // RC orders always show one input per piece, even if fewer (or none) were actually
-      // saved — e.g. an RC order created with every field left blank has zero saved rows.
+      // Non-New orders (RC, RR, ...) always show one input per piece, even if fewer (or none)
+      // were actually saved — e.g. an order created with every field left blank has zero rows.
       punch_numbers:
-        order.order_type === 'RC'
+        order.order_type !== 'New'
           ? resizeBlankPunchNumbers(order.quantity, (order.punch_numbers ?? []).map((p) => p.punch_number))
           : (order.punch_numbers ?? []).map((p) => p.punch_number),
       remarks: order.remarks ?? '',
@@ -345,9 +364,9 @@ export default function Orders() {
   }
 
   function punchNumbersForOrderType(orderType: string, quantity: number, current: string[]): string[] {
+    if (!orderType) return []
     if (orderType === 'New') return syncPunchNumbers(quantity, current)
-    if (orderType === 'RC') return resizeBlankPunchNumbers(quantity, current)
-    return []
+    return resizeBlankPunchNumbers(quantity, current)
   }
 
   function handleQuantityChange(quantity: string) {
@@ -562,12 +581,6 @@ export default function Orders() {
                         <tr key={o.id}>
                           <td>
                             <span className="position">{o.order_no}</span>
-                            <div className="hx-progress hx-progress--compact">
-                              <div className="hx-progress__track">
-                                <div className="hx-progress__fill" style={{ width: `${o.production_progress ?? 0}%` }} />
-                              </div>
-                              <span className="hx-progress__label">{o.production_progress ?? 0}%</span>
-                            </div>
                           </td>
                           <td>
                             <span className="position">{o.company?.name}</span>
@@ -590,7 +603,13 @@ export default function Orders() {
                             </span>
                           </td>
                           <td>
-                            <span className={`hx-status-pill ${displayStatusPillClass(o)}`}>{displayStatus(o)}</span>
+                            <span
+                              className={`hx-status-pill ${unifiedStatusPillClass(o)} ${isInProgressStatus(o) ? 'hx-tooltip' : ''}`}
+                              data-tooltip={isInProgressStatus(o) ? progressDetail(o) : undefined}
+                              tabIndex={isInProgressStatus(o) ? 0 : undefined}
+                            >
+                              {unifiedStatus(o)}
+                            </span>
                           </td>
                           <td>
                             <div className="table-actions d-flex">
@@ -852,7 +871,7 @@ export default function Orders() {
                               </div>
                             </div>
                           )}
-                          {form.order_type === 'RC' && form.punch_numbers.length > 0 && (
+                          {form.order_type !== 'New' && form.order_type !== '' && form.punch_numbers.length > 0 && (
                             <div className="col-12">
                               <div className="hx-punch-numbers">
                                 <span className="hx-punch-numbers__label">Punch Numbers (optional)</span>
@@ -1002,22 +1021,15 @@ export default function Orders() {
                         <span className="hx-detail-grid__value">{formatDate(viewTarget.created_at)}</span>
                       </div>
                       <div>
-                        <span className="hx-detail-grid__label">Progress</span>
-                        <div className="hx-progress">
-                          <div className="hx-progress__track">
-                            <div className="hx-progress__fill" style={{ width: `${viewTarget.production_progress ?? 0}%` }} />
-                          </div>
-                          <span className="hx-progress__label">{viewTarget.production_progress ?? 0}%</span>
-                        </div>
-                      </div>
-                      <div>
                         <span className="hx-detail-grid__label">Status</span>
-                        <span className={`hx-status-pill ${displayStatusPillClass(viewTarget)}`}>{displayStatus(viewTarget)}</span>
-                      </div>
-                      <div>
-                        <span className="hx-detail-grid__label">Planning Status</span>
-                        <span className={`hx-status-pill ${planningStatusPillClass(viewTarget.planning_status)}`}>
-                          {viewTarget.planning_status}
+                        <span
+                          className={`hx-status-pill ${unifiedStatusPillClass(viewTarget)} ${
+                            isInProgressStatus(viewTarget) ? 'hx-tooltip' : ''
+                          }`}
+                          data-tooltip={isInProgressStatus(viewTarget) ? progressDetail(viewTarget) : undefined}
+                          tabIndex={isInProgressStatus(viewTarget) ? 0 : undefined}
+                        >
+                          {unifiedStatus(viewTarget)}
                         </span>
                       </div>
                     </div>
