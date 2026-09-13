@@ -14,6 +14,7 @@ import type { CreateOrderRequest, Order } from '../orders/types'
 import { ordersService } from '../orders/ordersService'
 import type { User } from '../users/types'
 import { usersService } from '../users/usersService'
+import OrderProgressModal from './OrderProgressModal'
 import './Orders.css'
 
 type SortField = 'order_no' | 'company' | 'size' | 'expected_delivery_date'
@@ -177,6 +178,8 @@ export default function Orders() {
   const [deleteTarget, setDeleteTarget] = useState<Order | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+
+  const [progressOrderId, setProgressOrderId] = useState<number | null>(null)
 
   const [masterNoModalOpen, setMasterNoModalOpen] = useState(false)
   const [newMasterNo, setNewMasterNo] = useState('')
@@ -603,13 +606,18 @@ export default function Orders() {
                             </span>
                           </td>
                           <td>
-                            <span
-                              className={`hx-status-pill ${unifiedStatusPillClass(o)} ${isInProgressStatus(o) ? 'hx-tooltip' : ''}`}
-                              data-tooltip={isInProgressStatus(o) ? progressDetail(o) : undefined}
-                              tabIndex={isInProgressStatus(o) ? 0 : undefined}
-                            >
-                              {unifiedStatus(o)}
-                            </span>
+                            {isInProgressStatus(o) ? (
+                              <button
+                                type="button"
+                                className={`hx-status-pill hx-status-pill--btn hx-tooltip ${unifiedStatusPillClass(o)}`}
+                                data-tooltip={progressDetail(o)}
+                                onClick={() => setProgressOrderId(o.id)}
+                              >
+                                {unifiedStatus(o)}
+                              </button>
+                            ) : (
+                              <span className={`hx-status-pill ${unifiedStatusPillClass(o)}`}>{unifiedStatus(o)}</span>
+                            )}
                           </td>
                           <td>
                             <div className="table-actions d-flex">
@@ -1106,6 +1114,10 @@ export default function Orders() {
           </div>
           <div className="modal-backdrop fade show" onClick={() => !deleting && setDeleteTarget(null)}></div>
         </>
+      )}
+
+      {progressOrderId !== null && (
+        <OrderProgressModal orderId={progressOrderId} onClose={() => setProgressOrderId(null)} />
       )}
     </AppShell>
   )

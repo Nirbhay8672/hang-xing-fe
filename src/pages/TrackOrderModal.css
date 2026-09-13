@@ -98,6 +98,50 @@
   color: #198754;
 }
 
+.hx-track-check {
+  font-size: 18px;
+  color: #198754;
+}
+
+.hx-track-cross {
+  font-size: 18px;
+  color: #dc3545;
+}
+
+.hx-track-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.hx-track-cell__date {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 500;
+  color: #9299b8;
+  white-space: nowrap;
+}
+
+.hx-track-cell__date i {
+  font-size: 18px;
+  color: #198754;
+}
+
+@media (min-width: 992px) {
+  .modal-dialog.hx-modal-wide {
+    max-width: 960px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .modal-dialog.hx-modal-wide {
+    max-width: 1400px;
+  }
+}
+
 .hx-progress--lg .hx-progress__track {
   height: 12px;
   border-radius: 6px;

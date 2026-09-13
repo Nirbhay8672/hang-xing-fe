@@ -1,13 +1,22 @@
 import type { Company } from '../companies/types'
 import type { User } from '../users/types'
 
+export interface CompletedTask {
+  task: string
+  /** When this task was checked off — set by the backend, not the client, so it can't be
+   * backdated or affected by the viewer's clock. May be absent on an API that hasn't added
+   * this yet; the frontend tolerates that (see normalizeCompletedTask in TrackOrderModal.tsx). */
+  completed_at: string
+}
+
 export interface PunchNumber {
   id: number
   order_id: number
   punch_number: string
-  /** Subset of the order's `planning_tasks` completed for this specific piece — tracked
-   * per punch number since each physical mold moves through production independently. */
-  completed_tasks: string[]
+  /** Subset of the order's `planning_tasks` completed for this specific piece, each with a
+   * completion timestamp — tracked per punch number since each physical mold moves through
+   * production independently. */
+  completed_tasks: CompletedTask[]
   created_at: string
   updated_at: string
 }

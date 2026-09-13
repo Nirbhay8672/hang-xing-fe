@@ -45,6 +45,20 @@
   color: #a9762d;
 }
 
+/* A status pill rendered as a <button> (e.g. the in-progress % that opens the task-progress
+   modal) — resets native button chrome so it still looks like a plain pill, plus a hover/focus
+   cue so it reads as clickable. */
+.hx-status-pill--btn {
+  border: none;
+  cursor: pointer;
+  transition: filter 0.12s ease;
+}
+
+.hx-status-pill--btn:hover,
+.hx-status-pill--btn:focus-visible {
+  filter: brightness(0.94);
+}
+
 /* Custom themed tooltip (replaces the plain native `title` bubble) — hover or keyboard-focus
    an element with .hx-tooltip and a `data-tooltip` value to show a small dark bubble above it,
    colored to match the app's brand indigo instead of the browser's default styling. */
