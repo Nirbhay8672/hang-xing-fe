@@ -57,6 +57,18 @@
   padding-bottom: 0;
 }
 
+.hx-order-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.hx-order-section__header .hx-order-section__title {
+  margin-bottom: 0;
+}
+
 .hx-order-section__title {
   display: block;
   font-size: 12px;

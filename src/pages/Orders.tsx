@@ -16,6 +16,7 @@ import type { User } from '../users/types'
 import { usersService } from '../users/usersService'
 import OrderProgressModal from './OrderProgressModal'
 import './Orders.css'
+import './PlanOrderModal.css'
 
 type SortField = 'order_no' | 'company' | 'size' | 'expected_delivery_date'
 type SortDir = 'asc' | 'desc'
@@ -103,6 +104,7 @@ const PUNCH_TYPE_OPTIONS = [
 interface OrderFormState {
   company_id: string
   size: string
+  specification_ids: string[]
   punch_type: string
   order_type: string
   quantity: string
@@ -116,6 +118,7 @@ interface OrderFormState {
 const EMPTY_FORM: OrderFormState = {
   company_id: '',
   size: '',
+  specification_ids: [],
   punch_type: '',
   order_type: '',
   quantity: '1',
@@ -208,7 +211,10 @@ export default function Orders() {
 
   const matchingSizeSpecs = selectedCompany?.manufacturing_specifications.filter((spec) => spec.size === form.size) ?? []
 
-  function getMasterNoOptions(company: Company | null, size: string, punchType: string): string[] {
+  // A company can have several spec rows sharing one `size` (different master numbers) — the
+  // Size Details table's checkboxes let the user narrow which of those rows' master numbers
+  // actually apply, since "every row for the size" is otherwise ambiguous when they differ.
+  function getMasterNoOptions(company: Company | null, size: string, punchType: string, specificationIds?: string[]): string[] {
     if (!company || !size || !punchType) return []
     const isUpper = punchType.startsWith('U')
     const isLower = punchType.startsWith('L')
@@ -216,6 +222,7 @@ export default function Orders() {
     const values: string[] = []
     for (const spec of company.manufacturing_specifications) {
       if (spec.size !== size) continue
+      if (specificationIds && specificationIds.length > 0 && !specificationIds.includes(String(spec.id))) continue
       // The plain Upper/Lower slot applies broadly to any punch-type variant on that side...
       if (isUpper && spec.up_master_no) values.push(spec.up_master_no)
       if (isLower && spec.lp_master_no) values.push(spec.lp_master_no)
@@ -230,7 +237,7 @@ export default function Orders() {
   const masterNoOptions = Array.from(
     new Set([
       ...(form.master_number ? [form.master_number] : []),
-      ...getMasterNoOptions(selectedCompany, form.size, form.punch_type),
+      ...getMasterNoOptions(selectedCompany, form.size, form.punch_type, form.specification_ids),
     ]),
   )
 
@@ -238,6 +245,14 @@ export default function Orders() {
     return {
       company_id: String(order.company_id),
       size: order.size,
+      // Older orders (saved before this field existed) have no specification_ids — fall back
+      // to every spec row for this size, same as the create-form default (all checked).
+      specification_ids:
+        order.specification_ids && order.specification_ids.length > 0
+          ? order.specification_ids.map(String)
+          : (companies.find((c) => c.id === order.company_id)?.manufacturing_specifications ?? [])
+              .filter((s) => s.size === order.size)
+              .map((s) => String(s.id)),
       punch_type: order.punch_type,
       order_type: order.order_type,
       quantity: String(order.quantity),
@@ -325,16 +340,38 @@ export default function Orders() {
   }
 
   function handleCompanyChange(companyId: string) {
-    setForm((f) => ({ ...f, company_id: companyId, size: '', master_number: '' }))
+    setForm((f) => ({ ...f, company_id: companyId, size: '', specification_ids: [], master_number: '' }))
   }
 
   function handleSizeChange(size: string) {
-    const options = getMasterNoOptions(selectedCompany, size, form.punch_type)
-    setForm((f) => ({ ...f, size, master_number: options[0] ?? '' }))
+    // Default to every spec row for this size checked — the checkboxes in the Size Details
+    // table let the user narrow it down from there.
+    const specIds = (selectedCompany?.manufacturing_specifications ?? []).filter((s) => s.size === size).map((s) => String(s.id))
+    const options = getMasterNoOptions(selectedCompany, size, form.punch_type, specIds)
+    setForm((f) => ({ ...f, size, specification_ids: specIds, master_number: options[0] ?? '' }))
+  }
+
+  function toggleSpecification(specificationId: string) {
+    setForm((f) => {
+      const specification_ids = f.specification_ids.includes(specificationId)
+        ? f.specification_ids.filter((id) => id !== specificationId)
+        : [...f.specification_ids, specificationId]
+      const options = getMasterNoOptions(selectedCompany, f.size, f.punch_type, specification_ids)
+      return { ...f, specification_ids, master_number: options[0] ?? '' }
+    })
+  }
+
+  function toggleAllSpecifications() {
+    setForm((f) => {
+      const allIds = matchingSizeSpecs.map((s) => String(s.id))
+      const specification_ids = f.specification_ids.length === allIds.length ? [] : allIds
+      const options = getMasterNoOptions(selectedCompany, f.size, f.punch_type, specification_ids)
+      return { ...f, specification_ids, master_number: options[0] ?? '' }
+    })
   }
 
   function handlePunchTypeChange(punchType: string) {
-    const options = getMasterNoOptions(selectedCompany, form.size, punchType)
+    const options = getMasterNoOptions(selectedCompany, form.size, punchType, form.specification_ids)
     setForm((f) => ({ ...f, punch_type: punchType, master_number: options[0] ?? '' }))
   }
 
@@ -456,6 +493,7 @@ export default function Orders() {
         company_id: Number(form.company_id),
         user_id: Number(form.user_id),
         size: form.size,
+        specification_ids: form.specification_ids.length > 0 ? form.specification_ids.map(Number) : undefined,
         punch_type: form.punch_type,
         order_type: form.order_type,
         quantity: Number(form.quantity),
@@ -755,12 +793,20 @@ export default function Orders() {
                       </div>
 
                       <div className="hx-order-section">
-                        <span className="hx-order-section__title">Size Details (from company record)</span>
+                        <div className="hx-order-section__header">
+                          <span className="hx-order-section__title">Size Details (from company record)</span>
+                          {matchingSizeSpecs.length > 0 && (
+                            <button type="button" className="hx-plan-select-all" onClick={toggleAllSpecifications}>
+                              {form.specification_ids.length === matchingSizeSpecs.length ? 'Clear All' : 'Select All'}
+                            </button>
+                          )}
+                        </div>
                         {matchingSizeSpecs.length > 0 ? (
                           <div className="table-responsive">
                             <table className="hx-order-spec-table">
                               <thead>
                                 <tr>
+                                  <th></th>
                                   <th>Greentile Thick</th>
                                   <th>Upper Punch</th>
                                   <th>Up Master No.</th>
@@ -773,6 +819,14 @@ export default function Orders() {
                               <tbody>
                                 {matchingSizeSpecs.map((spec) => (
                                   <tr key={spec.id}>
+                                    <td>
+                                      <input
+                                        type="checkbox"
+                                        checked={form.specification_ids.includes(String(spec.id))}
+                                        onChange={() => toggleSpecification(String(spec.id))}
+                                        aria-label={`Use specification ${spec.id}`}
+                                      />
+                                    </td>
                                     <td>{spec.greentile_thick || '-'}</td>
                                     <td>{spec.upper_punch || '-'}</td>
                                     <td>{spec.up_master_no || '-'}</td>

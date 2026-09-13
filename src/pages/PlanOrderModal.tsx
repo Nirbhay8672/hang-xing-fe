@@ -11,7 +11,15 @@ import { ordersService } from '../orders/ordersService'
 import './Orders.css'
 import './PlanOrderModal.css'
 
-const TASK_STEPS = ['Milling RA', 'FACE', 'Hole – Loading', 'Welding', 'Grinding', 'Final R.A', 'Radius', 'Resin', 'Dispatch']
+const BASE_TASK_STEPS = ['Milling RA', 'FACE', 'Hole – Loading', 'Welding', 'Grinding', 'Final R.A', 'Radius', 'Resin', 'Dispatch']
+
+// "Heater" only applies to repeat orders (RC/RR) — inserted right after "Radius" so it stays
+// in the same relative spot New orders would have had it, had they needed it.
+function taskStepsForOrderType(orderType: string): string[] {
+  if (orderType !== 'RC' && orderType !== 'RR') return BASE_TASK_STEPS
+  const radiusIndex = BASE_TASK_STEPS.indexOf('Radius')
+  return [...BASE_TASK_STEPS.slice(0, radiusIndex + 1), 'Heater', ...BASE_TASK_STEPS.slice(radiusIndex + 1)]
+}
 
 function orderTypePillClass(orderType: string): string {
   return orderType === 'New' ? 'hx-status-pill--new' : 'hx-status-pill--rc'
@@ -84,12 +92,14 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
     }
   }
 
+  const taskSteps = taskStepsForOrderType(order?.order_type ?? '')
+
   function toggleTask(step: string) {
     setSelectedTasks((prev) => (prev.includes(step) ? prev.filter((s) => s !== step) : [...prev, step]))
   }
 
   function toggleAllTasks() {
-    setSelectedTasks((prev) => (prev.length === TASK_STEPS.length ? [] : [...TASK_STEPS]))
+    setSelectedTasks((prev) => (prev.length === taskSteps.length ? [] : [...taskSteps]))
   }
 
   function handleRcPunchChange(index: number, value: string) {
@@ -303,14 +313,14 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
                   <div className="hx-plan-card">
                     <div className="hx-plan-card__header">
                       <span className="hx-plan-card__title hx-plan-card__title--inline">
-                        Task Assignment — {selectedTasks.length} / {TASK_STEPS.length} selected
+                        Task Assignment — {selectedTasks.length} / {taskSteps.length} selected
                       </span>
                       <button type="button" className="hx-plan-select-all" onClick={toggleAllTasks}>
-                        {selectedTasks.length === TASK_STEPS.length ? 'Clear All' : 'Select All'}
+                        {selectedTasks.length === taskSteps.length ? 'Clear All' : 'Select All'}
                       </button>
                     </div>
                     <div className="hx-plan-tasks">
-                      {TASK_STEPS.map((step, i) => (
+                      {taskSteps.map((step, i) => (
                         <label key={step} className="hx-plan-task-row">
                           <input type="checkbox" checked={selectedTasks.includes(step)} onChange={() => toggleTask(step)} />
                           <span className="hx-plan-task-row__index">{String(i + 1).padStart(2, '0')}</span>

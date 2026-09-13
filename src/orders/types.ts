@@ -29,6 +29,12 @@ export interface Order {
   user_id: number
   user: User
   size: string
+  /** Which of the company's (possibly several, same-size) manufacturing specification rows
+   * this order was generated against — a company can have multiple spec rows sharing one
+   * `size` with different master numbers, so `size` alone doesn't uniquely identify them, and
+   * more than one can apply (checked via the Size Details table's checkboxes). Empty on
+   * orders created before this field existed. */
+  specification_ids: number[]
   punch_type: string
   order_type: string
   quantity: number
@@ -79,6 +85,9 @@ export interface CreateOrderRequest {
   company_id: number
   user_id: number
   size: string
+  /** Which manufacturing specification row(s) (of possibly several sharing this `size`) the
+   * order was generated against — omitted when the size has no matching rows to choose from. */
+  specification_ids?: number[]
   punch_type: string
   order_type: string
   quantity: number
