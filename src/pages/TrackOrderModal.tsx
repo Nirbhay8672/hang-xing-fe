@@ -273,10 +273,7 @@ export default function TrackOrderModal({ orderId, onClose, onSaved }: TrackOrde
                                           {isDone && <i className="la la-check"></i>}
                                         </button>
                                         {hasTimestamp && (
-                                          <span className="hx-track-cell__date">
-                                            <i className="la la-check-circle"></i>
-                                            {formatShortDateTime(completedEntry!.completed_at)}
-                                          </span>
+                                          <span className="hx-track-cell__date">{formatShortDateTime(completedEntry!.completed_at)}</span>
                                         )}
                                       </div>
                                     </td>
