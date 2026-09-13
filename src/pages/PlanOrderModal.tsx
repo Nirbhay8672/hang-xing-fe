@@ -108,6 +108,10 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
       setSaveError('Enter a punch number for every piece before saving the plan.')
       return
     }
+    if (order.order_type === 'New' && (millingSize.trim() === '' || facingThickness.trim() === '')) {
+      setSaveError('Enter milling size and facing thickness before saving the plan.')
+      return
+    }
     setSaving(true)
     setSaveError(null)
     try {
@@ -246,6 +250,7 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
                           variant="default"
                           value={millingSize}
                           onChange={(e) => setMillingSize(e.target.value)}
+                          required={order.order_type === 'New'}
                         />
                       </div>
                       <div className="col-md-6">
@@ -255,6 +260,7 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
                           variant="default"
                           value={facingThickness}
                           onChange={(e) => setFacingThickness(e.target.value)}
+                          required={order.order_type === 'New'}
                         />
                       </div>
                     </div>
