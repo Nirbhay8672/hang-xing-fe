@@ -44,9 +44,11 @@ function formatDateTime(iso: string): string {
 }
 
 // Compact form for showing inline under a checkmark, where the tooltip's full date would be
-// too wide — e.g. "Sep 7, 11:21 AM".
+// too wide — e.g. "Sep 7, 2026, 11:21 AM". Year is included so a completion from a prior year
+// doesn't get mistaken for one from the current year once several years of orders pile up.
 function formatShortDateTime(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
+    year: 'numeric',
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
@@ -87,6 +89,7 @@ export default function OrderProgressModal({ orderId, onClose }: OrderProgressMo
           <div className="modal-content radius-xl">
             <div className="modal-header">
               <h6 className="modal-title fw-500">{order ? `Task Progress — ${order.order_no}` : 'Task Progress'}</h6>
+              {order?.planned_at && <span className="hx-track-planned-at">Planned @ {formatDateTime(order.planned_at)}</span>}
               <button type="button" className="btn-close" onClick={onClose} aria-label="Close">
                 <i className="las la-times"></i>
               </button>

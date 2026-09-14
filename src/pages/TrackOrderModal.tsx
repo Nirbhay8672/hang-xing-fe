@@ -49,17 +49,6 @@ function formatDateTime(iso: string): string {
   })
 }
 
-// Compact form for showing inline under the toggle, where the tooltip's full date would be
-// too wide — e.g. "Sep 7, 11:21 AM".
-function formatShortDateTime(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  })
-}
-
 interface TrackOrderModalProps {
   orderId: number
   onClose: () => void
@@ -194,20 +183,8 @@ export default function TrackOrderModal({ orderId, onClose, onSaved }: TrackOrde
                           <span className="hx-detail-grid__value">{matchingSpec.size}</span>
                         </div>
                         <div>
-                          <span className="hx-detail-grid__label">Greentile Thick</span>
-                          <span className="hx-detail-grid__value">{matchingSpec.greentile_thick || '-'}</span>
-                        </div>
-                        <div>
-                          <span className="hx-detail-grid__label">Upper Punch</span>
-                          <span className="hx-detail-grid__value">{matchingSpec.upper_punch || '-'}</span>
-                        </div>
-                        <div>
                           <span className="hx-detail-grid__label">Lower Punch</span>
                           <span className="hx-detail-grid__value">{matchingSpec.lower_punch || '-'}</span>
-                        </div>
-                        <div>
-                          <span className="hx-detail-grid__label">Cavity</span>
-                          <span className="hx-detail-grid__value">{matchingSpec.cavity || '-'}</span>
                         </div>
                         <div>
                           <span className="hx-detail-grid__label">Master No.</span>
@@ -272,9 +249,6 @@ export default function TrackOrderModal({ orderId, onClose, onSaved }: TrackOrde
                                         >
                                           {isDone && <i className="la la-check"></i>}
                                         </button>
-                                        {hasTimestamp && (
-                                          <span className="hx-track-cell__date">{formatShortDateTime(completedEntry!.completed_at)}</span>
-                                        )}
                                       </div>
                                     </td>
                                   )

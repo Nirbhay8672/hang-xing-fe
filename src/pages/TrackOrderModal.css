@@ -4,6 +4,9 @@
   gap: 8px;
   margin-left: auto;
   margin-right: 16px;
+  /* The theme's .modal-header gives .modal-title order:1 and .btn-close order:2 — without an
+     explicit order here this (default order:0) renders before the title instead of after it. */
+  order: 1;
 }
 
 .hx-track-modal-progress__label {
@@ -18,6 +21,17 @@
   font-size: 18px;
   font-weight: 700;
   color: #a9762d;
+}
+
+.hx-track-planned-at {
+  margin-left: auto;
+  margin-right: 16px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #6b7280;
+  white-space: nowrap;
+  /* Same order fix as .hx-track-modal-progress above — keeps this after the title. */
+  order: 1;
 }
 
 .hx-track-table {

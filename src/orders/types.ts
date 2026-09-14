@@ -49,6 +49,9 @@ export interface Order {
   /** Set on the Planning page's "Corrections & Planning Fields" — null until planned. */
   milling_size: string | null
   facing_thickness: string | null
+  /** When planning_status last became "Planned" — set server-side, null until planned.
+   * Distinct from `updated_at`, which also changes on every later production task update. */
+  planned_at?: string | null
   /** Names of the fixed production steps (see TASK_STEPS in PlanOrderModal.tsx) checked
    * off as assigned for this order's plan. */
   planning_tasks: string[]

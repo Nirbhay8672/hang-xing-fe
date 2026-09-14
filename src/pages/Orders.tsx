@@ -17,6 +17,7 @@ import { usersService } from '../users/usersService'
 import OrderProgressModal from './OrderProgressModal'
 import './Orders.css'
 import './PlanOrderModal.css'
+import './TrackOrderModal.css'
 
 type SortField = 'order_no' | 'company' | 'size' | 'expected_delivery_date'
 type SortDir = 'asc' | 'desc'
@@ -147,6 +148,16 @@ const GENERAL_ERROR_KEY = '_general'
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
+function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
 }
 
 function extractErrors(error: unknown, fallback: string): Record<string, string[]> {
@@ -1074,6 +1085,9 @@ export default function Orders() {
               <div className="modal-content radius-xl">
                 <div className="modal-header">
                   <h6 className="modal-title fw-500">Order Details</h6>
+                  {viewTarget.planned_at && (
+                    <span className="hx-track-planned-at">Planned @ {formatDateTime(viewTarget.planned_at)}</span>
+                  )}
                   <button type="button" className="btn-close" onClick={() => setViewTarget(null)} aria-label="Close">
                     <i className="las la-times"></i>
                   </button>
