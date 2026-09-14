@@ -52,6 +52,20 @@
   flex-basis: 100%;
 }
 
+/* A fixed 3-per-row layout instead of the default flex-wrap sizing — for a grid with enough
+   fields that flex-wrap's greedy fill can leave a lone item stretched across an entire row. */
+.hx-detail-grid.hx-detail-grid--cols3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px 20px;
+}
+
+@media (max-width: 767px) {
+  .hx-detail-grid.hx-detail-grid--cols3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 .hx-detail-grid__label {
   font-size: 11.5px;
   text-transform: uppercase;

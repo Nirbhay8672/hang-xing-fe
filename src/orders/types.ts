@@ -54,6 +54,9 @@ export interface Order {
   /** Set on the Planning page's "Corrections & Planning Fields" — null until planned. */
   milling_size: string | null
   facing_thickness: string | null
+  taper_details: string | null
+  punch_border: string | null
+  punch_deep: string | null
   /** When planning_status last became "Planned" — set server-side, null until planned.
    * Distinct from `updated_at`, which also changes on every later production task update. */
   planned_at?: string | null
@@ -78,6 +81,9 @@ export interface UpdateOrderPlanningRequest {
   master_number: string
   milling_size: string
   facing_thickness: string
+  taper_details: string
+  punch_border: string
+  punch_deep: string
   planning_tasks: string[]
   planning_remarks: string
   planning_status: string

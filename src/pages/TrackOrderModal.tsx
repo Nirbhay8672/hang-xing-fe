@@ -186,7 +186,7 @@ export default function TrackOrderModal({ orderId, onClose, onSaved }: TrackOrde
                   {saveError && <p className="hx-form-error">{saveError}</p>}
 
                   <div className="hx-plan-card hx-plan-card--compact">
-                    <div className="hx-detail-grid">
+                    <div className="hx-detail-grid hx-detail-grid--cols3">
                       <div>
                         <span className="hx-detail-grid__label">Company</span>
                         <span className="hx-detail-grid__value">{order.company?.name}</span>
@@ -210,6 +210,18 @@ export default function TrackOrderModal({ orderId, onClose, onSaved }: TrackOrde
                       <div>
                         <span className="hx-detail-grid__label">Facing Thickness</span>
                         <span className="hx-detail-grid__value">{order.facing_thickness || '—'}</span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Taper Details</span>
+                        <span className="hx-detail-grid__value">{order.taper_details || '—'}</span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Punch Border</span>
+                        <span className="hx-detail-grid__value">{order.punch_border || '—'}</span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Punch Deep</span>
+                        <span className="hx-detail-grid__value">{order.punch_deep || '—'}</span>
                       </div>
                       {matchingSpec && (
                         <>
@@ -351,13 +363,13 @@ export default function TrackOrderModal({ orderId, onClose, onSaved }: TrackOrde
                     </div>
 
                     {order.remarks && (
-                      <div className="hx-track-subsection">
+                      <div className="hx-plan-subsection">
                         <span className="hx-plan-card__title">Order Remarks</span>
                         <p className="hx-detail-grid__value m-0">{order.remarks}</p>
                       </div>
                     )}
 
-                    <div className="hx-track-subsection">
+                    <div className="hx-plan-subsection">
                       <span className="hx-plan-card__title">Planning Remarks</span>
                       <p className="hx-detail-grid__value m-0">{order.planning_remarks || '—'}</p>
                     </div>

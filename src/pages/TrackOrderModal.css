@@ -238,37 +238,6 @@
   color: #198754;
 }
 
-/* Tighter spacing than the base .hx-plan-card (from PlanOrderModal.css) — this modal stacks
-   six of these cards, and the shared card's 20px padding/margin makes it unnecessarily tall.
-   Scoped to a modifier rather than changing .hx-plan-card itself so Planning's modal (which
-   only stacks two or three) keeps its original spacing. */
-.hx-plan-card--compact {
-  padding: 10px 16px;
-  margin-bottom: 10px;
-}
-
-.hx-plan-card--compact .hx-plan-card__title {
-  margin-bottom: 6px;
-}
-
-/* The Company/Punch Type/... card nests a .hx-detail-grid, which carries its own card-like
-   padding/border/background (needed where it's used standalone elsewhere) — inside this
-   already-boxed card that doubles the padding on every edge for no visible benefit here. */
-.hx-plan-card--compact > .hx-detail-grid {
-  padding: 0;
-  border: none;
-  background: transparent;
-  border-radius: 0;
-}
-
-/* A lightweight divider for grouping related content inside one card (Progress/Order
-   Remarks/Planning Remarks) instead of giving each its own full .hx-plan-card box. */
-.hx-track-subsection {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid #eef0f4;
-}
-
 @media (min-width: 992px) {
   .modal-dialog.hx-modal-wide {
     max-width: 960px;

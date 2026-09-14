@@ -60,6 +60,9 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
   const [masterNumber, setMasterNumber] = useState('')
   const [millingSize, setMillingSize] = useState('')
   const [facingThickness, setFacingThickness] = useState('')
+  const [taperDetails, setTaperDetails] = useState('')
+  const [punchBorder, setPunchBorder] = useState('')
+  const [punchDeep, setPunchDeep] = useState('')
   const [selectedTasks, setSelectedTasks] = useState<string[]>([])
   const [rcPunchNumbers, setRcPunchNumbers] = useState<string[]>([])
   const [remarks, setRemarks] = useState('')
@@ -80,6 +83,9 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
       setMasterNumber(data.master_number)
       setMillingSize(data.milling_size ?? '')
       setFacingThickness(data.facing_thickness ?? '')
+      setTaperDetails(data.taper_details ?? '')
+      setPunchBorder(data.punch_border ?? '')
+      setPunchDeep(data.punch_deep ?? '')
       setSelectedTasks(data.planning_tasks)
       setRcPunchNumbers(resizeBlankPunchNumbers(data.quantity, data.punch_numbers.map((p) => p.punch_number)))
       setRemarks(data.planning_remarks ?? '')
@@ -130,6 +136,9 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
         master_number: masterNumber,
         milling_size: millingSize,
         facing_thickness: facingThickness,
+        taper_details: taperDetails,
+        punch_border: punchBorder,
+        punch_deep: punchDeep,
         planning_tasks: selectedTasks,
         planning_remarks: remarks,
         planning_status: 'Planned',
@@ -175,7 +184,7 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
                 <form onSubmit={handleSave} autoComplete="off">
                   {saveError && <p className="hx-form-error">{saveError}</p>}
 
-                  <div className="hx-plan-card">
+                  <div className="hx-plan-card hx-plan-card--compact">
                     <div className="hx-detail-grid">
                       <div>
                         <span className="hx-detail-grid__label">Company</span>
@@ -208,10 +217,44 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
                         )}
                       </div>
                     </div>
+
+                    <div className="hx-plan-subsection">
+                      <span className="hx-plan-card__title">Size Details Reference</span>
+                      {matchingSpec ? (
+                        <div className="hx-plan-ref-grid">
+                          <div>
+                            <span className="hx-detail-grid__label">Size</span>
+                            <span className="hx-detail-grid__value">{matchingSpec.size}</span>
+                          </div>
+                          <div>
+                            <span className="hx-detail-grid__label">Greentile Thick</span>
+                            <span className="hx-detail-grid__value">{matchingSpec.greentile_thick || '-'}</span>
+                          </div>
+                          <div>
+                            <span className="hx-detail-grid__label">Upper Punch</span>
+                            <span className="hx-detail-grid__value">{matchingSpec.upper_punch || '-'}</span>
+                          </div>
+                          <div>
+                            <span className="hx-detail-grid__label">Lower Punch</span>
+                            <span className="hx-detail-grid__value">{matchingSpec.lower_punch || '-'}</span>
+                          </div>
+                          <div>
+                            <span className="hx-detail-grid__label">Cavity</span>
+                            <span className="hx-detail-grid__value">{matchingSpec.cavity || '-'}</span>
+                          </div>
+                          <div>
+                            <span className="hx-detail-grid__label">Master No.</span>
+                            <span className="hx-detail-grid__value">{referenceMasterNo || '-'}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="hx-orders-empty">No matching specification found for this size.</p>
+                      )}
+                    </div>
                   </div>
 
                   {order.order_type !== 'New' && (
-                    <div className="hx-plan-card">
+                    <div className="hx-plan-card hx-plan-card--compact">
                       <span className="hx-plan-card__title">
                         Punch Numbers — required, {rcPunchNumbers.filter((n) => n.trim() !== '').length} / {rcPunchNumbers.length}{' '}
                         entered
@@ -232,9 +275,9 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
                     </div>
                   )}
 
-                  <div className="hx-plan-card">
+                  <div className="hx-plan-card hx-plan-card--compact">
                     <span className="hx-plan-card__title">Corrections &amp; Planning Fields</span>
-                    <div className="row">
+                    <div className="row mt-3">
                       <div className="col-md-6">
                         <FloatingInput
                           label="Size (editable)"
@@ -273,44 +316,37 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
                           required={order.order_type === 'New'}
                         />
                       </div>
+                      <div className="col-md-6">
+                        <FloatingInput
+                          label="Taper Details"
+                          type="text"
+                          variant="default"
+                          value={taperDetails}
+                          onChange={(e) => setTaperDetails(e.target.value)}
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <FloatingInput
+                          label="Punch Border"
+                          type="text"
+                          variant="default"
+                          value={punchBorder}
+                          onChange={(e) => setPunchBorder(e.target.value)}
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <FloatingInput
+                          label="Punch Deep"
+                          type="text"
+                          variant="default"
+                          value={punchDeep}
+                          onChange={(e) => setPunchDeep(e.target.value)}
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  <div className="hx-plan-card">
-                    <span className="hx-plan-card__title">Size Details Reference</span>
-                    {matchingSpec ? (
-                      <div className="hx-plan-ref-grid">
-                        <div>
-                          <span className="hx-detail-grid__label">Size</span>
-                          <span className="hx-detail-grid__value">{matchingSpec.size}</span>
-                        </div>
-                        <div>
-                          <span className="hx-detail-grid__label">Greentile Thick</span>
-                          <span className="hx-detail-grid__value">{matchingSpec.greentile_thick || '-'}</span>
-                        </div>
-                        <div>
-                          <span className="hx-detail-grid__label">Upper Punch</span>
-                          <span className="hx-detail-grid__value">{matchingSpec.upper_punch || '-'}</span>
-                        </div>
-                        <div>
-                          <span className="hx-detail-grid__label">Lower Punch</span>
-                          <span className="hx-detail-grid__value">{matchingSpec.lower_punch || '-'}</span>
-                        </div>
-                        <div>
-                          <span className="hx-detail-grid__label">Cavity</span>
-                          <span className="hx-detail-grid__value">{matchingSpec.cavity || '-'}</span>
-                        </div>
-                        <div>
-                          <span className="hx-detail-grid__label">Master No.</span>
-                          <span className="hx-detail-grid__value">{referenceMasterNo || '-'}</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="hx-orders-empty">No matching specification found for this size.</p>
-                    )}
-                  </div>
-
-                  <div className="hx-plan-card">
+                  <div className="hx-plan-card hx-plan-card--compact">
                     <div className="hx-plan-card__header">
                       <span className="hx-plan-card__title hx-plan-card__title--inline">
                         Task Assignment — {selectedTasks.length} / {taskSteps.length} selected
@@ -331,25 +367,27 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
                     </div>
                   </div>
 
-                  {order.remarks && (
-                    <div className="hx-plan-card">
-                      <span className="hx-plan-card__title">Order Remarks</span>
-                      <p className="hx-detail-grid__value m-0">{order.remarks}</p>
-                    </div>
-                  )}
+                  <div className="hx-plan-card hx-plan-card--compact">
+                    {order.remarks && (
+                      <div className="hx-plan-subsection">
+                        <span className="hx-plan-card__title">Order Remarks</span>
+                        <p className="hx-detail-grid__value m-0">{order.remarks}</p>
+                      </div>
+                    )}
 
-                  <div className="hx-plan-card">
-                    <span className="hx-plan-card__title">Planning Remarks</span>
-                    <textarea
-                      className="form-control hx-plan-remarks"
-                      rows={3}
-                      placeholder="Planning notes…"
-                      value={remarks}
-                      onChange={(e) => setRemarks(e.target.value)}
-                    />
+                    <div className="hx-plan-subsection">
+                      <span className="hx-plan-card__title">Planning Remarks</span>
+                      <textarea
+                        className="form-control hx-plan-remarks"
+                        rows={3}
+                        placeholder="Planning notes…"
+                        value={remarks}
+                        onChange={(e) => setRemarks(e.target.value)}
+                      />
+                    </div>
                   </div>
 
-                  <div className="button-group d-flex justify-content-center pt-20">
+                  <div className="button-group d-flex justify-content-center pt-10">
                     <button
                       type="button"
                       className="btn btn-sm hx-btn-secondary btn-rounded me-10"

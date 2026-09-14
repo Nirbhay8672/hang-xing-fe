@@ -6,6 +6,43 @@
   margin-bottom: 20px;
 }
 
+/* Tighter spacing than the base .hx-plan-card above — used by modals (Track, Planning) that
+   stack many of these cards, where the base 20px padding/margin adds up to an unnecessarily
+   long modal. A modifier rather than a change to .hx-plan-card itself so modals that only
+   stack two or three cards keep the roomier default. */
+.hx-plan-card--compact {
+  padding: 10px 16px;
+  margin-bottom: 10px;
+}
+
+.hx-plan-card--compact .hx-plan-card__title {
+  margin-bottom: 6px;
+}
+
+/* A card that nests a .hx-detail-grid carries that grid's own card-like padding/border/
+   background (needed where .hx-detail-grid is used standalone elsewhere) — inside an
+   already-boxed card that just doubles the padding on every edge for no visible benefit. */
+.hx-plan-card--compact > .hx-detail-grid {
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 0;
+}
+
+/* A lightweight divider for grouping related content inside one card instead of giving each
+   piece its own full .hx-plan-card box. */
+.hx-plan-subsection {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #eef0f4;
+}
+
+.hx-plan-subsection:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
 .hx-plan-card__title {
   display: block;
   font-size: 12px;
