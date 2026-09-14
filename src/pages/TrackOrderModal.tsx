@@ -4,7 +4,7 @@ import type { Company } from '../companies/types'
 import { companiesService } from '../companies/companiesService'
 import '../components/detailView.css'
 import '../components/statusPill.css'
-import type { CompletedTask, Order } from '../orders/types'
+import type { CompletedTask, Order, TaskRemark } from '../orders/types'
 import { ordersService } from '../orders/ordersService'
 import './PlanOrderModal.css'
 import './Production.css'
@@ -26,6 +26,7 @@ function normalizeOrder(data: Order): Order {
     ...data,
     production_progress: data.production_progress ?? 0,
     planning_tasks: data.planning_tasks ?? [],
+    task_remarks: data.task_remarks ?? [],
     punch_numbers: (data.punch_numbers ?? []).map((p) => ({
       ...p,
       completed_tasks: (p.completed_tasks ?? []).map(normalizeCompletedTask),
@@ -61,6 +62,9 @@ export default function TrackOrderModal({ orderId, onClose, onSaved }: TrackOrde
   const [loadError, setLoadError] = useState<string | null>(null)
   const [savingKey, setSavingKey] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [editingRemarkTask, setEditingRemarkTask] = useState<string | null>(null)
+  const [remarkDraft, setRemarkDraft] = useState('')
+  const [savingRemark, setSavingRemark] = useState(false)
 
   useEffect(() => {
     loadOrder()
@@ -93,6 +97,7 @@ export default function TrackOrderModal({ orderId, onClose, onSaved }: TrackOrde
             completed_tasks: isDone ? taskNames.filter((t) => taskKey(t) !== taskKey(task)) : [...taskNames, task],
           }
         }),
+        task_remarks: order.task_remarks ?? [],
       })
       const updated = normalizeOrder(response)
       setOrder(updated)
@@ -101,6 +106,41 @@ export default function TrackOrderModal({ orderId, onClose, onSaved }: TrackOrde
       setSaveError(err instanceof ApiError ? err.message : 'Failed to save progress.')
     } finally {
       setSavingKey(null)
+    }
+  }
+
+  function openRemarkEditor(task: string, existing?: TaskRemark) {
+    setRemarkDraft(existing?.remark ?? '')
+    setEditingRemarkTask(task)
+  }
+
+  function closeRemarkEditor() {
+    setEditingRemarkTask(null)
+    setRemarkDraft('')
+  }
+
+  async function saveTaskRemark(task: string) {
+    if (!order) return
+    setSavingRemark(true)
+    setSaveError(null)
+    try {
+      const trimmed = remarkDraft.trim()
+      const existing = order.task_remarks ?? []
+      const nextRemarks = trimmed
+        ? [...existing.filter((r) => taskKey(r.task) !== taskKey(task)), { task, remark: trimmed }]
+        : existing.filter((r) => taskKey(r.task) !== taskKey(task))
+      const response = await ordersService.updateProduction(order.id, {
+        punch_numbers: order.punch_numbers.map((p) => ({ id: p.id, completed_tasks: p.completed_tasks.map((ct) => ct.task) })),
+        task_remarks: nextRemarks,
+      })
+      const updated = normalizeOrder(response)
+      setOrder(updated)
+      onSaved(updated)
+      closeRemarkEditor()
+    } catch (err) {
+      setSaveError(err instanceof ApiError ? err.message : 'Failed to save remark.')
+    } finally {
+      setSavingRemark(false)
     }
   }
 
@@ -123,7 +163,7 @@ export default function TrackOrderModal({ orderId, onClose, onSaved }: TrackOrde
   return (
     <>
       <div className="modal fade show d-block" role="dialog" aria-modal="true">
-        <div className="modal-dialog modal-dialog-centered modal-xl hx-modal-wide">
+        <div className="modal-dialog modal-dialog-centered modal-xl hx-modal-wide hx-track-modal">
           <div className="modal-content radius-xl">
             <div className="modal-header">
               <h6 className="modal-title fw-500">{order ? `Track — ${order.order_no}` : 'Track'}</h6>
@@ -145,7 +185,7 @@ export default function TrackOrderModal({ orderId, onClose, onSaved }: TrackOrde
                 <>
                   {saveError && <p className="hx-form-error">{saveError}</p>}
 
-                  <div className="hx-plan-card">
+                  <div className="hx-plan-card hx-plan-card--compact">
                     <div className="hx-detail-grid">
                       <div>
                         <span className="hx-detail-grid__label">Company</span>
@@ -171,32 +211,22 @@ export default function TrackOrderModal({ orderId, onClose, onSaved }: TrackOrde
                         <span className="hx-detail-grid__label">Facing Thickness</span>
                         <span className="hx-detail-grid__value">{order.facing_thickness || '—'}</span>
                       </div>
+                      {matchingSpec && (
+                        <>
+                          <div>
+                            <span className="hx-detail-grid__label">Lower Punch</span>
+                            <span className="hx-detail-grid__value">{matchingSpec.lower_punch || '-'}</span>
+                          </div>
+                          <div>
+                            <span className="hx-detail-grid__label">Master No.</span>
+                            <span className="hx-detail-grid__value">{referenceMasterNo || '-'}</span>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
 
-                  <div className="hx-plan-card">
-                    <span className="hx-plan-card__title">Size Details</span>
-                    {matchingSpec ? (
-                      <div className="hx-plan-ref-grid">
-                        <div>
-                          <span className="hx-detail-grid__label">Size</span>
-                          <span className="hx-detail-grid__value">{matchingSpec.size}</span>
-                        </div>
-                        <div>
-                          <span className="hx-detail-grid__label">Lower Punch</span>
-                          <span className="hx-detail-grid__value">{matchingSpec.lower_punch || '-'}</span>
-                        </div>
-                        <div>
-                          <span className="hx-detail-grid__label">Master No.</span>
-                          <span className="hx-detail-grid__value">{referenceMasterNo || '-'}</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="hx-orders-empty">No matching specification found for this size.</p>
-                    )}
-                  </div>
-
-                  <div className="hx-plan-card">
+                  <div className="hx-plan-card hx-plan-card--compact">
                     {tasks.length === 0 ? (
                       <p className="hx-orders-empty">No tasks were assigned during planning.</p>
                     ) : order.punch_numbers.length === 0 ? (
@@ -213,19 +243,68 @@ export default function TrackOrderModal({ orderId, onClose, onSaved }: TrackOrde
                             </tr>
                           </thead>
                           <tbody>
-                            {tasks.map((task, i) => (
+                            {tasks.map((task, i) => {
+                              const taskRemark = (order.task_remarks ?? []).find((r) => taskKey(r.task) === taskKey(task))
+                              const isEditingRemark = editingRemarkTask === task
+                              return (
                               <tr key={task}>
                                 <td>
-                                  <span className="hx-track-table__index">{String(i + 1).padStart(2, '0')}</span>
-                                  <span
-                                    className={
-                                      order.punch_numbers.every((p) => p.completed_tasks.some((ct) => taskKey(ct.task) === taskKey(task)))
-                                        ? 'hx-track-table__done'
-                                        : ''
-                                    }
-                                  >
-                                    {task}
-                                  </span>
+                                  <div className="hx-track-task-cell">
+                                    <span className="hx-track-table__index">{String(i + 1).padStart(2, '0')}</span>
+                                    <span
+                                      className={
+                                        order.punch_numbers.every((p) => p.completed_tasks.some((ct) => taskKey(ct.task) === taskKey(task)))
+                                          ? 'hx-track-table__done'
+                                          : ''
+                                      }
+                                    >
+                                      {task}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      className={`hx-track-remark-btn ${taskRemark ? 'hx-track-remark-btn--active' : ''}`}
+                                      onClick={() => (isEditingRemark ? closeRemarkEditor() : openRemarkEditor(task, taskRemark))}
+                                      aria-label={`${taskRemark ? 'Edit' : 'Add'} remark for ${task}`}
+                                    >
+                                      <i className="la la-sticky-note"></i>
+                                    </button>
+                                  </div>
+                                  {isEditingRemark ? (
+                                    <div className="hx-track-remark-editor">
+                                      <input
+                                        type="text"
+                                        className="form-control form-control-sm"
+                                        value={remarkDraft}
+                                        onChange={(e) => setRemarkDraft(e.target.value)}
+                                        placeholder="Note an issue or change for this task…"
+                                        autoFocus
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') saveTaskRemark(task)
+                                          if (e.key === 'Escape') closeRemarkEditor()
+                                        }}
+                                      />
+                                      <button
+                                        type="button"
+                                        className="hx-track-remark-save"
+                                        disabled={savingRemark}
+                                        onClick={() => saveTaskRemark(task)}
+                                        aria-label="Save remark"
+                                      >
+                                        <i className="la la-check"></i>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="hx-track-remark-cancel"
+                                        disabled={savingRemark}
+                                        onClick={closeRemarkEditor}
+                                        aria-label="Cancel"
+                                      >
+                                        <i className="la la-times"></i>
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    taskRemark && <span className="hx-track-remark-text">{taskRemark.remark}</span>
+                                  )}
                                 </td>
                                 {order.punch_numbers.map((p) => {
                                   const completedEntry = p.completed_tasks.find((ct) => taskKey(ct.task) === taskKey(task))
@@ -254,14 +333,15 @@ export default function TrackOrderModal({ orderId, onClose, onSaved }: TrackOrde
                                   )
                                 })}
                               </tr>
-                            ))}
+                              )
+                            })}
                           </tbody>
                         </table>
                       </div>
                     )}
                   </div>
 
-                  <div className="hx-plan-card">
+                  <div className="hx-plan-card hx-plan-card--compact">
                     <span className="hx-plan-card__title">Overall Progress</span>
                     <div className="hx-progress hx-progress--lg">
                       <div className="hx-progress__track">
@@ -269,21 +349,21 @@ export default function TrackOrderModal({ orderId, onClose, onSaved }: TrackOrde
                       </div>
                       <span className="hx-progress__label">{order.production_progress}%</span>
                     </div>
-                  </div>
 
-                  {order.remarks && (
-                    <div className="hx-plan-card">
-                      <span className="hx-plan-card__title">Order Remarks</span>
-                      <p className="hx-detail-grid__value m-0">{order.remarks}</p>
+                    {order.remarks && (
+                      <div className="hx-track-subsection">
+                        <span className="hx-plan-card__title">Order Remarks</span>
+                        <p className="hx-detail-grid__value m-0">{order.remarks}</p>
+                      </div>
+                    )}
+
+                    <div className="hx-track-subsection">
+                      <span className="hx-plan-card__title">Planning Remarks</span>
+                      <p className="hx-detail-grid__value m-0">{order.planning_remarks || '—'}</p>
                     </div>
-                  )}
-
-                  <div className="hx-plan-card">
-                    <span className="hx-plan-card__title">Planning Remarks</span>
-                    <p className="hx-detail-grid__value m-0">{order.planning_remarks || '—'}</p>
                   </div>
 
-                  <div className="button-group d-flex justify-content-center pt-20">
+                  <div className="button-group d-flex justify-content-center pt-10">
                     <button type="button" className="btn btn-sm hx-btn-secondary btn-rounded" onClick={onClose}>
                       Close
                     </button>

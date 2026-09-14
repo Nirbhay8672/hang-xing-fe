@@ -1158,7 +1158,6 @@ export default function Orders() {
                         <table className="hx-order-spec-table">
                           <thead>
                             <tr>
-                              <th>Greentile Thick</th>
                               {viewIsUpperPunch && (
                                 <>
                                   <th>Upper Punch</th>
@@ -1171,14 +1170,11 @@ export default function Orders() {
                                   <th>LP Master No.</th>
                                 </>
                               )}
-                              <th>Other Master Nos.</th>
-                              <th>Cavity</th>
                             </tr>
                           </thead>
                           <tbody>
                             {viewMatchingSpecs.map((spec) => (
                               <tr key={spec.id}>
-                                <td>{spec.greentile_thick || '-'}</td>
                                 {viewIsUpperPunch && (
                                   <>
                                     <td>{spec.upper_punch || '-'}</td>
@@ -1191,20 +1187,6 @@ export default function Orders() {
                                     <td>{spec.lp_master_no || '-'}</td>
                                   </>
                                 )}
-                                <td>
-                                  {spec.other_masters.length > 0 ? (
-                                    <div className="hx-order-badges">
-                                      {spec.other_masters.map((om, i) => (
-                                        <span key={i} className="hx-order-badge">
-                                          {om.punch_type}: {om.master_number}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  ) : (
-                                    '-'
-                                  )}
-                                </td>
-                                <td>{spec.cavity || '-'}</td>
                               </tr>
                             ))}
                           </tbody>

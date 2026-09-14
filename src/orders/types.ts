@@ -9,6 +9,11 @@ export interface CompletedTask {
   completed_at: string
 }
 
+export interface TaskRemark {
+  task: string
+  remark: string
+}
+
 export interface PunchNumber {
   id: number
   order_id: number
@@ -56,6 +61,10 @@ export interface Order {
    * off as assigned for this order's plan. */
   planning_tasks: string[]
   planning_remarks: string | null
+  /** Free-text note per production task (e.g. an issue hit, or a change made mid-process) —
+   * added from the small note icon next to each task row in the Track modal. Absent/empty
+   * until someone adds one; at most one entry per task name. */
+  task_remarks?: TaskRemark[]
   /** 0-100 — share of (punch number × assigned task) pairs marked complete on the
    * Production dashboard. Computed server-side; only meaningful once planned. */
   production_progress: number
@@ -82,6 +91,7 @@ export interface UpdateOrderProductionRequest {
     id: number
     completed_tasks: string[]
   }>
+  task_remarks?: TaskRemark[]
 }
 
 export interface CreateOrderRequest {

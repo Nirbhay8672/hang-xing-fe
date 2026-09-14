@@ -1,3 +1,9 @@
+/* Bootstrap's --bs-modal-padding is 1.75rem (28px) on every edge — scoped down here rather
+   than changed globally, since other modals in the app still want the roomier default. */
+.hx-track-modal .modal-body {
+  padding: 16px 24px 20px;
+}
+
 .hx-track-modal-progress {
   display: flex;
   align-items: baseline;
@@ -47,6 +53,13 @@
   white-space: nowrap;
 }
 
+/* Tighter rows in the Track modal specifically (scoped so OrderProgressModal's grid, which
+   uses the same table class, keeps its original row height). */
+.hx-track-modal .hx-track-table th,
+.hx-track-modal .hx-track-table td {
+  padding: 8px 16px;
+}
+
 .hx-track-table th {
   font-size: 11.5px;
   text-transform: uppercase;
@@ -77,6 +90,87 @@
   font-size: 14px;
   font-weight: 600;
   color: #2e3175;
+  white-space: normal;
+}
+
+.hx-track-task-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hx-track-task-cell .hx-track-table__index {
+  margin-right: 0;
+}
+
+.hx-track-remark-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #c3c7d3;
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.hx-track-remark-btn:hover {
+  color: #2e3175;
+  background: rgba(46, 49, 117, 0.08);
+}
+
+.hx-track-remark-btn--active {
+  color: #a9762d;
+}
+
+.hx-track-remark-editor {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  max-width: 420px;
+  white-space: normal;
+}
+
+.hx-track-remark-editor input {
+  flex: 1;
+  min-width: 0;
+}
+
+.hx-track-remark-save,
+.hx-track-remark-cancel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #dde1ea;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.hx-track-remark-save {
+  color: #198754;
+}
+
+.hx-track-remark-cancel {
+  color: #dc3545;
+}
+
+.hx-track-remark-text {
+  display: block;
+  margin-top: 4px;
+  font-size: 11.5px;
+  font-weight: 400;
+  color: #9299b8;
+  white-space: normal;
 }
 
 .hx-track-table__done {
@@ -142,6 +236,37 @@
 .hx-track-cell__date i {
   font-size: 18px;
   color: #198754;
+}
+
+/* Tighter spacing than the base .hx-plan-card (from PlanOrderModal.css) — this modal stacks
+   six of these cards, and the shared card's 20px padding/margin makes it unnecessarily tall.
+   Scoped to a modifier rather than changing .hx-plan-card itself so Planning's modal (which
+   only stacks two or three) keeps its original spacing. */
+.hx-plan-card--compact {
+  padding: 10px 16px;
+  margin-bottom: 10px;
+}
+
+.hx-plan-card--compact .hx-plan-card__title {
+  margin-bottom: 6px;
+}
+
+/* The Company/Punch Type/... card nests a .hx-detail-grid, which carries its own card-like
+   padding/border/background (needed where it's used standalone elsewhere) — inside this
+   already-boxed card that doubles the padding on every edge for no visible benefit here. */
+.hx-plan-card--compact > .hx-detail-grid {
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 0;
+}
+
+/* A lightweight divider for grouping related content inside one card (Progress/Order
+   Remarks/Planning Remarks) instead of giving each its own full .hx-plan-card box. */
+.hx-track-subsection {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #eef0f4;
 }
 
 @media (min-width: 992px) {
