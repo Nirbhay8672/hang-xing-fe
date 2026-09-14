@@ -167,6 +167,7 @@ export default function Orders() {
   const [users, setUsers] = useState<User[]>([])
 
   const [viewTarget, setViewTarget] = useState<Order | null>(null)
+  const [viewCompany, setViewCompany] = useState<Company | null>(null)
   const [viewLoadingId, setViewLoadingId] = useState<number | null>(null)
   const [viewFetchError, setViewFetchError] = useState<string | null>(null)
 
@@ -282,6 +283,11 @@ export default function Orders() {
     try {
       const fresh = await ordersService.get(order.id)
       setViewTarget(fresh)
+      // The company embedded on the order is a lightweight summary (no
+      // manufacturing_specifications) — fetch the full record to look up the Upper/Lower
+      // Punch size relevant to this order.
+      const fullCompany = await companiesService.get(fresh.company_id)
+      setViewCompany(fullCompany)
     } catch (err) {
       setViewFetchError(err instanceof ApiError ? err.message : 'Failed to load order.')
     } finally {
@@ -383,7 +389,11 @@ export default function Orders() {
     if (current.length === quantity) return current
     if (current.length > quantity) return current.slice(0, quantity)
 
-    const seenSeqs = (orders ?? []).flatMap((o) => (o.punch_numbers ?? []).map((p) => extractPunchSeq(p.punch_number)))
+    // Only "New" orders draw from the HXN-#### sequence — RC/RR punch numbers are free text
+    // (e.g. "A1") that could coincidentally match the pattern and shouldn't skew the count.
+    const seenSeqs = (orders ?? [])
+      .filter((o) => o.order_type === 'New')
+      .flatMap((o) => (o.punch_numbers ?? []).map((p) => extractPunchSeq(p.punch_number)))
     const currentSeqs = current.map(extractPunchSeq)
     const maxSeq = Math.max(0, ...[...seenSeqs, ...currentSeqs].filter((n): n is number => n !== null))
 
@@ -558,6 +568,10 @@ export default function Orders() {
       </div>
     </>
   )
+
+  // Same company spec rows shown in Create/Edit's "Size Details" table, for the order being
+  // viewed — read-only here, no checkboxes.
+  const viewMatchingSpecs = viewTarget ? (viewCompany?.manufacturing_specifications ?? []).filter((s) => s.size === viewTarget.size) : []
 
   return (
     <AppShell title="Orders" actions={headerActions}>
@@ -1096,6 +1110,52 @@ export default function Orders() {
                       </div>
                     </div>
                   </div>
+
+                  {viewMatchingSpecs.length > 0 && (
+                    <div className="hx-detail-section">
+                      <span className="hx-detail-section__title">Size Details (from company record)</span>
+                      <div className="table-responsive">
+                        <table className="hx-order-spec-table">
+                          <thead>
+                            <tr>
+                              <th>Greentile Thick</th>
+                              <th>Upper Punch</th>
+                              <th>Up Master No.</th>
+                              <th>Lower Punch</th>
+                              <th>LP Master No.</th>
+                              <th>Other Master Nos.</th>
+                              <th>Cavity</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {viewMatchingSpecs.map((spec) => (
+                              <tr key={spec.id}>
+                                <td>{spec.greentile_thick || '-'}</td>
+                                <td>{spec.upper_punch || '-'}</td>
+                                <td>{spec.up_master_no || '-'}</td>
+                                <td>{spec.lower_punch || '-'}</td>
+                                <td>{spec.lp_master_no || '-'}</td>
+                                <td>
+                                  {spec.other_masters.length > 0 ? (
+                                    <div className="hx-order-badges">
+                                      {spec.other_masters.map((om, i) => (
+                                        <span key={i} className="hx-order-badge">
+                                          {om.punch_type}: {om.master_number}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    '-'
+                                  )}
+                                </td>
+                                <td>{spec.cavity || '-'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
 
                   {(viewTarget.punch_numbers ?? []).length > 0 && (
                     <div className="hx-detail-section">
