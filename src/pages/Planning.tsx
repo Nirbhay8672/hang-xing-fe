@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { ApiError } from '../auth/apiClient'
 import AppShell from '../components/AppShell'
+import Pagination from '../components/Pagination'
 import '../components/statusPill.css'
+import { usePagination } from '../components/usePagination'
 import type { Order } from '../orders/types'
 import { ordersService } from '../orders/ordersService'
 import './Orders.css'
@@ -34,6 +36,9 @@ export default function Planning() {
       setLoadError(err instanceof ApiError ? err.message : 'Failed to load orders.')
     }
   }
+
+  const sortedOrders = orders ? [...orders].sort((a, b) => b.id - a.id) : []
+  const { page, setPage, totalPages, totalItems, perPage, pageItems: pagedOrders } = usePagination(sortedOrders, 10)
 
   return (
     <AppShell title="Production Planning">
@@ -83,7 +88,7 @@ export default function Planning() {
                       </tr>
                     </thead>
                     <tbody>
-                      {[...orders].sort((a, b) => b.id - a.id).map((o) => (
+                      {pagedOrders.map((o) => (
                         <tr key={o.id}>
                           <td>
                             <span className="position hx-planning-order-no">{o.order_no}</span>
@@ -121,6 +126,7 @@ export default function Planning() {
                   </table>
                 </div>
               )}
+              <Pagination page={page} totalPages={totalPages} totalItems={totalItems} perPage={perPage} onPageChange={setPage} />
             </div>
           </div>
         </div>

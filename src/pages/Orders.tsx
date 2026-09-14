@@ -6,7 +6,9 @@ import { FloatingInput, FloatingSelect, FloatingTextarea } from '../components/F
 import '../components/detailView.css'
 import '../components/formStyles.css'
 import '../components/iconButtons.css'
+import Pagination from '../components/Pagination'
 import '../components/statusPill.css'
+import { usePagination } from '../components/usePagination'
 import type { Company } from '../companies/types'
 import { companiesService } from '../companies/companiesService'
 import { masterNumbersService } from '../masterNumbers/masterNumbersService'
@@ -551,6 +553,15 @@ export default function Orders() {
   })
   const filteredOrders = searchedOrders && sortOrders(searchedOrders, sortField, sortDir)
 
+  const {
+    page: ordersPage,
+    setPage: setOrdersPage,
+    totalPages: ordersTotalPages,
+    totalItems: ordersTotalItems,
+    perPage: ordersPerPage,
+    pageItems: pagedOrders,
+  } = usePagination(filteredOrders ?? [], 10)
+
   function sortIconClass(field: SortField): string {
     if (sortField !== field) return 'la la-sort hx-sort-icon'
     return sortDir === 'asc' ? 'la la-sort-up hx-sort-icon hx-sort-icon--active' : 'la la-sort-down hx-sort-icon hx-sort-icon--active'
@@ -669,7 +680,7 @@ export default function Orders() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredOrders.map((o) => (
+                      {pagedOrders.map((o) => (
                         <tr key={o.id}>
                           <td>
                             <span className="position">{o.order_no}</span>
@@ -751,6 +762,13 @@ export default function Orders() {
                   </table>
                 </div>
               )}
+              <Pagination
+                page={ordersPage}
+                totalPages={ordersTotalPages}
+                totalItems={ordersTotalItems}
+                perPage={ordersPerPage}
+                onPageChange={setOrdersPage}
+              />
             </div>
           </div>
         </div>

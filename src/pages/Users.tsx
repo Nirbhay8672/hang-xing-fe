@@ -6,6 +6,8 @@ import { FloatingInput, FloatingSelect } from '../components/FloatingField'
 import '../components/detailView.css'
 import '../components/formStyles.css'
 import '../components/iconButtons.css'
+import Pagination from '../components/Pagination'
+import { usePagination } from '../components/usePagination'
 import type { Role } from '../roles/types'
 import { rolesService } from '../roles/rolesService'
 import type { User } from '../users/types'
@@ -155,6 +157,8 @@ export default function Users() {
     return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
   })
 
+  const { page, setPage, totalPages, totalItems, perPage, pageItems: pagedUsers } = usePagination(filteredUsers ?? [], 10)
+
   const headerActions = (
     <>
       <div className="action-btn">
@@ -214,7 +218,7 @@ export default function Users() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredUsers.map((u) => (
+                      {pagedUsers.map((u) => (
                         <tr key={u.id}>
                           <td>
                             <span className="position">{u.name}</span>
@@ -269,6 +273,7 @@ export default function Users() {
                   </table>
                 </div>
               )}
+              <Pagination page={page} totalPages={totalPages} totalItems={totalItems} perPage={perPage} onPageChange={setPage} />
             </div>
           </div>
         </div>

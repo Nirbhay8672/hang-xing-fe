@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { ApiError } from '../auth/apiClient'
 import AppShell from '../components/AppShell'
+import Pagination from '../components/Pagination'
 import '../components/statusPill.css'
+import { usePagination } from '../components/usePagination'
 import type { Order } from '../orders/types'
 import { ordersService } from '../orders/ordersService'
 import './Orders.css'
@@ -41,6 +43,7 @@ export default function Production() {
   }
 
   const plannedOrders = orders ? orders.filter((o) => o.planning_status === 'Planned').sort((a, b) => b.id - a.id) : null
+  const { page, setPage, totalPages, totalItems, perPage, pageItems: pagedOrders } = usePagination(plannedOrders ?? [], 10)
 
   return (
     <AppShell title="Supervisor Dashboard">
@@ -87,7 +90,7 @@ export default function Production() {
                       </tr>
                     </thead>
                     <tbody>
-                      {plannedOrders.map((o) => (
+                      {pagedOrders.map((o) => (
                         <tr key={o.id}>
                           <td>
                             <span className="position hx-planning-order-no">{o.order_no}</span>
@@ -125,6 +128,7 @@ export default function Production() {
                   </table>
                 </div>
               )}
+              <Pagination page={page} totalPages={totalPages} totalItems={totalItems} perPage={perPage} onPageChange={setPage} />
             </div>
           </div>
         </div>

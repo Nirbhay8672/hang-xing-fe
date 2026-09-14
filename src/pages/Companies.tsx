@@ -6,6 +6,8 @@ import { FloatingInput, FloatingSelect } from '../components/FloatingField'
 import '../components/detailView.css'
 import '../components/formStyles.css'
 import '../components/iconButtons.css'
+import Pagination from '../components/Pagination'
+import { usePagination } from '../components/usePagination'
 import type { Company, ManufacturingSpecificationInput } from '../companies/types'
 import { companiesService } from '../companies/companiesService'
 import type { Order } from '../orders/types'
@@ -280,6 +282,15 @@ export default function Companies() {
     )
   })
 
+  const {
+    page: companiesPage,
+    setPage: setCompaniesPage,
+    totalPages: companiesTotalPages,
+    totalItems: companiesTotalItems,
+    perPage: companiesPerPage,
+    pageItems: pagedCompanies,
+  } = usePagination(filteredCompanies ?? [], 10)
+
   const headerActions = (
     <>
       <div className="action-btn">
@@ -348,7 +359,7 @@ export default function Companies() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredCompanies.map((c) => (
+                      {pagedCompanies.map((c) => (
                         <tr key={c.id}>
                           <td>
                             <span className="position">{c.name}</span>
@@ -418,6 +429,13 @@ export default function Companies() {
                   </table>
                 </div>
               )}
+              <Pagination
+                page={companiesPage}
+                totalPages={companiesTotalPages}
+                totalItems={companiesTotalItems}
+                perPage={companiesPerPage}
+                onPageChange={setCompaniesPage}
+              />
             </div>
           </div>
         </div>
