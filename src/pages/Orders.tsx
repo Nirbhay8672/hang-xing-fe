@@ -77,7 +77,9 @@ function progressDetail(order: Order): string {
 }
 
 function sortOrders(list: Order[], field: SortField | null, dir: SortDir): Order[] {
-  if (!field) return list
+  // Default (no column sort applied): newest orders first, regardless of what order the API
+  // returned them in.
+  if (!field) return [...list].sort((a, b) => b.id - a.id)
   const factor = dir === 'asc' ? 1 : -1
   return [...list].sort((a, b) => {
     const va = sortValue(a, field)

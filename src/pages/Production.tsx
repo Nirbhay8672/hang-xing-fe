@@ -40,7 +40,7 @@ export default function Production() {
     }
   }
 
-  const plannedOrders = orders?.filter((o) => o.planning_status === 'Planned') ?? null
+  const plannedOrders = orders ? orders.filter((o) => o.planning_status === 'Planned').sort((a, b) => b.id - a.id) : null
 
   return (
     <AppShell title="Supervisor Dashboard">

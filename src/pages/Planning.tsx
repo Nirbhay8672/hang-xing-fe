@@ -83,7 +83,7 @@ export default function Planning() {
                       </tr>
                     </thead>
                     <tbody>
-                      {orders.map((o) => (
+                      {[...orders].sort((a, b) => b.id - a.id).map((o) => (
                         <tr key={o.id}>
                           <td>
                             <span className="position hx-planning-order-no">{o.order_no}</span>
