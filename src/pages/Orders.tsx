@@ -570,8 +570,32 @@ export default function Orders() {
   )
 
   // Same company spec rows shown in Create/Edit's "Size Details" table, for the order being
-  // viewed — read-only here, no checkboxes.
-  const viewMatchingSpecs = viewTarget ? (viewCompany?.manufacturing_specifications ?? []).filter((s) => s.size === viewTarget.size) : []
+  // viewed — read-only here, no checkboxes. Narrowed to just the spec(s) actually selected for
+  // this order; older orders saved before specification_ids existed fall back to every spec row
+  // for the size, same fallback as orderToForm.
+  const viewSizeMatches = viewTarget ? (viewCompany?.manufacturing_specifications ?? []).filter((s) => s.size === viewTarget.size) : []
+  const viewMatchingSpecs =
+    viewTarget && viewTarget.specification_ids && viewTarget.specification_ids.length > 0
+      ? viewSizeMatches.filter((s) => viewTarget.specification_ids.includes(s.id))
+      : viewSizeMatches
+  const viewIsUpperPunch = viewTarget ? viewTarget.punch_type.startsWith('U') : false
+  const viewIsLowerPunch = viewTarget ? viewTarget.punch_type.startsWith('L') : false
+
+  // Every master number that applies to this order's selected spec(s) + punch type — an order
+  // can cover several spec rows sharing one size, each with its own master number, so the
+  // order's own saved master_number (one choice from among these) isn't the whole picture.
+  const viewMasterNumbers = (() => {
+    if (!viewTarget) return []
+    const values: string[] = [viewTarget.master_number].filter(Boolean)
+    for (const spec of viewMatchingSpecs) {
+      if (viewIsUpperPunch && spec.up_master_no) values.push(spec.up_master_no)
+      if (viewIsLowerPunch && spec.lp_master_no) values.push(spec.lp_master_no)
+      for (const other of spec.other_masters ?? []) {
+        if (other.punch_type === viewTarget.punch_type) values.push(other.master_number)
+      }
+    }
+    return Array.from(new Set(values))
+  })()
 
   return (
     <AppShell title="Orders" actions={headerActions}>
@@ -1080,7 +1104,7 @@ export default function Orders() {
                       </div>
                       <div>
                         <span className="hx-detail-grid__label">Master Number</span>
-                        <span className="hx-detail-grid__value">{viewTarget.master_number}</span>
+                        <span className="hx-detail-grid__value">{viewMasterNumbers.join(', ') || viewTarget.master_number}</span>
                       </div>
                       <div>
                         <span className="hx-detail-grid__label">Order By</span>
@@ -1119,10 +1143,18 @@ export default function Orders() {
                           <thead>
                             <tr>
                               <th>Greentile Thick</th>
-                              <th>Upper Punch</th>
-                              <th>Up Master No.</th>
-                              <th>Lower Punch</th>
-                              <th>LP Master No.</th>
+                              {viewIsUpperPunch && (
+                                <>
+                                  <th>Upper Punch</th>
+                                  <th>Up Master No.</th>
+                                </>
+                              )}
+                              {viewIsLowerPunch && (
+                                <>
+                                  <th>Lower Punch</th>
+                                  <th>LP Master No.</th>
+                                </>
+                              )}
                               <th>Other Master Nos.</th>
                               <th>Cavity</th>
                             </tr>
@@ -1131,10 +1163,18 @@ export default function Orders() {
                             {viewMatchingSpecs.map((spec) => (
                               <tr key={spec.id}>
                                 <td>{spec.greentile_thick || '-'}</td>
-                                <td>{spec.upper_punch || '-'}</td>
-                                <td>{spec.up_master_no || '-'}</td>
-                                <td>{spec.lower_punch || '-'}</td>
-                                <td>{spec.lp_master_no || '-'}</td>
+                                {viewIsUpperPunch && (
+                                  <>
+                                    <td>{spec.upper_punch || '-'}</td>
+                                    <td>{spec.up_master_no || '-'}</td>
+                                  </>
+                                )}
+                                {viewIsLowerPunch && (
+                                  <>
+                                    <td>{spec.lower_punch || '-'}</td>
+                                    <td>{spec.lp_master_no || '-'}</td>
+                                  </>
+                                )}
                                 <td>
                                   {spec.other_masters.length > 0 ? (
                                     <div className="hx-order-badges">

@@ -494,7 +494,13 @@ export default function Companies() {
                           <p className="hx-companies-empty">No specifications added.</p>
                         )}
 
-                        {form.manufacturing_specifications.map((spec, index) => (
+                        {form.manufacturing_specifications.map((spec, index) => {
+                          // An entirely blank row (just added, not filled in yet) is allowed —
+                          // it's dropped on submit. Once any field in the row has a value,
+                          // Size becomes required, same as the row would need to be complete
+                          // enough to actually get saved.
+                          const rowHasValue = Object.values(spec).some((value) => value.trim() !== '')
+                          return (
                           <div className="hx-spec-row" key={index}>
                             <div className="hx-spec-row__header">
                               <span className="hx-spec-row__title">Specification {index + 1}</span>
@@ -515,6 +521,7 @@ export default function Companies() {
                                 wrapperClassName="mb-0"
                                 value={spec.size}
                                 onChange={(e) => updateSpecField(index, 'size', e.target.value)}
+                                required={rowHasValue}
                                 error={specError(index, 'size')}
                               >
                                 <option value="">— Select —</option>
@@ -580,7 +587,8 @@ export default function Companies() {
                               />
                             </div>
                           </div>
-                        ))}
+                          )
+                        })}
                       </div>
 
                       <div className="button-group d-flex justify-content-center pt-20">
