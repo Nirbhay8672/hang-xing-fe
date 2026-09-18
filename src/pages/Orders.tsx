@@ -595,13 +595,15 @@ export default function Orders() {
 
   // Same company spec rows shown in Create/Edit's "Size Details" table, for the order being
   // viewed — read-only here, no checkboxes. Narrowed to just the spec(s) actually selected for
-  // this order; older orders saved before specification_ids existed fall back to every spec row
-  // for the size, same fallback as orderToForm.
-  const viewSizeMatches = viewTarget ? (viewCompany?.manufacturing_specifications ?? []).filter((s) => s.size === viewTarget.size) : []
-  const viewMatchingSpecs =
-    viewTarget && viewTarget.specification_ids && viewTarget.specification_ids.length > 0
-      ? viewSizeMatches.filter((s) => viewTarget.specification_ids.includes(s.id))
-      : viewSizeMatches
+  // this order (specification_ids) rather than a plain size-string match — the order's size can
+  // be free-typed/corrected during Planning, so a loose string match can silently come up empty
+  // even when the order clearly has associated spec(s). Older orders saved before
+  // specification_ids existed fall back to a size match against every spec row, same as before.
+  const viewMatchingSpecs = viewTarget
+    ? viewTarget.specification_ids && viewTarget.specification_ids.length > 0
+      ? (viewCompany?.manufacturing_specifications ?? []).filter((s) => viewTarget.specification_ids.includes(s.id))
+      : (viewCompany?.manufacturing_specifications ?? []).filter((s) => s.size === viewTarget.size)
+    : []
   const viewIsUpperPunch = viewTarget ? viewTarget.punch_type.startsWith('U') : false
   const viewIsLowerPunch = viewTarget ? viewTarget.punch_type.startsWith('L') : false
 
@@ -1139,6 +1141,12 @@ export default function Orders() {
                       <div>
                         <span className="hx-detail-grid__label">Master Number</span>
                         <span className="hx-detail-grid__value">{viewMasterNumbers.join(', ') || viewTarget.master_number}</span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">{viewIsUpperPunch ? 'Upper Punch' : 'Lower Punch'}</span>
+                        <span className="hx-detail-grid__value">
+                          {(viewIsUpperPunch ? viewMatchingSpecs[0]?.upper_punch : viewMatchingSpecs[0]?.lower_punch) || '—'}
+                        </span>
                       </div>
                       <div>
                         <span className="hx-detail-grid__label">Order By</span>

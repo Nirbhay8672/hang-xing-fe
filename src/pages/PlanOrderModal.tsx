@@ -152,7 +152,16 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
     }
   }
 
-  const matchingSpec = company?.manufacturing_specifications.find((s) => s.size === order?.size) ?? null
+  // Prefer the spec(s) actually selected for this order (specification_ids) over a plain size
+  // string match — a company can have several spec rows sharing one size, and the order's size
+  // itself can be free-typed/corrected right here on this page, so a loose string match can
+  // silently miss even when the order clearly has an associated spec.
+  const specMatches = company
+    ? order?.specification_ids && order.specification_ids.length > 0
+      ? company.manufacturing_specifications.filter((s) => order.specification_ids.includes(s.id))
+      : company.manufacturing_specifications.filter((s) => s.size === order?.size)
+    : []
+  const matchingSpec = specMatches[0] ?? null
   const isUpperPunch = order?.punch_type.startsWith('U') ?? true
   // An "other master" scoped to this order's exact punch-type variant (e.g. "U - DIN") takes
   // priority over the spec's plain Upper/Lower default, which only covers the broad side.
