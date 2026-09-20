@@ -1,3 +1,8 @@
+.hx-orders-search {
+  width: 340px;
+  max-width: 100%;
+}
+
 .hx-sort-th {
   display: inline-flex;
   align-items: center;

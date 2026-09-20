@@ -11,6 +11,9 @@ export interface CompletedTask {
 
 export interface TaskRemark {
   task: string
+  /** Which physical piece this note applies to — a remark is added per tick (one task on one
+   * punch number), since different pieces can hit different issues during production. */
+  punch_number_id: number
   remark: string
 }
 
@@ -64,9 +67,10 @@ export interface Order {
    * off as assigned for this order's plan. */
   planning_tasks: string[]
   planning_remarks: string | null
-  /** Free-text note per production task (e.g. an issue hit, or a change made mid-process) —
-   * added from the small note icon next to each task row in the Track modal. Absent/empty
-   * until someone adds one; at most one entry per task name. */
+  /** Free-text note per production tick — one task on one punch number (e.g. an issue hit, or
+   * a change made mid-process for that specific piece) — added from the small note icon next
+   * to each checkbox in the Track modal. Absent/empty until someone adds one; at most one
+   * entry per (task, punch_number_id) pair. */
   task_remarks?: TaskRemark[]
   /** 0-100 — share of (punch number × assigned task) pairs marked complete on the
    * Production dashboard. Computed server-side; only meaningful once planned. */

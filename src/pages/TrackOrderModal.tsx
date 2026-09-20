@@ -62,7 +62,7 @@ export default function TrackOrderModal({ orderId, onClose, onSaved }: TrackOrde
   const [loadError, setLoadError] = useState<string | null>(null)
   const [savingKey, setSavingKey] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
-  const [editingRemarkTask, setEditingRemarkTask] = useState<string | null>(null)
+  const [remarkTarget, setRemarkTarget] = useState<{ task: string; punchId: number; punchNumber: string } | null>(null)
   const [remarkDraft, setRemarkDraft] = useState('')
   const [savingRemark, setSavingRemark] = useState(false)
 
@@ -109,26 +109,29 @@ export default function TrackOrderModal({ orderId, onClose, onSaved }: TrackOrde
     }
   }
 
-  function openRemarkEditor(task: string, existing?: TaskRemark) {
+  function openRemarkModal(task: string, punchId: number, punchNumber: string, existing?: TaskRemark) {
     setRemarkDraft(existing?.remark ?? '')
-    setEditingRemarkTask(task)
+    setRemarkTarget({ task, punchId, punchNumber })
   }
 
-  function closeRemarkEditor() {
-    setEditingRemarkTask(null)
+  function closeRemarkModal() {
+    if (savingRemark) return
+    setRemarkTarget(null)
     setRemarkDraft('')
   }
 
-  async function saveTaskRemark(task: string) {
-    if (!order) return
+  async function saveTaskRemark() {
+    if (!order || !remarkTarget) return
+    const { task, punchId } = remarkTarget
     setSavingRemark(true)
     setSaveError(null)
     try {
       const trimmed = remarkDraft.trim()
       const existing = order.task_remarks ?? []
+      const isSameTick = (r: TaskRemark) => r.punch_number_id === punchId && taskKey(r.task) === taskKey(task)
       const nextRemarks = trimmed
-        ? [...existing.filter((r) => taskKey(r.task) !== taskKey(task)), { task, remark: trimmed }]
-        : existing.filter((r) => taskKey(r.task) !== taskKey(task))
+        ? [...existing.filter((r) => !isSameTick(r)), { task, punch_number_id: punchId, remark: trimmed }]
+        : existing.filter((r) => !isSameTick(r))
       const response = await ordersService.updateProduction(order.id, {
         punch_numbers: order.punch_numbers.map((p) => ({ id: p.id, completed_tasks: p.completed_tasks.map((ct) => ct.task) })),
         task_remarks: nextRemarks,
@@ -136,7 +139,8 @@ export default function TrackOrderModal({ orderId, onClose, onSaved }: TrackOrde
       const updated = normalizeOrder(response)
       setOrder(updated)
       onSaved(updated)
-      closeRemarkEditor()
+      setRemarkTarget(null)
+      setRemarkDraft('')
     } catch (err) {
       setSaveError(err instanceof ApiError ? err.message : 'Failed to save remark.')
     } finally {
@@ -266,68 +270,19 @@ export default function TrackOrderModal({ orderId, onClose, onSaved }: TrackOrde
                             </tr>
                           </thead>
                           <tbody>
-                            {tasks.map((task, i) => {
-                              const taskRemark = (order.task_remarks ?? []).find((r) => taskKey(r.task) === taskKey(task))
-                              const isEditingRemark = editingRemarkTask === task
-                              return (
+                            {tasks.map((task, i) => (
                               <tr key={task}>
                                 <td>
-                                  <div className="hx-track-task-cell">
-                                    <span className="hx-track-table__index">{String(i + 1).padStart(2, '0')}</span>
-                                    <span
-                                      className={
-                                        order.punch_numbers.every((p) => p.completed_tasks.some((ct) => taskKey(ct.task) === taskKey(task)))
-                                          ? 'hx-track-table__done'
-                                          : ''
-                                      }
-                                    >
-                                      {task}
-                                    </span>
-                                    <button
-                                      type="button"
-                                      className={`hx-track-remark-btn ${taskRemark ? 'hx-track-remark-btn--active' : ''}`}
-                                      onClick={() => (isEditingRemark ? closeRemarkEditor() : openRemarkEditor(task, taskRemark))}
-                                      aria-label={`${taskRemark ? 'Edit' : 'Add'} remark for ${task}`}
-                                    >
-                                      <i className="la la-sticky-note"></i>
-                                    </button>
-                                  </div>
-                                  {isEditingRemark ? (
-                                    <div className="hx-track-remark-editor">
-                                      <input
-                                        type="text"
-                                        className="form-control form-control-sm"
-                                        value={remarkDraft}
-                                        onChange={(e) => setRemarkDraft(e.target.value)}
-                                        placeholder="Note an issue or change for this task…"
-                                        autoFocus
-                                        onKeyDown={(e) => {
-                                          if (e.key === 'Enter') saveTaskRemark(task)
-                                          if (e.key === 'Escape') closeRemarkEditor()
-                                        }}
-                                      />
-                                      <button
-                                        type="button"
-                                        className="hx-track-remark-save"
-                                        disabled={savingRemark}
-                                        onClick={() => saveTaskRemark(task)}
-                                        aria-label="Save remark"
-                                      >
-                                        <i className="la la-check"></i>
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="hx-track-remark-cancel"
-                                        disabled={savingRemark}
-                                        onClick={closeRemarkEditor}
-                                        aria-label="Cancel"
-                                      >
-                                        <i className="la la-times"></i>
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    taskRemark && <span className="hx-track-remark-text">{taskRemark.remark}</span>
-                                  )}
+                                  <span className="hx-track-table__index">{String(i + 1).padStart(2, '0')}</span>
+                                  <span
+                                    className={
+                                      order.punch_numbers.every((p) => p.completed_tasks.some((ct) => taskKey(ct.task) === taskKey(task)))
+                                        ? 'hx-track-table__done'
+                                        : ''
+                                    }
+                                  >
+                                    {task}
+                                  </span>
                                 </td>
                                 {order.punch_numbers.map((p) => {
                                   const completedEntry = p.completed_tasks.find((ct) => taskKey(ct.task) === taskKey(task))
@@ -336,28 +291,41 @@ export default function TrackOrderModal({ orderId, onClose, onSaved }: TrackOrde
                                   // only show the tooltip once there's an actual timestamp to show.
                                   const hasTimestamp = Boolean(completedEntry?.completed_at)
                                   const key = `${p.id}:${task}`
+                                  const tickRemark = (order.task_remarks ?? []).find(
+                                    (r) => r.punch_number_id === p.id && taskKey(r.task) === taskKey(task),
+                                  )
                                   return (
                                     <td key={p.id}>
                                       <div className="hx-track-cell">
-                                        <button
-                                          type="button"
-                                          className={`hx-track-toggle ${isDone ? 'hx-track-toggle--done' : ''} ${
-                                            hasTimestamp ? 'hx-tooltip' : ''
-                                          }`}
-                                          data-tooltip={hasTimestamp ? `Completed ${formatDateTime(completedEntry!.completed_at)}` : undefined}
-                                          disabled={savingKey === key}
-                                          onClick={() => toggleTaskDone(p.id, task)}
-                                          aria-label={`${task} for ${p.punch_number}`}
-                                        >
-                                          {isDone && <i className="la la-check"></i>}
-                                        </button>
+                                        <div className="hx-track-tick-row">
+                                          <button
+                                            type="button"
+                                            className={`hx-track-toggle ${isDone ? 'hx-track-toggle--done' : ''} ${
+                                              hasTimestamp ? 'hx-tooltip' : ''
+                                            }`}
+                                            data-tooltip={hasTimestamp ? `Completed ${formatDateTime(completedEntry!.completed_at)}` : undefined}
+                                            disabled={savingKey === key}
+                                            onClick={() => toggleTaskDone(p.id, task)}
+                                            aria-label={`${task} for ${p.punch_number}`}
+                                          >
+                                            {isDone && <i className="la la-check"></i>}
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className={`hx-track-remark-btn ${tickRemark ? 'hx-track-remark-btn--active' : ''}`}
+                                            onClick={() => openRemarkModal(task, p.id, p.punch_number, tickRemark)}
+                                            aria-label={`${tickRemark ? 'Edit' : 'Add'} remark for ${task} on ${p.punch_number}`}
+                                          >
+                                            <i className="la la-sticky-note"></i>
+                                          </button>
+                                        </div>
+                                        {tickRemark && <span className="hx-track-remark-text">{tickRemark.remark}</span>}
                                       </div>
                                     </td>
                                   )
                                 })}
                               </tr>
-                              )
-                            })}
+                            ))}
                           </tbody>
                         </table>
                       </div>
@@ -398,6 +366,52 @@ export default function TrackOrderModal({ orderId, onClose, onSaved }: TrackOrde
         </div>
       </div>
       <div className="modal-backdrop fade show" onClick={onClose}></div>
+
+      {remarkTarget && (
+        <>
+          <div className="modal fade show d-block" role="dialog" aria-modal="true">
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content radius-xl">
+                <div className="modal-header">
+                  <h6 className="modal-title fw-500">
+                    {remarkTarget.task} — {remarkTarget.punchNumber}
+                  </h6>
+                  <button type="button" className="btn-close" onClick={closeRemarkModal} aria-label="Close">
+                    <i className="las la-times"></i>
+                  </button>
+                </div>
+                <div className="modal-body">
+                  {saveError && <p className="hx-form-error">{saveError}</p>}
+                  <div className="form-group mb-0">
+                    <textarea
+                      className="form-control hx-plan-remarks"
+                      rows={4}
+                      placeholder="Note an issue or change for this piece…"
+                      value={remarkDraft}
+                      onChange={(e) => setRemarkDraft(e.target.value)}
+                      autoFocus
+                    />
+                  </div>
+                  <div className="button-group d-flex justify-content-center pt-20">
+                    <button
+                      type="button"
+                      className="btn btn-sm hx-btn-secondary btn-rounded me-10"
+                      onClick={closeRemarkModal}
+                      disabled={savingRemark}
+                    >
+                      Cancel
+                    </button>
+                    <button type="button" className="btn btn-sm btn-primary btn-rounded" onClick={saveTaskRemark} disabled={savingRemark}>
+                      {savingRemark ? 'Saving…' : 'Save Remark'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show" onClick={closeRemarkModal}></div>
+        </>
+      )}
     </>
   )
 }

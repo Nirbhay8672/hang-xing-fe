@@ -548,7 +548,10 @@ export default function Orders() {
     return (
       o.order_no?.toLowerCase().includes(q) ||
       o.company?.name.toLowerCase().includes(q) ||
-      o.master_number?.toLowerCase().includes(q)
+      o.master_number?.toLowerCase().includes(q) ||
+      // Punch numbers are set once the order type (New/RC/RR) is chosen — auto-generated
+      // HXN-#### for New, free-typed for RC/RR — so searching by one should find the order.
+      (o.punch_numbers ?? []).some((p) => p.punch_number?.toLowerCase().includes(q))
     )
   })
   const filteredOrders = searchedOrders && sortOrders(searchedOrders, sortField, sortDir)
@@ -577,8 +580,8 @@ export default function Orders() {
             </span>
             <input
               type="text"
-              className="form-control form-control-default"
-              placeholder="Search by order no, company, or master number"
+              className="form-control form-control-default hx-orders-search"
+              placeholder="Search with..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />

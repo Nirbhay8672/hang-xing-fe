@@ -53,6 +53,15 @@
   color: #fff;
 }
 
+.hx-icon-btn--resolve {
+  color: #198754;
+}
+
+.hx-icon-btn--resolve:hover:not(:disabled) {
+  background: #198754;
+  color: #fff;
+}
+
 .hx-icon-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;

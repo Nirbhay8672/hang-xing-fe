@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-import { isAdmin } from '../auth/roleUtils'
+import { isAdmin, isMarketing } from '../auth/roleUtils'
 import { DASHBOARD_JS_SRCS } from '../pages/dashboardAssets'
 import PageLoader from './PageLoader'
 import { SHELL_HEADER_HTML, SHELL_SIDEBAR_HTML } from './shellMarkup'
@@ -56,12 +56,19 @@ const SIDEBAR_PERMISSIONS: Record<string, string> = {
   '/roles': 'view roles',
   '/companies': 'view companies',
   '/orders': 'view orders',
+  '/complaints': 'view complaints',
+  '/problems': 'view problems',
 }
 
 // Users and Roles manage accounts/permissions for the whole app, so they're restricted to
 // the Admin role in the sidebar on top of the permission check above, regardless of what
 // permissions a non-admin role happens to be granted.
 const SIDEBAR_ADMIN_ONLY = new Set(['/users', '/roles'])
+
+// Complaints/Problems are Marketing's day-to-day tool (customer-raised issues), so they're
+// restricted to the Marketing and Admin roles in the sidebar, same override pattern as
+// SIDEBAR_ADMIN_ONLY above.
+const SIDEBAR_MARKETING_OR_ADMIN = new Set(['/complaints', '/problems'])
 
 interface AppShellProps {
   title: string
@@ -131,7 +138,10 @@ export default function AppShell({ title, actions, children }: AppShellProps) {
           const li = link.closest('li')
           if (!li) return
           const [path, permission] = entry
-          const allowed = user.permissions.includes(permission) && (!SIDEBAR_ADMIN_ONLY.has(path) || isAdmin(user))
+          const allowed =
+            user.permissions.includes(permission) &&
+            (!SIDEBAR_ADMIN_ONLY.has(path) || isAdmin(user)) &&
+            (!SIDEBAR_MARKETING_OR_ADMIN.has(path) || isAdmin(user) || isMarketing(user))
           li.style.display = allowed ? '' : 'none'
         })
       }

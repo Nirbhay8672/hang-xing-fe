@@ -1,0 +1,39 @@
+import type { Problem } from '../problems/types'
+import type { User } from '../users/types'
+
+export type ComplaintStatus = 'Active' | 'Pending' | 'Completed'
+
+export interface Complaint {
+  id: number
+  complaint_no: string
+  problem_id: number
+  problem: Problem
+  user_id: number
+  user: User
+  title: string
+  description: string | null
+  /** Set once someone works the ticket — same record as the original complaint, not a
+   * separate row (see the "Update Status" modal in Complaints.tsx). */
+  solution: string | null
+  result: string | null
+  /** Always "Active" on creation; moves to "Pending" then "Completed" from there. */
+  status: ComplaintStatus
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateComplaintRequest {
+  problem_id: number
+  user_id: number
+  title: string
+  description?: string
+}
+
+export interface UpdateComplaintRequest {
+  problem_id: number
+  title: string
+  description?: string
+  solution?: string
+  result?: string
+  status?: ComplaintStatus
+}

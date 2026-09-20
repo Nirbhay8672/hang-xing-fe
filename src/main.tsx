@@ -5,10 +5,12 @@ import './theme.css'
 import { AuthProvider, RequireAuth } from './auth/AuthContext.tsx'
 import Layout from './components/Layout.tsx'
 import Companies from './pages/Companies.tsx'
+import Complaints from './pages/Complaints.tsx'
 import Dashboard from './pages/Dashboard.tsx'
 import Login from './pages/Login.tsx'
 import Orders from './pages/Orders.tsx'
 import Planning from './pages/Planning.tsx'
+import Problems from './pages/Problems.tsx'
 import Production from './pages/Production.tsx'
 import Profile from './pages/Profile.tsx'
 import Roles from './pages/Roles.tsx'
@@ -86,6 +88,22 @@ createRoot(document.getElementById('root')!).render(
             element={
               <RequireAuth>
                 <Production />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/complaints"
+            element={
+              <RequireAuth>
+                <Complaints />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/problems"
+            element={
+              <RequireAuth>
+                <Problems />
               </RequireAuth>
             }
           />

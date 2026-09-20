@@ -30,6 +30,14 @@
   color: #6b7280;
 }
 
+/* A freshly raised complaint, not yet picked up — distinct from the neutral gray "Pending"
+   used elsewhere (which means "not started"), since here Active is the starting state and
+   Pending is a deliberate later step (someone is on it, but it isn't resolved yet). */
+.hx-status-pill--active {
+  background: rgba(13, 110, 253, 0.12);
+  color: #0d6efd;
+}
+
 .hx-status-pill--review {
   background: rgba(169, 144, 74, 0.12);
   color: #957f41;

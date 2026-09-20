@@ -93,14 +93,10 @@
   white-space: normal;
 }
 
-.hx-track-task-cell {
+.hx-track-tick-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.hx-track-task-cell .hx-track-table__index {
-  margin-right: 0;
+  gap: 6px;
 }
 
 .hx-track-remark-btn {
@@ -128,45 +124,10 @@
   color: #a9762d;
 }
 
-.hx-track-remark-editor {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 8px;
-  max-width: 420px;
-  white-space: normal;
-}
-
-.hx-track-remark-editor input {
-  flex: 1;
-  min-width: 0;
-}
-
-.hx-track-remark-save,
-.hx-track-remark-cancel {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  border: 1px solid #dde1ea;
-  border-radius: 6px;
-  background: #fff;
-  cursor: pointer;
-}
-
-.hx-track-remark-save {
-  color: #198754;
-}
-
-.hx-track-remark-cancel {
-  color: #dc3545;
-}
-
 .hx-track-remark-text {
   display: block;
   margin-top: 4px;
+  max-width: 140px;
   font-size: 11.5px;
   font-weight: 400;
   color: #9299b8;
