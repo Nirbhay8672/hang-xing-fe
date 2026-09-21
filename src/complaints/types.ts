@@ -21,6 +21,9 @@ export interface Complaint {
   result: string | null
   /** Always "Active" on creation; moves to "Pending" then "Completed" from there. */
   status: ComplaintStatus
+  /** Ready-to-use absolute URL — uploaded/replaced/removed via the dedicated
+   * /complaints/{id}/image endpoints, not through create/update. */
+  image_url: string | null
   created_at: string
   updated_at: string
 }

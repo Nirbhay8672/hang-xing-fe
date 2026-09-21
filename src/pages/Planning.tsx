@@ -15,13 +15,25 @@ function orderTypePillClass(orderType: string): string {
 }
 
 function planningStatusPillClass(status: string): string {
-  return status === 'Planned' ? 'hx-status-pill--planned' : 'hx-status-pill--review'
+  if (status === 'Planned') return 'hx-status-pill--planned'
+  if (status === 'On Hold') return 'hx-status-pill--onhold'
+  if (status === 'Approved') return 'hx-status-pill--approved'
+  return 'hx-status-pill--review'
 }
 
 export default function Planning() {
   const [orders, setOrders] = useState<Order[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [planOrderId, setPlanOrderId] = useState<number | null>(null)
+
+  // An order not yet planned must be approved (or explicitly put on hold) before the actual
+  // Plan form opens — this gate only applies to Review/On Hold orders. Approving persists
+  // "Approved" so the gate stays passed on later clicks too (not just for the one that
+  // triggered it) right up until the order is actually Planned (see openPlanFlow below).
+  const [confirmOrderId, setConfirmOrderId] = useState<number | null>(null)
+  const [holdSubmitting, setHoldSubmitting] = useState(false)
+  const [holdError, setHoldError] = useState<string | null>(null)
+  const [approving, setApproving] = useState(false)
 
   useEffect(() => {
     loadOrders()
@@ -36,6 +48,53 @@ export default function Planning() {
       setLoadError(err instanceof ApiError ? err.message : 'Failed to load orders.')
     }
   }
+
+  function openPlanFlow(order: Order) {
+    if (order.planning_status === 'Planned' || order.planning_status === 'Approved') {
+      setPlanOrderId(order.id)
+    } else {
+      setHoldError(null)
+      setConfirmOrderId(order.id)
+    }
+  }
+
+  function closeConfirmModal() {
+    if (holdSubmitting || approving) return
+    setConfirmOrderId(null)
+  }
+
+  async function handleApprove() {
+    if (confirmOrderId === null) return
+    setApproving(true)
+    setHoldError(null)
+    try {
+      const updated = await ordersService.updatePlanningStatus(confirmOrderId, 'Approved')
+      setOrders((prev) => prev?.map((o) => (o.id === updated.id ? updated : o)) ?? null)
+      setPlanOrderId(confirmOrderId)
+      setConfirmOrderId(null)
+    } catch (err) {
+      setHoldError(err instanceof ApiError ? err.message : 'Failed to approve order.')
+    } finally {
+      setApproving(false)
+    }
+  }
+
+  async function handleHold() {
+    if (confirmOrderId === null) return
+    setHoldSubmitting(true)
+    setHoldError(null)
+    try {
+      const updated = await ordersService.updatePlanningStatus(confirmOrderId, 'On Hold')
+      setOrders((prev) => prev?.map((o) => (o.id === updated.id ? updated : o)) ?? null)
+      setConfirmOrderId(null)
+    } catch (err) {
+      setHoldError(err instanceof ApiError ? err.message : 'Failed to put order on hold.')
+    } finally {
+      setHoldSubmitting(false)
+    }
+  }
+
+  const confirmOrder = orders?.find((o) => o.id === confirmOrderId) ?? null
 
   const sortedOrders = orders ? [...orders].sort((a, b) => b.id - a.id) : []
   const { page, setPage, totalPages, totalItems, perPage, pageItems: pagedOrders } = usePagination(sortedOrders, 10)
@@ -115,7 +174,7 @@ export default function Planning() {
                           </td>
                           <td>
                             <div className="table-actions d-flex">
-                              <button type="button" className="hx-plan-btn" onClick={() => setPlanOrderId(o.id)}>
+                              <button type="button" className="hx-plan-btn" onClick={() => openPlanFlow(o)}>
                                 <i className="la la-edit"></i> Plan
                               </button>
                             </div>
@@ -131,6 +190,49 @@ export default function Planning() {
           </div>
         </div>
       </div>
+
+      {confirmOrder && (
+        <>
+          <div className="modal fade show d-block" role="dialog" aria-modal="true">
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content radius-xl">
+                <div className="modal-header">
+                  <h6 className="modal-title fw-500">Approve {confirmOrder.order_no}?</h6>
+                  <button type="button" className="btn-close" onClick={closeConfirmModal} aria-label="Close">
+                    <i className="las la-times"></i>
+                  </button>
+                </div>
+                <div className="modal-body">
+                  <p>
+                    Approve to proceed to planning for <strong>{confirmOrder.company?.name}</strong>, or put this order on hold
+                    to leave it for later.
+                  </p>
+                  {holdError && <p className="hx-form-error">{holdError}</p>}
+                  <div className="button-group d-flex justify-content-center pt-20">
+                    <button
+                      type="button"
+                      className="btn btn-sm hx-btn-secondary btn-rounded me-10"
+                      onClick={handleHold}
+                      disabled={holdSubmitting || approving}
+                    >
+                      {holdSubmitting ? 'Saving…' : 'On Hold'}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-primary btn-rounded"
+                      onClick={handleApprove}
+                      disabled={holdSubmitting || approving}
+                    >
+                      {approving ? 'Approving…' : 'Approve'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show" onClick={closeConfirmModal}></div>
+        </>
+      )}
 
       {planOrderId !== null && (
         <PlanOrderModal

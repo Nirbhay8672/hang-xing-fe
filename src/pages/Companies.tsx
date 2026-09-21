@@ -8,7 +8,7 @@ import '../components/formStyles.css'
 import '../components/iconButtons.css'
 import Pagination from '../components/Pagination'
 import { usePagination } from '../components/usePagination'
-import type { Company, ManufacturingSpecificationInput } from '../companies/types'
+import type { Company, CompanyContractorInput, CompanyDirectorInput, ManufacturingSpecificationInput } from '../companies/types'
 import { companiesService } from '../companies/companiesService'
 import type { Order } from '../orders/types'
 import { ordersService } from '../orders/ordersService'
@@ -18,8 +18,8 @@ import './Orders.css'
 interface CompanyFormState {
   name: string
   address: string
-  director_name: string
-  director_contact: string
+  directors: CompanyDirectorInput[]
+  contractors: CompanyContractorInput[]
   manufacturing_specifications: ManufacturingSpecificationInput[]
 }
 
@@ -33,11 +33,14 @@ const EMPTY_SPEC: ManufacturingSpecificationInput = {
   cavity: '',
 }
 
+const EMPTY_DIRECTOR: CompanyDirectorInput = { name: '', contact: '' }
+const EMPTY_CONTRACTOR: CompanyContractorInput = { name: '', contact: '' }
+
 const EMPTY_FORM: CompanyFormState = {
   name: '',
   address: '',
-  director_name: '',
-  director_contact: '',
+  directors: [{ ...EMPTY_DIRECTOR }],
+  contractors: [{ ...EMPTY_CONTRACTOR }],
   manufacturing_specifications: [{ ...EMPTY_SPEC }],
 }
 
@@ -100,6 +103,8 @@ export default function Companies() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [specsTarget, setSpecsTarget] = useState<Company | null>(null)
+  const [directorsTarget, setDirectorsTarget] = useState<Company | null>(null)
+  const [contractorsTarget, setContractorsTarget] = useState<Company | null>(null)
 
   const [viewTarget, setViewTarget] = useState<Company | null>(null)
   const [viewOrders, setViewOrders] = useState<Order[] | null>(null)
@@ -135,8 +140,12 @@ export default function Companies() {
     return {
       name: company.name,
       address: company.address,
-      director_name: company.director_name,
-      director_contact: company.director_contact,
+      directors: company.directors.length
+        ? company.directors.map((d) => ({ name: d.name, contact: d.contact }))
+        : [{ ...EMPTY_DIRECTOR }],
+      contractors: company.contractors.length
+        ? company.contractors.map((c) => ({ name: c.name, contact: c.contact }))
+        : [{ ...EMPTY_CONTRACTOR }],
       manufacturing_specifications: company.manufacturing_specifications.length
         ? company.manufacturing_specifications.map((spec) => ({
             size: spec.size,
@@ -169,7 +178,12 @@ export default function Companies() {
 
   function openCreateModal() {
     setEditingCompany(null)
-    setForm({ ...EMPTY_FORM, manufacturing_specifications: [{ ...EMPTY_SPEC }] })
+    setForm({
+      ...EMPTY_FORM,
+      directors: [{ ...EMPTY_DIRECTOR }],
+      contractors: [{ ...EMPTY_CONTRACTOR }],
+      manufacturing_specifications: [{ ...EMPTY_SPEC }],
+    })
     setFormErrors({})
     setModalMode('create')
   }
@@ -242,6 +256,44 @@ export default function Companies() {
     return formErrors[`manufacturing_specifications.${index}.${field}`]?.[0]
   }
 
+  function addDirectorRow() {
+    setForm((f) => ({ ...f, directors: [...f.directors, { ...EMPTY_DIRECTOR }] }))
+  }
+
+  function removeDirectorRow(index: number) {
+    setForm((f) => ({ ...f, directors: f.directors.filter((_, i) => i !== index) }))
+  }
+
+  function updateDirectorField(index: number, field: keyof CompanyDirectorInput, value: string) {
+    setForm((f) => ({
+      ...f,
+      directors: f.directors.map((d, i) => (i === index ? { ...d, [field]: value } : d)),
+    }))
+  }
+
+  function directorError(index: number, field: keyof CompanyDirectorInput): string | undefined {
+    return formErrors[`directors.${index}.${field}`]?.[0]
+  }
+
+  function addContractorRow() {
+    setForm((f) => ({ ...f, contractors: [...f.contractors, { ...EMPTY_CONTRACTOR }] }))
+  }
+
+  function removeContractorRow(index: number) {
+    setForm((f) => ({ ...f, contractors: f.contractors.filter((_, i) => i !== index) }))
+  }
+
+  function updateContractorField(index: number, field: keyof CompanyContractorInput, value: string) {
+    setForm((f) => ({
+      ...f,
+      contractors: f.contractors.map((c, i) => (i === index ? { ...c, [field]: value } : c)),
+    }))
+  }
+
+  function contractorError(index: number, field: keyof CompanyContractorInput): string | undefined {
+    return formErrors[`contractors.${index}.${field}`]?.[0]
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setSubmitting(true)
@@ -250,11 +302,13 @@ export default function Companies() {
       const specs = form.manufacturing_specifications.filter((spec) =>
         Object.values(spec).some((value) => value.trim() !== ''),
       )
+      const directors = form.directors.filter((d) => Object.values(d).some((value) => value.trim() !== ''))
+      const contractors = form.contractors.filter((c) => Object.values(c).some((value) => value.trim() !== ''))
       const payload = {
         name: form.name,
         address: form.address,
-        director_name: form.director_name,
-        director_contact: form.director_contact,
+        directors,
+        contractors,
         manufacturing_specifications: specs,
       }
       if (modalMode === 'edit' && editingCompany) {
@@ -278,7 +332,7 @@ export default function Companies() {
     return (
       c.name.toLowerCase().includes(q) ||
       c.address.toLowerCase().includes(q) ||
-      c.director_name.toLowerCase().includes(q)
+      c.directors.some((d) => d.name.toLowerCase().includes(q))
     )
   })
 
@@ -342,10 +396,10 @@ export default function Companies() {
                           <span>Address</span>
                         </th>
                         <th>
-                          <span>Director</span>
+                          <span>Directors</span>
                         </th>
                         <th>
-                          <span>Contact</span>
+                          <span>Contractors</span>
                         </th>
                         <th>
                           <span>Created</span>
@@ -368,10 +422,26 @@ export default function Companies() {
                             <span className="position">{c.address}</span>
                           </td>
                           <td>
-                            <span className="position">{c.director_name}</span>
+                            <button
+                              type="button"
+                              className="hx-specs-badge"
+                              disabled={c.directors.length === 0}
+                              onClick={() => setDirectorsTarget(c)}
+                            >
+                              {c.directors.length} director
+                              {c.directors.length === 1 ? '' : 's'}
+                            </button>
                           </td>
                           <td>
-                            <span className="position">{c.director_contact}</span>
+                            <button
+                              type="button"
+                              className="hx-specs-badge"
+                              disabled={c.contractors.length === 0}
+                              onClick={() => setContractorsTarget(c)}
+                            >
+                              {c.contractors.length} contractor
+                              {c.contractors.length === 1 ? '' : 's'}
+                            </button>
                           </td>
                           <td>
                             <span className="position">{formatDate(c.created_at)}</span>
@@ -478,26 +548,114 @@ export default function Companies() {
                             error={formErrors.address?.[0]}
                           />
                         </div>
-                        <div className="col-md-6">
-                          <FloatingInput
-                            label="Director Name"
-                            type="text"
-                            value={form.director_name}
-                            onChange={(e) => setForm((f) => ({ ...f, director_name: e.target.value }))}
-                            required
-                            error={formErrors.director_name?.[0]}
-                          />
+                      </div>
+
+                      <div className="hx-specs-section">
+                        <div className="hx-specs-section__header">
+                          <label className="mb-0">Directors:</label>
+                          <button type="button" className="hx-specs-add-btn" onClick={addDirectorRow}>
+                            <i className="la la-plus"></i> Add Director
+                          </button>
                         </div>
-                        <div className="col-md-6">
-                          <FloatingInput
-                            label="Director Contact"
-                            type="text"
-                            value={form.director_contact}
-                            onChange={(e) => setForm((f) => ({ ...f, director_contact: e.target.value }))}
-                            required
-                            error={formErrors.director_contact?.[0]}
-                          />
+
+                        {form.directors.length === 0 && <p className="hx-companies-empty">No directors added.</p>}
+
+                        {form.directors.map((director, index) => {
+                          // An entirely blank row (just added, not filled in yet) is allowed —
+                          // it's dropped on submit. Once any field in the row has a value, Name
+                          // becomes required, same as the row would need to be complete enough
+                          // to actually get saved.
+                          const rowHasValue = Object.values(director).some((value) => value.trim() !== '')
+                          return (
+                            <div className="hx-spec-row" key={index}>
+                              <div className="hx-spec-row__header">
+                                <span className="hx-spec-row__title">Director {index + 1}</span>
+                                <button
+                                  type="button"
+                                  className="hx-icon-btn hx-icon-btn--delete"
+                                  aria-label="Remove director"
+                                  title="Remove"
+                                  onClick={() => removeDirectorRow(index)}
+                                >
+                                  <i className="la la-trash"></i>
+                                </button>
+                              </div>
+                              <div className="hx-spec-row__fields">
+                                <FloatingInput
+                                  label="Name"
+                                  type="text"
+                                  variant="default"
+                                  wrapperClassName="mb-0"
+                                  value={director.name}
+                                  onChange={(e) => updateDirectorField(index, 'name', e.target.value)}
+                                  required={rowHasValue}
+                                  error={directorError(index, 'name')}
+                                />
+                                <FloatingInput
+                                  label="Contact"
+                                  type="text"
+                                  variant="default"
+                                  wrapperClassName="mb-0"
+                                  value={director.contact}
+                                  onChange={(e) => updateDirectorField(index, 'contact', e.target.value)}
+                                  error={directorError(index, 'contact')}
+                                />
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+
+                      <div className="hx-specs-section">
+                        <div className="hx-specs-section__header">
+                          <label className="mb-0">Contractors:</label>
+                          <button type="button" className="hx-specs-add-btn" onClick={addContractorRow}>
+                            <i className="la la-plus"></i> Add Contractor
+                          </button>
                         </div>
+
+                        {form.contractors.length === 0 && <p className="hx-companies-empty">No contractors added.</p>}
+
+                        {form.contractors.map((contractor, index) => {
+                          const rowHasValue = Object.values(contractor).some((value) => value.trim() !== '')
+                          return (
+                            <div className="hx-spec-row" key={index}>
+                              <div className="hx-spec-row__header">
+                                <span className="hx-spec-row__title">Contractor {index + 1}</span>
+                                <button
+                                  type="button"
+                                  className="hx-icon-btn hx-icon-btn--delete"
+                                  aria-label="Remove contractor"
+                                  title="Remove"
+                                  onClick={() => removeContractorRow(index)}
+                                >
+                                  <i className="la la-trash"></i>
+                                </button>
+                              </div>
+                              <div className="hx-spec-row__fields">
+                                <FloatingInput
+                                  label="Name"
+                                  type="text"
+                                  variant="default"
+                                  wrapperClassName="mb-0"
+                                  value={contractor.name}
+                                  onChange={(e) => updateContractorField(index, 'name', e.target.value)}
+                                  required={rowHasValue}
+                                  error={contractorError(index, 'name')}
+                                />
+                                <FloatingInput
+                                  label="Contact"
+                                  type="text"
+                                  variant="default"
+                                  wrapperClassName="mb-0"
+                                  value={contractor.contact}
+                                  onChange={(e) => updateContractorField(index, 'contact', e.target.value)}
+                                  error={contractorError(index, 'contact')}
+                                />
+                              </div>
+                            </div>
+                          )
+                        })}
                       </div>
 
                       <div className="hx-specs-section">
@@ -647,14 +805,6 @@ export default function Companies() {
                         <span className="hx-detail-grid__value">{viewTarget.name}</span>
                       </div>
                       <div>
-                        <span className="hx-detail-grid__label">Director Name</span>
-                        <span className="hx-detail-grid__value">{viewTarget.director_name}</span>
-                      </div>
-                      <div>
-                        <span className="hx-detail-grid__label">Director Contact</span>
-                        <span className="hx-detail-grid__value">{viewTarget.director_contact}</span>
-                      </div>
-                      <div>
                         <span className="hx-detail-grid__label">Created</span>
                         <span className="hx-detail-grid__value">{formatDate(viewTarget.created_at)}</span>
                       </div>
@@ -667,6 +817,66 @@ export default function Companies() {
                         <span className="hx-detail-grid__value">{viewTarget.address}</span>
                       </div>
                     </div>
+                  </div>
+
+                  <div className="hx-detail-section">
+                    <span className="hx-detail-section__title">Directors</span>
+                    {viewTarget.directors.length === 0 ? (
+                      <p className="hx-companies-empty">No directors added.</p>
+                    ) : (
+                      <div className="table-responsive">
+                        <table className="table mb-0 table-borderless table-rounded">
+                          <thead>
+                            <tr>
+                              <th>
+                                <span>Name</span>
+                              </th>
+                              <th>
+                                <span>Contact</span>
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {viewTarget.directors.map((director) => (
+                              <tr key={director.id}>
+                                <td>{director.name}</td>
+                                <td>{director.contact}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="hx-detail-section">
+                    <span className="hx-detail-section__title">Contractors</span>
+                    {viewTarget.contractors.length === 0 ? (
+                      <p className="hx-companies-empty">No contractors added.</p>
+                    ) : (
+                      <div className="table-responsive">
+                        <table className="table mb-0 table-borderless table-rounded">
+                          <thead>
+                            <tr>
+                              <th>
+                                <span>Name</span>
+                              </th>
+                              <th>
+                                <span>Contact</span>
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {viewTarget.contractors.map((contractor) => (
+                              <tr key={contractor.id}>
+                                <td>{contractor.name}</td>
+                                <td>{contractor.contact}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
 
                   <div className="hx-detail-section">
@@ -870,6 +1080,90 @@ export default function Companies() {
             </div>
           </div>
           <div className="modal-backdrop fade show" onClick={() => setSpecsTarget(null)}></div>
+        </>
+      )}
+
+      {directorsTarget && (
+        <>
+          <div className="modal fade show d-block" role="dialog" aria-modal="true">
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content radius-xl">
+                <div className="modal-header">
+                  <h6 className="modal-title fw-500">{directorsTarget.name} — Directors</h6>
+                  <button type="button" className="btn-close" onClick={() => setDirectorsTarget(null)} aria-label="Close">
+                    <i className="las la-times"></i>
+                  </button>
+                </div>
+                <div className="modal-body">
+                  <div className="table-responsive">
+                    <table className="table mb-0 table-borderless table-rounded">
+                      <thead>
+                        <tr>
+                          <th>
+                            <span>Name</span>
+                          </th>
+                          <th>
+                            <span>Contact</span>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {directorsTarget.directors.map((director) => (
+                          <tr key={director.id}>
+                            <td>{director.name}</td>
+                            <td>{director.contact}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show" onClick={() => setDirectorsTarget(null)}></div>
+        </>
+      )}
+
+      {contractorsTarget && (
+        <>
+          <div className="modal fade show d-block" role="dialog" aria-modal="true">
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content radius-xl">
+                <div className="modal-header">
+                  <h6 className="modal-title fw-500">{contractorsTarget.name} — Contractors</h6>
+                  <button type="button" className="btn-close" onClick={() => setContractorsTarget(null)} aria-label="Close">
+                    <i className="las la-times"></i>
+                  </button>
+                </div>
+                <div className="modal-body">
+                  <div className="table-responsive">
+                    <table className="table mb-0 table-borderless table-rounded">
+                      <thead>
+                        <tr>
+                          <th>
+                            <span>Name</span>
+                          </th>
+                          <th>
+                            <span>Contact</span>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {contractorsTarget.contractors.map((contractor) => (
+                          <tr key={contractor.id}>
+                            <td>{contractor.name}</td>
+                            <td>{contractor.contact}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show" onClick={() => setContractorsTarget(null)}></div>
         </>
       )}
 

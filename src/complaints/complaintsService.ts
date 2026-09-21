@@ -27,4 +27,17 @@ export const complaintsService = {
   async remove(id: number): Promise<void> {
     await apiRequest<{ message: string }>(`/complaints/${id}`, { method: 'DELETE' })
   },
+
+  async uploadImage(id: number, image: File): Promise<Complaint> {
+    const formData = new FormData()
+    formData.append('image', image)
+    return apiRequest<Complaint>(`/complaints/${id}/image`, {
+      method: 'POST',
+      body: formData,
+    })
+  },
+
+  async removeImage(id: number): Promise<Complaint> {
+    return apiRequest<Complaint>(`/complaints/${id}/image`, { method: 'DELETE' })
+  },
 }

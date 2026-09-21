@@ -22,12 +22,30 @@ export interface ManufacturingSpecification {
   updated_at: string
 }
 
+export interface CompanyDirector {
+  id: number
+  company_id: number
+  name: string
+  contact: string
+  created_at: string
+  updated_at: string
+}
+
+export interface CompanyContractor {
+  id: number
+  company_id: number
+  name: string
+  contact: string
+  created_at: string
+  updated_at: string
+}
+
 export interface Company {
   id: number
   name: string
   address: string
-  director_name: string
-  director_contact: string
+  directors: CompanyDirector[]
+  contractors: CompanyContractor[]
   created_at: string
   updated_at: string
   manufacturing_specifications: ManufacturingSpecification[]
@@ -43,11 +61,21 @@ export interface ManufacturingSpecificationInput {
   cavity: string
 }
 
+export interface CompanyDirectorInput {
+  name: string
+  contact: string
+}
+
+export interface CompanyContractorInput {
+  name: string
+  contact: string
+}
+
 export interface CreateCompanyRequest {
   name: string
   address: string
-  director_name: string
-  director_contact: string
+  directors: CompanyDirectorInput[]
+  contractors: CompanyContractorInput[]
   manufacturing_specifications: ManufacturingSpecificationInput[]
 }
 

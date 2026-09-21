@@ -41,4 +41,11 @@ export const ordersService = {
       body: JSON.stringify(payload),
     })
   },
+
+  async updatePlanningStatus(id: number, planning_status: 'Review' | 'On Hold' | 'Approved'): Promise<Order> {
+    return apiRequest<Order>(`/orders/${id}/planning-status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ planning_status }),
+    })
+  },
 }

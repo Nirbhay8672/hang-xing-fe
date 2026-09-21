@@ -95,6 +95,14 @@ export default function Complaints() {
   const [problemError, setProblemError] = useState<string | null>(null)
   const [problemSubmitting, setProblemSubmitting] = useState(false)
 
+  // Image is handled via its own dedicated upload/remove endpoints rather than the main
+  // create/update payload — imageFile is a newly picked file waiting to be uploaded on save,
+  // imagePreviewUrl is what to show right now (the new file, the existing saved image, or
+  // nothing), and removeImageFlag marks that the existing saved image should be deleted on save.
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
+  const [removeImageFlag, setRemoveImageFlag] = useState(false)
+
   useEffect(() => {
     loadComplaints()
     problemsService.list().then(setProblems).catch(() => setProblems([]))
@@ -115,6 +123,9 @@ export default function Complaints() {
     setEditingComplaint(null)
     setForm(EMPTY_FORM)
     setFormErrors({})
+    setImageFile(null)
+    setImagePreviewUrl(null)
+    setRemoveImageFlag(false)
     setModalMode('create')
   }
 
@@ -127,7 +138,22 @@ export default function Complaints() {
       description: complaint.description ?? '',
     })
     setFormErrors({})
+    setImageFile(null)
+    setImagePreviewUrl(complaint.image_url)
+    setRemoveImageFlag(false)
     setModalMode('edit')
+  }
+
+  function handleImageFileChange(file: File | null) {
+    setImageFile(file)
+    setRemoveImageFlag(false)
+    setImagePreviewUrl(file ? URL.createObjectURL(file) : (editingComplaint?.image_url ?? null))
+  }
+
+  function handleRemoveImageClick() {
+    setImageFile(null)
+    setImagePreviewUrl(null)
+    setRemoveImageFlag(true)
   }
 
   function closeModal() {
@@ -166,13 +192,34 @@ export default function Complaints() {
         title: form.title,
         description: form.description || undefined,
       }
+      let saved: Complaint
       if (modalMode === 'edit' && editingComplaint) {
-        const updated = await complaintsService.update(editingComplaint.id, basePayload)
-        setComplaints((prev) => prev?.map((c) => (c.id === updated.id ? updated : c)) ?? null)
+        saved = await complaintsService.update(editingComplaint.id, basePayload)
       } else {
-        const created = await complaintsService.create({ ...basePayload, user_id: user!.id })
-        setComplaints((prev) => (prev ? [created, ...prev] : [created]))
+        saved = await complaintsService.create({ ...basePayload, user_id: user!.id })
       }
+
+      // Commit the main record right away — image handling below is best-effort on top of an
+      // already-saved complaint, so a failure there shouldn't make the whole submission look
+      // like it silently did nothing (the record would otherwise be missing from the list
+      // until the next reload, despite existing on the server). Checking for an existing id
+      // (rather than branching on modalMode) keeps this safe to call again after the image
+      // step without inserting a duplicate row.
+      const applySaved = (next: Complaint) =>
+        setComplaints((prev) => {
+          if (!prev) return [next]
+          return prev.some((c) => c.id === next.id) ? prev.map((c) => (c.id === next.id ? next : c)) : [next, ...prev]
+        })
+      applySaved(saved)
+
+      if (imageFile) {
+        saved = await complaintsService.uploadImage(saved.id, imageFile)
+        applySaved(saved)
+      } else if (removeImageFlag) {
+        saved = await complaintsService.removeImage(saved.id)
+        applySaved(saved)
+      }
+
       setModalMode(null)
     } catch (err) {
       setFormErrors(extractErrors(err, 'Something went wrong. Please try again.'))
@@ -446,7 +493,7 @@ export default function Complaints() {
                               </option>
                             ))}
                           </FloatingSelect>
-                          <button type="button" className="hx-add-problem-btn" onClick={openAddProblemModal}>
+                          <button type="button" className="hx-add-problem-btn mb-4" onClick={openAddProblemModal}>
                             <i className="la la-plus"></i> Add New Problem
                           </button>
                         </div>
@@ -483,6 +530,32 @@ export default function Complaints() {
                             onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                             error={formErrors.description?.[0]}
                           />
+                        </div>
+                        <div className="col-12">
+                          <label className="hx-image-picker-label">Image (optional)</label>
+                          <div className="hx-image-picker">
+                            {imagePreviewUrl && (
+                              <div className="hx-image-picker__preview">
+                                <img src={imagePreviewUrl} alt="Complaint attachment preview" />
+                                <button
+                                  type="button"
+                                  className="hx-icon-btn hx-icon-btn--delete"
+                                  aria-label="Remove image"
+                                  title="Remove"
+                                  onClick={handleRemoveImageClick}
+                                >
+                                  <i className="la la-trash"></i>
+                                </button>
+                              </div>
+                            )}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="form-control"
+                              onChange={(e) => handleImageFileChange(e.target.files?.[0] ?? null)}
+                            />
+                          </div>
+                          {formErrors.image?.[0] && <p className="hx-form-error">{formErrors.image[0]}</p>}
                         </div>
                       </div>
 
@@ -664,6 +737,13 @@ export default function Complaints() {
                       </div>
                     </div>
                   </div>
+
+                  {viewTarget.image_url && (
+                    <div className="hx-detail-section">
+                      <span className="hx-detail-section__title">Image</span>
+                      <img src={viewTarget.image_url} alt="Complaint attachment" className="hx-complaint-detail-image" />
+                    </div>
+                  )}
 
                   <div className="hx-detail-section">
                     <span className="hx-detail-section__title">Resolution</span>
