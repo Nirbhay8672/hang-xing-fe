@@ -1,3 +1,4 @@
+import type { Company } from '../companies/types'
 import type { Problem } from '../problems/types'
 import type { User } from '../users/types'
 
@@ -8,6 +9,8 @@ export interface Complaint {
   complaint_no: string
   problem_id: number
   problem: Problem
+  company_id: number | null
+  company: Company | null
   user_id: number
   user: User
   title: string
@@ -24,6 +27,7 @@ export interface Complaint {
 
 export interface CreateComplaintRequest {
   problem_id: number
+  company_id: number | null
   user_id: number
   title: string
   description?: string
@@ -31,6 +35,7 @@ export interface CreateComplaintRequest {
 
 export interface UpdateComplaintRequest {
   problem_id: number
+  company_id: number | null
   title: string
   description?: string
   solution?: string

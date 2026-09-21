@@ -20,6 +20,7 @@ function normalizeOrder(data: Order): Order {
   return {
     ...data,
     planning_tasks: data.planning_tasks ?? [],
+    task_remarks: data.task_remarks ?? [],
     punch_numbers: (data.punch_numbers ?? []).map((p) => ({
       ...p,
       completed_tasks: (p.completed_tasks ?? []).map(normalizeCompletedTask),
@@ -135,6 +136,9 @@ export default function OrderProgressModal({ orderId, onClose }: OrderProgressMo
                               // Older API responses (or ones not yet upgraded) have no completed_at at all —
                               // only show the tooltip once there's an actual timestamp to show.
                               const hasTimestamp = Boolean(completedEntry?.completed_at)
+                              const tickRemark = (order.task_remarks ?? []).find(
+                                (r) => r.punch_number_id === p.id && taskKey(r.task) === taskKey(task),
+                              )
                               return (
                                 <td key={p.id}>
                                   <div className="hx-track-cell">
@@ -152,6 +156,7 @@ export default function OrderProgressModal({ orderId, onClose }: OrderProgressMo
                                         aria-label={`${task} for ${p.punch_number}: ${isDone ? 'complete' : 'not complete'}`}
                                       ></i>
                                     )}
+                                    {tickRemark && <span className="hx-track-remark-text">{tickRemark.remark}</span>}
                                   </div>
                                 </td>
                               )

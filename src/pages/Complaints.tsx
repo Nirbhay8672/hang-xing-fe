@@ -9,6 +9,8 @@ import '../components/iconButtons.css'
 import Pagination from '../components/Pagination'
 import '../components/statusPill.css'
 import { usePagination } from '../components/usePagination'
+import type { Company } from '../companies/types'
+import { companiesService } from '../companies/companiesService'
 import type { Complaint, ComplaintStatus } from '../complaints/types'
 import { complaintsService } from '../complaints/complaintsService'
 import type { Problem } from '../problems/types'
@@ -30,12 +32,14 @@ function statusPillClass(status: ComplaintStatus): string {
 
 interface ComplaintFormState {
   problem_id: string
+  company_id: string
   title: string
   description: string
 }
 
 const EMPTY_FORM: ComplaintFormState = {
   problem_id: '',
+  company_id: '',
   title: '',
   description: '',
 }
@@ -67,6 +71,7 @@ export default function Complaints() {
   const [search, setSearch] = useState('')
 
   const [problems, setProblems] = useState<Problem[]>([])
+  const [companies, setCompanies] = useState<Company[]>([])
 
   const [viewTarget, setViewTarget] = useState<Complaint | null>(null)
 
@@ -93,6 +98,7 @@ export default function Complaints() {
   useEffect(() => {
     loadComplaints()
     problemsService.list().then(setProblems).catch(() => setProblems([]))
+    companiesService.list().then(setCompanies).catch(() => setCompanies([]))
   }, [])
 
   async function loadComplaints() {
@@ -116,6 +122,7 @@ export default function Complaints() {
     setEditingComplaint(complaint)
     setForm({
       problem_id: String(complaint.problem_id),
+      company_id: complaint.company_id ? String(complaint.company_id) : '',
       title: complaint.title,
       description: complaint.description ?? '',
     })
@@ -155,6 +162,7 @@ export default function Complaints() {
     try {
       const basePayload = {
         problem_id: Number(form.problem_id),
+        company_id: form.company_id ? Number(form.company_id) : null,
         title: form.title,
         description: form.description || undefined,
       }
@@ -192,6 +200,7 @@ export default function Complaints() {
     try {
       const updated = await complaintsService.update(resolveTarget.id, {
         problem_id: resolveTarget.problem_id,
+        company_id: resolveTarget.company_id,
         title: resolveTarget.title,
         description: resolveTarget.description ?? undefined,
         solution: resolveForm.solution || undefined,
@@ -240,7 +249,8 @@ export default function Complaints() {
     return (
       c.complaint_no?.toLowerCase().includes(q) ||
       c.title?.toLowerCase().includes(q) ||
-      c.problem?.name.toLowerCase().includes(q)
+      c.problem?.name.toLowerCase().includes(q) ||
+      c.company?.name.toLowerCase().includes(q)
     )
   })
 
@@ -306,6 +316,9 @@ export default function Complaints() {
                           <span>Problem</span>
                         </th>
                         <th>
+                          <span>Company</span>
+                        </th>
+                        <th>
                           <span>Raised</span>
                         </th>
                         <th>
@@ -327,6 +340,9 @@ export default function Complaints() {
                           </td>
                           <td>
                             <span className="hx-order-badge">{c.problem?.name}</span>
+                          </td>
+                          <td>
+                            <span className="position">{c.company?.name ?? '—'}</span>
                           </td>
                           <td>
                             <span className="position">{formatDate(c.created_at)}</span>
@@ -415,27 +431,39 @@ export default function Complaints() {
                       {formErrors[GENERAL_ERROR_KEY] && <p className="hx-form-error">{formErrors[GENERAL_ERROR_KEY][0]}</p>}
 
                       <div className="row">
-                        <div className="col-12">
-                          <div className="hx-problem-select-row">
-                            <FloatingSelect
-                              label="Problem"
-                              wrapperClassName="hx-problem-select-row__field"
-                              value={form.problem_id}
-                              onChange={(e) => setForm((f) => ({ ...f, problem_id: e.target.value }))}
-                              required
-                              error={formErrors.problem_id?.[0]}
-                            >
-                              <option value="">— Select —</option>
-                              {problems.map((p) => (
-                                <option key={p.id} value={p.id}>
-                                  {p.name}
-                                </option>
-                              ))}
-                            </FloatingSelect>
-                            <button type="button" className="hx-add-problem-btn" onClick={openAddProblemModal}>
-                              <i className="la la-plus"></i> Add New Problem
-                            </button>
-                          </div>
+                        <div className="col-md-6">
+                          <FloatingSelect
+                            label="Problem"
+                            value={form.problem_id}
+                            onChange={(e) => setForm((f) => ({ ...f, problem_id: e.target.value }))}
+                            required
+                            error={formErrors.problem_id?.[0]}
+                          >
+                            <option value="">— Select —</option>
+                            {problems.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name}
+                              </option>
+                            ))}
+                          </FloatingSelect>
+                          <button type="button" className="hx-add-problem-btn" onClick={openAddProblemModal}>
+                            <i className="la la-plus"></i> Add New Problem
+                          </button>
+                        </div>
+                        <div className="col-md-6">
+                          <FloatingSelect
+                            label="Company (optional)"
+                            value={form.company_id}
+                            onChange={(e) => setForm((f) => ({ ...f, company_id: e.target.value }))}
+                            error={formErrors.company_id?.[0]}
+                          >
+                            <option value="">— None —</option>
+                            {companies.map((co) => (
+                              <option key={co.id} value={co.id}>
+                                {co.name}
+                              </option>
+                            ))}
+                          </FloatingSelect>
                         </div>
                         <div className="col-12">
                           <FloatingInput
@@ -613,6 +641,10 @@ export default function Complaints() {
                       <div>
                         <span className="hx-detail-grid__label">Problem</span>
                         <span className="hx-detail-grid__value">{viewTarget.problem?.name}</span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Company</span>
+                        <span className="hx-detail-grid__value">{viewTarget.company?.name ?? '—'}</span>
                       </div>
                       <div>
                         <span className="hx-detail-grid__label">Raised By</span>

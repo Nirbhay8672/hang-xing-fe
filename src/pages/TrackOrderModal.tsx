@@ -319,7 +319,6 @@ export default function TrackOrderModal({ orderId, onClose, onSaved }: TrackOrde
                                             <i className="la la-sticky-note"></i>
                                           </button>
                                         </div>
-                                        {tickRemark && <span className="hx-track-remark-text">{tickRemark.remark}</span>}
                                       </div>
                                     </td>
                                   )
