@@ -67,6 +67,13 @@ function isInProgressStatus(order: Order): boolean {
   return progress > 0 && progress < 100
 }
 
+// Whether the status pill should open the Task Progress modal — anywhere production has
+// actually started (a live percentage, or Completed) has a real per-task breakdown worth
+// showing; Pending/Planned haven't started yet, so there's nothing to open.
+function hasProgressData(order: Order): boolean {
+  return (order.production_progress ?? 0) > 0
+}
+
 // Exact completed/remaining counts behind the percentage — assigned tasks x punch numbers is
 // the total number of (task, punch) pairs; each pair is done once that punch's
 // completed_tasks includes that task.
@@ -711,7 +718,7 @@ export default function Orders() {
                             </span>
                           </td>
                           <td>
-                            {isInProgressStatus(o) ? (
+                            {hasProgressData(o) ? (
                               <button
                                 type="button"
                                 className={`hx-status-pill hx-status-pill--btn hx-tooltip ${unifiedStatusPillClass(o)}`}

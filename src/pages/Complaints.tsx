@@ -103,6 +103,10 @@ export default function Complaints() {
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
   const [removeImageFlag, setRemoveImageFlag] = useState(false)
 
+  // Full-size view of whichever complaint image was just clicked — the form's small picker
+  // preview and the View modal's image both open the same lightbox.
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
+
   useEffect(() => {
     loadComplaints()
     problemsService.list().then(setProblems).catch(() => setProblems([]))
@@ -536,7 +540,12 @@ export default function Complaints() {
                           <div className="hx-image-picker">
                             {imagePreviewUrl && (
                               <div className="hx-image-picker__preview">
-                                <img src={imagePreviewUrl} alt="Complaint attachment preview" />
+                                <img
+                                  src={imagePreviewUrl}
+                                  alt="Complaint attachment preview"
+                                  className="hx-image-clickable"
+                                  onClick={() => setLightboxUrl(imagePreviewUrl)}
+                                />
                                 <button
                                   type="button"
                                   className="hx-icon-btn hx-icon-btn--delete"
@@ -741,7 +750,12 @@ export default function Complaints() {
                   {viewTarget.image_url && (
                     <div className="hx-detail-section">
                       <span className="hx-detail-section__title">Image</span>
-                      <img src={viewTarget.image_url} alt="Complaint attachment" className="hx-complaint-detail-image" />
+                      <img
+                        src={viewTarget.image_url}
+                        alt="Complaint attachment"
+                        className="hx-complaint-detail-image hx-image-clickable"
+                        onClick={() => setLightboxUrl(viewTarget.image_url)}
+                      />
                     </div>
                   )}
 
@@ -812,6 +826,15 @@ export default function Complaints() {
           </div>
           <div className="modal-backdrop fade show" onClick={() => !deleting && setDeleteTarget(null)}></div>
         </>
+      )}
+
+      {lightboxUrl && (
+        <div className="hx-lightbox" role="dialog" aria-modal="true" onClick={() => setLightboxUrl(null)}>
+          <button type="button" className="hx-lightbox__close" onClick={() => setLightboxUrl(null)} aria-label="Close">
+            <i className="las la-times"></i>
+          </button>
+          <img src={lightboxUrl} alt="Complaint attachment full size" onClick={(e) => e.stopPropagation()} />
+        </div>
       )}
     </AppShell>
   )

@@ -111,3 +111,49 @@
   flex: 1 0 140px;
   min-width: 140px;
 }
+
+/* Directors/Contractors/Press rows only have 1-2 short fields each, unlike Manufacturing
+   Specifications' 7 — the label, field(s), and remove button all sit on one line instead of
+   the label-row-then-fields-row layout .hx-spec-row uses, so each entry is a single compact
+   line rather than a whole card. Two entries side by side per line via .hx-inline-grid,
+   wrapping to one column on narrower screens so fields don't get too cramped. */
+.hx-inline-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+@media (max-width: 720px) {
+  .hx-inline-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.hx-inline-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 16px;
+  border: 1px solid #eef0f4;
+  border-radius: 10px;
+  background: #fbfbfd;
+  /* Room for the floating label to sit half above the input's own border without clipping. */
+  padding-top: 14px;
+}
+
+.hx-inline-row__label {
+  flex: 0 0 auto;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4b5468;
+  white-space: nowrap;
+}
+
+.hx-inline-row__field {
+  flex: 1 1 120px;
+  min-width: 120px;
+}
+
+.hx-inline-row .hx-icon-btn {
+  flex-shrink: 0;
+}

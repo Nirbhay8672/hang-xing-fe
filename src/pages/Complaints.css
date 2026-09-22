@@ -72,3 +72,58 @@
   border: 1px solid #eef0f4;
   object-fit: cover;
 }
+
+.hx-image-clickable {
+  cursor: zoom-in;
+  transition: opacity 0.15s ease;
+}
+
+.hx-image-clickable:hover {
+  opacity: 0.85;
+}
+
+/* Full-size click-to-preview overlay for a complaint's image — a plain full-bleed backdrop
+   rather than the app's usual .modal-dialog chrome, since that's sized for form content and
+   would just constrain the image to the same small box being escaped from. z-index has to
+   clear the theme's own .modal (9999) since this opens from inside one. */
+.hx-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 15, 20, 0.85);
+  padding: 40px;
+  cursor: zoom-out;
+}
+
+.hx-lightbox img {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 10px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  cursor: default;
+}
+
+.hx-lightbox__close {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-size: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.hx-lightbox__close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}

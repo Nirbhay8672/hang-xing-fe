@@ -40,12 +40,21 @@ export interface CompanyContractor {
   updated_at: string
 }
 
+export interface CompanyPress {
+  id: number
+  company_id: number
+  name: string
+  created_at: string
+  updated_at: string
+}
+
 export interface Company {
   id: number
   name: string
   address: string
   directors: CompanyDirector[]
   contractors: CompanyContractor[]
+  presses: CompanyPress[]
   created_at: string
   updated_at: string
   manufacturing_specifications: ManufacturingSpecification[]
@@ -71,11 +80,16 @@ export interface CompanyContractorInput {
   contact: string
 }
 
+export interface CompanyPressInput {
+  name: string
+}
+
 export interface CreateCompanyRequest {
   name: string
   address: string
   directors: CompanyDirectorInput[]
   contractors: CompanyContractorInput[]
+  presses: CompanyPressInput[]
   manufacturing_specifications: ManufacturingSpecificationInput[]
 }
 

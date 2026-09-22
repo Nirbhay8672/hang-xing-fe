@@ -8,7 +8,13 @@ import '../components/formStyles.css'
 import '../components/iconButtons.css'
 import Pagination from '../components/Pagination'
 import { usePagination } from '../components/usePagination'
-import type { Company, CompanyContractorInput, CompanyDirectorInput, ManufacturingSpecificationInput } from '../companies/types'
+import type {
+  Company,
+  CompanyContractorInput,
+  CompanyDirectorInput,
+  CompanyPressInput,
+  ManufacturingSpecificationInput,
+} from '../companies/types'
 import { companiesService } from '../companies/companiesService'
 import type { Order } from '../orders/types'
 import { ordersService } from '../orders/ordersService'
@@ -20,6 +26,7 @@ interface CompanyFormState {
   address: string
   directors: CompanyDirectorInput[]
   contractors: CompanyContractorInput[]
+  presses: CompanyPressInput[]
   manufacturing_specifications: ManufacturingSpecificationInput[]
 }
 
@@ -35,12 +42,14 @@ const EMPTY_SPEC: ManufacturingSpecificationInput = {
 
 const EMPTY_DIRECTOR: CompanyDirectorInput = { name: '', contact: '' }
 const EMPTY_CONTRACTOR: CompanyContractorInput = { name: '', contact: '' }
+const EMPTY_PRESS: CompanyPressInput = { name: '' }
 
 const EMPTY_FORM: CompanyFormState = {
   name: '',
   address: '',
   directors: [{ ...EMPTY_DIRECTOR }],
   contractors: [{ ...EMPTY_CONTRACTOR }],
+  presses: [{ ...EMPTY_PRESS }],
   manufacturing_specifications: [{ ...EMPTY_SPEC }],
 }
 
@@ -105,6 +114,7 @@ export default function Companies() {
   const [specsTarget, setSpecsTarget] = useState<Company | null>(null)
   const [directorsTarget, setDirectorsTarget] = useState<Company | null>(null)
   const [contractorsTarget, setContractorsTarget] = useState<Company | null>(null)
+  const [pressesTarget, setPressesTarget] = useState<Company | null>(null)
 
   const [viewTarget, setViewTarget] = useState<Company | null>(null)
   const [viewOrders, setViewOrders] = useState<Order[] | null>(null)
@@ -146,6 +156,7 @@ export default function Companies() {
       contractors: company.contractors.length
         ? company.contractors.map((c) => ({ name: c.name, contact: c.contact }))
         : [{ ...EMPTY_CONTRACTOR }],
+      presses: company.presses.length ? company.presses.map((p) => ({ name: p.name })) : [{ ...EMPTY_PRESS }],
       manufacturing_specifications: company.manufacturing_specifications.length
         ? company.manufacturing_specifications.map((spec) => ({
             size: spec.size,
@@ -182,6 +193,7 @@ export default function Companies() {
       ...EMPTY_FORM,
       directors: [{ ...EMPTY_DIRECTOR }],
       contractors: [{ ...EMPTY_CONTRACTOR }],
+      presses: [{ ...EMPTY_PRESS }],
       manufacturing_specifications: [{ ...EMPTY_SPEC }],
     })
     setFormErrors({})
@@ -294,6 +306,25 @@ export default function Companies() {
     return formErrors[`contractors.${index}.${field}`]?.[0]
   }
 
+  function addPressRow() {
+    setForm((f) => ({ ...f, presses: [...f.presses, { ...EMPTY_PRESS }] }))
+  }
+
+  function removePressRow(index: number) {
+    setForm((f) => ({ ...f, presses: f.presses.filter((_, i) => i !== index) }))
+  }
+
+  function updatePressField(index: number, value: string) {
+    setForm((f) => ({
+      ...f,
+      presses: f.presses.map((p, i) => (i === index ? { ...p, name: value } : p)),
+    }))
+  }
+
+  function pressError(index: number): string | undefined {
+    return formErrors[`presses.${index}.name`]?.[0]
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setSubmitting(true)
@@ -304,11 +335,13 @@ export default function Companies() {
       )
       const directors = form.directors.filter((d) => Object.values(d).some((value) => value.trim() !== ''))
       const contractors = form.contractors.filter((c) => Object.values(c).some((value) => value.trim() !== ''))
+      const presses = form.presses.filter((p) => p.name.trim() !== '')
       const payload = {
         name: form.name,
         address: form.address,
         directors,
         contractors,
+        presses,
         manufacturing_specifications: specs,
       }
       if (modalMode === 'edit' && editingCompany) {
@@ -402,6 +435,9 @@ export default function Companies() {
                           <span>Contractors</span>
                         </th>
                         <th>
+                          <span>Press</span>
+                        </th>
+                        <th>
                           <span>Created</span>
                         </th>
                         <th>
@@ -441,6 +477,17 @@ export default function Companies() {
                             >
                               {c.contractors.length} contractor
                               {c.contractors.length === 1 ? '' : 's'}
+                            </button>
+                          </td>
+                          <td>
+                            <button
+                              type="button"
+                              className="hx-specs-badge"
+                              disabled={c.presses.length === 0}
+                              onClick={() => setPressesTarget(c)}
+                            >
+                              {c.presses.length} press
+                              {c.presses.length === 1 ? '' : 'es'}
                             </button>
                           </td>
                           <td>
@@ -560,16 +607,35 @@ export default function Companies() {
 
                         {form.directors.length === 0 && <p className="hx-companies-empty">No directors added.</p>}
 
-                        {form.directors.map((director, index) => {
-                          // An entirely blank row (just added, not filled in yet) is allowed —
-                          // it's dropped on submit. Once any field in the row has a value, Name
-                          // becomes required, same as the row would need to be complete enough
-                          // to actually get saved.
-                          const rowHasValue = Object.values(director).some((value) => value.trim() !== '')
-                          return (
-                            <div className="hx-spec-row" key={index}>
-                              <div className="hx-spec-row__header">
-                                <span className="hx-spec-row__title">Director {index + 1}</span>
+                        <div className="hx-inline-grid">
+                          {form.directors.map((director, index) => {
+                            // An entirely blank row (just added, not filled in yet) is allowed —
+                            // it's dropped on submit. Once any field in the row has a value, Name
+                            // becomes required, same as the row would need to be complete enough
+                            // to actually get saved.
+                            const rowHasValue = Object.values(director).some((value) => value.trim() !== '')
+                            return (
+                              <div className="hx-inline-row" key={index}>
+                                <span className="hx-inline-row__label">Director {index + 1}</span>
+                                <FloatingInput
+                                  label="Name"
+                                  type="text"
+                                  variant="default"
+                                  wrapperClassName="mb-0 hx-inline-row__field"
+                                  value={director.name}
+                                  onChange={(e) => updateDirectorField(index, 'name', e.target.value)}
+                                  required={rowHasValue}
+                                  error={directorError(index, 'name')}
+                                />
+                                <FloatingInput
+                                  label="Contact"
+                                  type="text"
+                                  variant="default"
+                                  wrapperClassName="mb-0 hx-inline-row__field"
+                                  value={director.contact}
+                                  onChange={(e) => updateDirectorField(index, 'contact', e.target.value)}
+                                  error={directorError(index, 'contact')}
+                                />
                                 <button
                                   type="button"
                                   className="hx-icon-btn hx-icon-btn--delete"
@@ -580,30 +646,9 @@ export default function Companies() {
                                   <i className="la la-trash"></i>
                                 </button>
                               </div>
-                              <div className="hx-spec-row__fields">
-                                <FloatingInput
-                                  label="Name"
-                                  type="text"
-                                  variant="default"
-                                  wrapperClassName="mb-0"
-                                  value={director.name}
-                                  onChange={(e) => updateDirectorField(index, 'name', e.target.value)}
-                                  required={rowHasValue}
-                                  error={directorError(index, 'name')}
-                                />
-                                <FloatingInput
-                                  label="Contact"
-                                  type="text"
-                                  variant="default"
-                                  wrapperClassName="mb-0"
-                                  value={director.contact}
-                                  onChange={(e) => updateDirectorField(index, 'contact', e.target.value)}
-                                  error={directorError(index, 'contact')}
-                                />
-                              </div>
-                            </div>
-                          )
-                        })}
+                            )
+                          })}
+                        </div>
                       </div>
 
                       <div className="hx-specs-section">
@@ -616,12 +661,31 @@ export default function Companies() {
 
                         {form.contractors.length === 0 && <p className="hx-companies-empty">No contractors added.</p>}
 
-                        {form.contractors.map((contractor, index) => {
-                          const rowHasValue = Object.values(contractor).some((value) => value.trim() !== '')
-                          return (
-                            <div className="hx-spec-row" key={index}>
-                              <div className="hx-spec-row__header">
-                                <span className="hx-spec-row__title">Contractor {index + 1}</span>
+                        <div className="hx-inline-grid">
+                          {form.contractors.map((contractor, index) => {
+                            const rowHasValue = Object.values(contractor).some((value) => value.trim() !== '')
+                            return (
+                              <div className="hx-inline-row" key={index}>
+                                <span className="hx-inline-row__label">Contractor {index + 1}</span>
+                                <FloatingInput
+                                  label="Name"
+                                  type="text"
+                                  variant="default"
+                                  wrapperClassName="mb-0 hx-inline-row__field"
+                                  value={contractor.name}
+                                  onChange={(e) => updateContractorField(index, 'name', e.target.value)}
+                                  required={rowHasValue}
+                                  error={contractorError(index, 'name')}
+                                />
+                                <FloatingInput
+                                  label="Contact"
+                                  type="text"
+                                  variant="default"
+                                  wrapperClassName="mb-0 hx-inline-row__field"
+                                  value={contractor.contact}
+                                  onChange={(e) => updateContractorField(index, 'contact', e.target.value)}
+                                  error={contractorError(index, 'contact')}
+                                />
                                 <button
                                   type="button"
                                   className="hx-icon-btn hx-icon-btn--delete"
@@ -632,30 +696,46 @@ export default function Companies() {
                                   <i className="la la-trash"></i>
                                 </button>
                               </div>
-                              <div className="hx-spec-row__fields">
-                                <FloatingInput
-                                  label="Name"
-                                  type="text"
-                                  variant="default"
-                                  wrapperClassName="mb-0"
-                                  value={contractor.name}
-                                  onChange={(e) => updateContractorField(index, 'name', e.target.value)}
-                                  required={rowHasValue}
-                                  error={contractorError(index, 'name')}
-                                />
-                                <FloatingInput
-                                  label="Contact"
-                                  type="text"
-                                  variant="default"
-                                  wrapperClassName="mb-0"
-                                  value={contractor.contact}
-                                  onChange={(e) => updateContractorField(index, 'contact', e.target.value)}
-                                  error={contractorError(index, 'contact')}
-                                />
-                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="hx-specs-section">
+                        <div className="hx-specs-section__header">
+                          <label className="mb-0">Press:</label>
+                          <button type="button" className="hx-specs-add-btn" onClick={addPressRow}>
+                            <i className="la la-plus"></i> Add Press
+                          </button>
+                        </div>
+
+                        {form.presses.length === 0 && <p className="hx-companies-empty">No press added.</p>}
+
+                        <div className="hx-inline-grid">
+                          {form.presses.map((press, index) => (
+                            <div className="hx-inline-row" key={index}>
+                              <span className="hx-inline-row__label">Press {index + 1}</span>
+                              <FloatingInput
+                                label="Press"
+                                type="text"
+                                variant="default"
+                                wrapperClassName="mb-0 hx-inline-row__field"
+                                value={press.name}
+                                onChange={(e) => updatePressField(index, e.target.value)}
+                                error={pressError(index)}
+                              />
+                              <button
+                                type="button"
+                                className="hx-icon-btn hx-icon-btn--delete"
+                                aria-label="Remove press"
+                                title="Remove"
+                                onClick={() => removePressRow(index)}
+                              >
+                                <i className="la la-trash"></i>
+                              </button>
                             </div>
-                          )
-                        })}
+                          ))}
+                        </div>
                       </div>
 
                       <div className="hx-specs-section">
@@ -875,6 +955,21 @@ export default function Companies() {
                             ))}
                           </tbody>
                         </table>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="hx-detail-section">
+                    <span className="hx-detail-section__title">Press</span>
+                    {viewTarget.presses.length === 0 ? (
+                      <p className="hx-companies-empty">No press added.</p>
+                    ) : (
+                      <div className="hx-order-badges">
+                        {viewTarget.presses.map((press) => (
+                          <span key={press.id} className="hx-order-badge">
+                            {press.name}
+                          </span>
+                        ))}
                       </div>
                     )}
                   </div>
@@ -1164,6 +1259,33 @@ export default function Companies() {
             </div>
           </div>
           <div className="modal-backdrop fade show" onClick={() => setContractorsTarget(null)}></div>
+        </>
+      )}
+
+      {pressesTarget && (
+        <>
+          <div className="modal fade show d-block" role="dialog" aria-modal="true">
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content radius-xl">
+                <div className="modal-header">
+                  <h6 className="modal-title fw-500">{pressesTarget.name} — Press</h6>
+                  <button type="button" className="btn-close" onClick={() => setPressesTarget(null)} aria-label="Close">
+                    <i className="las la-times"></i>
+                  </button>
+                </div>
+                <div className="modal-body">
+                  <div className="hx-order-badges">
+                    {pressesTarget.presses.map((press) => (
+                      <span key={press.id} className="hx-order-badge">
+                        {press.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show" onClick={() => setPressesTarget(null)}></div>
         </>
       )}
 
