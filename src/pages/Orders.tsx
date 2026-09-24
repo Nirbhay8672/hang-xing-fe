@@ -12,6 +12,7 @@ import { usePagination } from '../components/usePagination'
 import type { Company } from '../companies/types'
 import { companiesService } from '../companies/companiesService'
 import { masterNumbersService } from '../masterNumbers/masterNumbersService'
+import { compareSizeNames } from '../sizes/sortSizes'
 import type { CreateOrderRequest, Order } from '../orders/types'
 import { ordersService } from '../orders/ordersService'
 import type { User } from '../users/types'
@@ -230,7 +231,9 @@ export default function Orders() {
 
   const selectedCompany = companies.find((c) => c.id === Number(form.company_id)) ?? null
 
-  const sizeOptions = Array.from(new Set(selectedCompany?.manufacturing_specifications.map((spec) => spec.size) ?? []))
+  const sizeOptions = Array.from(new Set(selectedCompany?.manufacturing_specifications.map((spec) => spec.size) ?? [])).sort(
+    compareSizeNames,
+  )
 
   const matchingSizeSpecs = selectedCompany?.manufacturing_specifications.filter((spec) => spec.size === form.size) ?? []
 

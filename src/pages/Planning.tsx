@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ApiError } from '../auth/apiClient'
 import AppShell from '../components/AppShell'
+import '../components/detailView.css'
 import Pagination from '../components/Pagination'
 import '../components/statusPill.css'
 import { usePagination } from '../components/usePagination'
@@ -19,6 +20,10 @@ function planningStatusPillClass(status: string): string {
   if (status === 'On Hold') return 'hx-status-pill--onhold'
   if (status === 'Approved') return 'hx-status-pill--approved'
   return 'hx-status-pill--review'
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
 export default function Planning() {
@@ -194,7 +199,7 @@ export default function Planning() {
       {confirmOrder && (
         <>
           <div className="modal fade show d-block" role="dialog" aria-modal="true">
-            <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-dialog modal-dialog-centered modal-lg">
               <div className="modal-content radius-xl">
                 <div className="modal-header">
                   <h6 className="modal-title fw-500">Approve {confirmOrder.order_no}?</h6>
@@ -203,10 +208,56 @@ export default function Planning() {
                   </button>
                 </div>
                 <div className="modal-body">
-                  <p>
-                    Approve to proceed to planning for <strong>{confirmOrder.company?.name}</strong>, or put this order on hold
-                    to leave it for later.
-                  </p>
+                  <div className="hx-order-detail-hero">
+                    <div>
+                      <span className="hx-order-detail-hero__order-no">{confirmOrder.order_no}</span>
+                      <span className="hx-order-detail-hero__company">
+                        <i className="la la-building"></i>
+                        {confirmOrder.company?.name}
+                      </span>
+                    </div>
+                    <div className="hx-order-detail-hero__badges">
+                      <span className={`hx-status-pill ${orderTypePillClass(confirmOrder.order_type)}`}>{confirmOrder.order_type}</span>
+                      <span className="hx-order-badge">{confirmOrder.punch_type}</span>
+                    </div>
+                  </div>
+
+                  <div className="hx-detail-section">
+                    <span className="hx-detail-section__title">Order Info</span>
+                    <div className="hx-detail-grid hx-order-detail-grid">
+                      <div>
+                        <span className="hx-detail-grid__label">Size</span>
+                        <span className="hx-detail-grid__value">{confirmOrder.size}</span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Quantity</span>
+                        <span className="hx-detail-grid__value">{confirmOrder.quantity}</span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Master Number</span>
+                        <span className="hx-detail-grid__value">{confirmOrder.master_number || '—'}</span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Order By</span>
+                        <span className="hx-detail-grid__value">{confirmOrder.user?.name ?? '—'}</span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Expected Delivery</span>
+                        <span className="hx-detail-grid__value">
+                          {confirmOrder.expected_delivery_date ? formatDate(confirmOrder.expected_delivery_date) : '—'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">Created</span>
+                        <span className="hx-detail-grid__value">{formatDate(confirmOrder.created_at)}</span>
+                      </div>
+                      <div className="hx-detail-grid__full">
+                        <span className="hx-detail-grid__label">Remarks</span>
+                        <span className="hx-detail-grid__value">{confirmOrder.remarks || '—'}</span>
+                      </div>
+                    </div>
+                  </div>
+
                   {holdError && <p className="hx-form-error">{holdError}</p>}
                   <div className="button-group d-flex justify-content-center pt-20">
                     <button

@@ -20,7 +20,7 @@ import type { Order } from '../orders/types'
 import { ordersService } from '../orders/ordersService'
 import type { Size } from '../sizes/types'
 import { sizesService } from '../sizes/sizesService'
-import { sortSizes } from '../sizes/sortSizes'
+import { sortBySize, sortSizes } from '../sizes/sortSizes'
 import './Companies.css'
 import './Orders.css'
 
@@ -131,7 +131,7 @@ export default function Companies() {
         : [{ ...EMPTY_CONTRACTOR }],
       presses: company.presses.length ? company.presses.map((p) => ({ name: p.name })) : [{ ...EMPTY_PRESS }],
       manufacturing_specifications: company.manufacturing_specifications.length
-        ? company.manufacturing_specifications.map((spec) => ({
+        ? sortBySize(company.manufacturing_specifications).map((spec) => ({
             size: spec.size,
             greentile_thick: spec.greentile_thick,
             upper_punch: spec.upper_punch,
@@ -1086,7 +1086,7 @@ export default function Companies() {
                             </tr>
                           </thead>
                           <tbody>
-                            {viewTarget.manufacturing_specifications.map((spec) => (
+                            {sortBySize(viewTarget.manufacturing_specifications).map((spec) => (
                               <tr key={spec.id}>
                                 <td>{spec.size}</td>
                                 <td>{spec.greentile_thick}</td>
@@ -1219,7 +1219,7 @@ export default function Companies() {
                         </tr>
                       </thead>
                       <tbody>
-                        {specsTarget.manufacturing_specifications.map((spec) => (
+                        {sortBySize(specsTarget.manufacturing_specifications).map((spec) => (
                           <tr key={spec.id}>
                             <td>{spec.size}</td>
                             <td>{spec.greentile_thick}</td>
