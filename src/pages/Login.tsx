@@ -1,7 +1,8 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { ApiError } from '../auth/apiClient'
 import { useAuth } from '../auth/AuthContext'
+import { EMAIL_PATTERN, focusFirstInvalid } from '../components/formValidation'
 import './Login.css'
 
 const SLIDESHOW_IMAGES = ['images/product/product.jpg', 'images/product/product1.jpg'].map(
@@ -44,7 +45,9 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [activeSlide, setActiveSlide] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({})
   const [submitting, setSubmitting] = useState(false)
+  const formRef = useRef<HTMLFormElement>(null)
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -56,6 +59,17 @@ export default function Login() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError(null)
+
+    const errors: { email?: string; password?: string } = {}
+    if (email.trim() === '') errors.email = 'Email is required.'
+    else if (!EMAIL_PATTERN.test(email.trim())) errors.email = 'Enter a valid email address.'
+    if (password === '') errors.password = 'Password is required.'
+    setFieldErrors(errors)
+    if (Object.keys(errors).length > 0) {
+      focusFirstInvalid(formRef.current)
+      return
+    }
+
     setSubmitting(true)
     try {
       await login(email, password)
@@ -79,7 +93,7 @@ export default function Login() {
           <div className="login-card__form-inner">
             <img className="login-logo" src={`${import.meta.env.BASE_URL}images/logo.png`} alt="Heng Xing" />
 
-            <form onSubmit={handleSubmit}>
+            <form ref={formRef} onSubmit={handleSubmit} noValidate>
               {error && <p className="form-error">{error}</p>}
 
               <div className="form-field">
@@ -89,9 +103,14 @@ export default function Login() {
                   type="email"
                   autoComplete="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
+                  onChange={(e) => {
+                    setEmail(e.target.value)
+                    setFieldErrors((prev) => ({ ...prev, email: undefined }))
+                  }}
+                  className={fieldErrors.email ? 'is-invalid' : undefined}
+                  aria-invalid={fieldErrors.email ? true : undefined}
                 />
+                {fieldErrors.email && <small className="field-error">{fieldErrors.email}</small>}
               </div>
 
               <div className="form-field form-field--password">
@@ -102,8 +121,12 @@ export default function Login() {
                     type={showPassword ? 'text' : 'password'}
                     autoComplete="new-password"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
+                    onChange={(e) => {
+                      setPassword(e.target.value)
+                      setFieldErrors((prev) => ({ ...prev, password: undefined }))
+                    }}
+                    className={fieldErrors.password ? 'is-invalid' : undefined}
+                    aria-invalid={fieldErrors.password ? true : undefined}
                   />
                   <button
                     type="button"
@@ -114,6 +137,7 @@ export default function Login() {
                     <EyeIcon open={showPassword} />
                   </button>
                 </div>
+                {fieldErrors.password && <small className="field-error">{fieldErrors.password}</small>}
               </div>
 
               <button type="submit" className="btn-signin" disabled={submitting}>

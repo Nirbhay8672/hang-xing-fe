@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { ApiError } from '../auth/apiClient'
 import { useAuth } from '../auth/AuthContext'
 import AppShell from '../components/AppShell'
@@ -21,6 +21,7 @@ import { ordersService } from '../orders/ordersService'
 import type { Size } from '../sizes/types'
 import { sizesService } from '../sizes/sizesService'
 import { sortBySize, sortSizes } from '../sizes/sortSizes'
+import { useFormErrors } from '../components/formValidation'
 import './Companies.css'
 import './Orders.css'
 
@@ -91,6 +92,7 @@ export default function Companies() {
   const [editFetchError, setEditFetchError] = useState<string | null>(null)
   const [form, setForm] = useState<CompanyFormState>(EMPTY_FORM)
   const [formErrors, setFormErrors] = useState<Record<string, string[]>>({})
+  const companyFormRef = useRef<HTMLFormElement>(null)
   const [submitting, setSubmitting] = useState(false)
 
   const [deleteTarget, setDeleteTarget] = useState<Company | null>(null)
@@ -103,6 +105,7 @@ export default function Companies() {
   const [newSizeSpecIndex, setNewSizeSpecIndex] = useState<number | null>(null)
   const [sizeError, setSizeError] = useState<string | null>(null)
   const [sizeSubmitting, setSizeSubmitting] = useState(false)
+  const addSize = useFormErrors()
 
   useEffect(() => {
     loadCompanies()
@@ -219,6 +222,7 @@ export default function Companies() {
       ...f,
       manufacturing_specifications: [...f.manufacturing_specifications, { ...EMPTY_SPEC }],
     }))
+    clearFormError('manufacturing_specifications')
   }
 
   function removeSpecRow(index: number) {
@@ -226,6 +230,7 @@ export default function Companies() {
       ...f,
       manufacturing_specifications: f.manufacturing_specifications.filter((_, i) => i !== index),
     }))
+    clearFormErrorsWithPrefix('manufacturing_specifications')
   }
 
   function updateSpecField(index: number, field: keyof ManufacturingSpecificationInput, value: string) {
@@ -235,6 +240,7 @@ export default function Companies() {
         i === index ? { ...spec, [field]: value } : spec,
       ),
     }))
+    clearFormError(`manufacturing_specifications.${index}.${field}`)
   }
 
   function specError(index: number, field: keyof ManufacturingSpecificationInput): string | undefined {
@@ -244,6 +250,7 @@ export default function Companies() {
   function openAddSizeModal(specIndex: number) {
     setNewSizeName('')
     setSizeError(null)
+    addSize.setFormErrors({})
     setNewSizeSpecIndex(specIndex)
     setSizeModalOpen(true)
   }
@@ -255,6 +262,14 @@ export default function Companies() {
 
   async function handleAddSize(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (newSizeName.trim() === '') {
+      addSize.showErrors({ name: ['Size is required.'] })
+      return
+    }
+    if (newSizeName.length > 255) {
+      addSize.showErrors({ name: ['Size must be 255 characters or fewer.'] })
+      return
+    }
     setSizeSubmitting(true)
     setSizeError(null)
     try {
@@ -273,10 +288,12 @@ export default function Companies() {
 
   function addDirectorRow() {
     setForm((f) => ({ ...f, directors: [...f.directors, { ...EMPTY_DIRECTOR }] }))
+    clearFormError('directors')
   }
 
   function removeDirectorRow(index: number) {
     setForm((f) => ({ ...f, directors: f.directors.filter((_, i) => i !== index) }))
+    clearFormErrorsWithPrefix('directors')
   }
 
   function updateDirectorField(index: number, field: keyof CompanyDirectorInput, value: string) {
@@ -284,6 +301,7 @@ export default function Companies() {
       ...f,
       directors: f.directors.map((d, i) => (i === index ? { ...d, [field]: value } : d)),
     }))
+    clearFormError(`directors.${index}.${field}`)
   }
 
   function directorError(index: number, field: keyof CompanyDirectorInput): string | undefined {
@@ -292,10 +310,12 @@ export default function Companies() {
 
   function addContractorRow() {
     setForm((f) => ({ ...f, contractors: [...f.contractors, { ...EMPTY_CONTRACTOR }] }))
+    clearFormError('contractors')
   }
 
   function removeContractorRow(index: number) {
     setForm((f) => ({ ...f, contractors: f.contractors.filter((_, i) => i !== index) }))
+    clearFormErrorsWithPrefix('contractors')
   }
 
   function updateContractorField(index: number, field: keyof CompanyContractorInput, value: string) {
@@ -303,6 +323,7 @@ export default function Companies() {
       ...f,
       contractors: f.contractors.map((c, i) => (i === index ? { ...c, [field]: value } : c)),
     }))
+    clearFormError(`contractors.${index}.${field}`)
   }
 
   function contractorError(index: number, field: keyof CompanyContractorInput): string | undefined {
@@ -311,10 +332,12 @@ export default function Companies() {
 
   function addPressRow() {
     setForm((f) => ({ ...f, presses: [...f.presses, { ...EMPTY_PRESS }] }))
+    clearFormError('presses')
   }
 
   function removePressRow(index: number) {
     setForm((f) => ({ ...f, presses: f.presses.filter((_, i) => i !== index) }))
+    clearFormErrorsWithPrefix('presses')
   }
 
   function updatePressField(index: number, value: string) {
@@ -322,30 +345,100 @@ export default function Companies() {
       ...f,
       presses: f.presses.map((p, i) => (i === index ? { ...p, name: value } : p)),
     }))
+    clearFormError(`presses.${index}.name`)
   }
 
   function pressError(index: number): string | undefined {
     return formErrors[`presses.${index}.name`]?.[0]
   }
 
+  function clearFormError(...keys: string[]) {
+    setFormErrors((prev) => {
+      if (!keys.some((k) => k in prev)) return prev
+      const next = { ...prev }
+      for (const k of keys) delete next[k]
+      return next
+    })
+  }
+
+  // Row-level errors are keyed by row index, so once a row is removed they'd point at the wrong
+  // row — drop the whole section's errors (including its "add at least one" message).
+  function clearFormErrorsWithPrefix(prefix: string) {
+    setFormErrors((prev) => {
+      const next = Object.fromEntries(Object.entries(prev).filter(([k]) => k !== prefix && !k.startsWith(`${prefix}.`)))
+      return Object.keys(next).length === Object.keys(prev).length ? prev : next
+    })
+  }
+
+  // Every director/contractor/press/specification row on the form has to be complete (remove a
+  // row you don't need), and each of those sections needs at least one row. Up Master No., LP
+  // Master No. and Cavity are the only optional fields.
+  function validateCompanyForm(): Record<string, string[]> {
+    const errors: Record<string, string[]> = {}
+    const required = (key: string, value: string, message = 'Required') => {
+      if (value.trim() === '') errors[key] = [message]
+    }
+
+    required('name', form.name, 'Company name is required.')
+    required('address', form.address, 'Address is required.')
+
+    if (form.directors.length === 0) errors.directors = ['Add at least one director.']
+    form.directors.forEach((d, i) => {
+      required(`directors.${i}.name`, d.name)
+      required(`directors.${i}.contact`, d.contact)
+    })
+
+    if (form.contractors.length === 0) errors.contractors = ['Add at least one contractor.']
+    form.contractors.forEach((c, i) => {
+      required(`contractors.${i}.name`, c.name)
+      required(`contractors.${i}.contact`, c.contact)
+    })
+
+    if (form.presses.length === 0) errors.presses = ['Add at least one press.']
+    form.presses.forEach((p, i) => required(`presses.${i}.name`, p.name))
+
+    if (form.manufacturing_specifications.length === 0) {
+      errors.manufacturing_specifications = ['Add at least one specification.']
+    }
+    form.manufacturing_specifications.forEach((spec, i) => {
+      required(`manufacturing_specifications.${i}.size`, spec.size)
+      required(`manufacturing_specifications.${i}.greentile_thick`, spec.greentile_thick)
+      required(`manufacturing_specifications.${i}.upper_punch`, spec.upper_punch)
+      required(`manufacturing_specifications.${i}.lower_punch`, spec.lower_punch)
+    })
+
+    return errors
+  }
+
+  function scrollToFirstInvalid() {
+    // Runs after React has re-rendered the fields with their error state applied.
+    setTimeout(() => {
+      const root = companyFormRef.current
+      const first =
+        root?.querySelector<HTMLElement>('[aria-invalid="true"]') ?? root?.querySelector<HTMLElement>('.hx-section-error')
+      first?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      first?.focus({ preventScroll: true })
+    }, 0)
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    const clientErrors = validateCompanyForm()
+    if (Object.keys(clientErrors).length > 0) {
+      setFormErrors(clientErrors)
+      scrollToFirstInvalid()
+      return
+    }
     setSubmitting(true)
     setFormErrors({})
     try {
-      const specs = form.manufacturing_specifications.filter((spec) =>
-        Object.values(spec).some((value) => value.trim() !== ''),
-      )
-      const directors = form.directors.filter((d) => Object.values(d).some((value) => value.trim() !== ''))
-      const contractors = form.contractors.filter((c) => Object.values(c).some((value) => value.trim() !== ''))
-      const presses = form.presses.filter((p) => p.name.trim() !== '')
       const payload = {
         name: form.name,
         address: form.address,
-        directors,
-        contractors,
-        presses,
-        manufacturing_specifications: specs,
+        directors: form.directors,
+        contractors: form.contractors,
+        presses: form.presses,
+        manufacturing_specifications: form.manufacturing_specifications,
       }
       if (modalMode === 'edit' && editingCompany) {
         const updated = await companiesService.update(editingCompany.id, payload)
@@ -592,7 +685,7 @@ export default function Companies() {
                 </div>
                 <div className="modal-body">
                   <div className="add-new-contact">
-                    <form onSubmit={handleSubmit} autoComplete="off">
+                    <form ref={companyFormRef} onSubmit={handleSubmit} autoComplete="off" noValidate>
                       {formErrors[GENERAL_ERROR_KEY] && <p className="hx-form-error">{formErrors[GENERAL_ERROR_KEY][0]}</p>}
 
                       <div className="row">
@@ -601,8 +694,10 @@ export default function Companies() {
                             label="Company Name"
                             type="text"
                             value={form.name}
-                            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                            required
+                            onChange={(e) => {
+                              setForm((f) => ({ ...f, name: e.target.value }))
+                              clearFormError('name')
+                            }}
                             error={formErrors.name?.[0]}
                           />
                         </div>
@@ -611,8 +706,10 @@ export default function Companies() {
                             label="Address"
                             type="text"
                             value={form.address}
-                            onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-                            required
+                            onChange={(e) => {
+                              setForm((f) => ({ ...f, address: e.target.value }))
+                              clearFormError('address')
+                            }}
                             error={formErrors.address?.[0]}
                           />
                         </div>
@@ -627,14 +724,10 @@ export default function Companies() {
                         </div>
 
                         {form.directors.length === 0 && <p className="hx-companies-empty">No directors added.</p>}
+                        {formErrors.directors && <small className="hx-field-error hx-section-error">{formErrors.directors[0]}</small>}
 
                         <div className="hx-inline-grid">
                           {form.directors.map((director, index) => {
-                            // An entirely blank row (just added, not filled in yet) is allowed —
-                            // it's dropped on submit. Once any field in the row has a value, Name
-                            // becomes required, same as the row would need to be complete enough
-                            // to actually get saved.
-                            const rowHasValue = Object.values(director).some((value) => value.trim() !== '')
                             return (
                               <div className="hx-inline-row" key={index}>
                                 <span className="hx-inline-row__label">Director {index + 1}</span>
@@ -645,7 +738,6 @@ export default function Companies() {
                                   wrapperClassName="mb-0 hx-inline-row__field"
                                   value={director.name}
                                   onChange={(e) => updateDirectorField(index, 'name', e.target.value)}
-                                  required={rowHasValue}
                                   error={directorError(index, 'name')}
                                 />
                                 <FloatingInput
@@ -681,10 +773,12 @@ export default function Companies() {
                         </div>
 
                         {form.contractors.length === 0 && <p className="hx-companies-empty">No contractors added.</p>}
+                        {formErrors.contractors && (
+                          <small className="hx-field-error hx-section-error">{formErrors.contractors[0]}</small>
+                        )}
 
                         <div className="hx-inline-grid">
                           {form.contractors.map((contractor, index) => {
-                            const rowHasValue = Object.values(contractor).some((value) => value.trim() !== '')
                             return (
                               <div className="hx-inline-row" key={index}>
                                 <span className="hx-inline-row__label">Contractor {index + 1}</span>
@@ -695,7 +789,6 @@ export default function Companies() {
                                   wrapperClassName="mb-0 hx-inline-row__field"
                                   value={contractor.name}
                                   onChange={(e) => updateContractorField(index, 'name', e.target.value)}
-                                  required={rowHasValue}
                                   error={contractorError(index, 'name')}
                                 />
                                 <FloatingInput
@@ -731,6 +824,7 @@ export default function Companies() {
                         </div>
 
                         {form.presses.length === 0 && <p className="hx-companies-empty">No press added.</p>}
+                        {formErrors.presses && <small className="hx-field-error hx-section-error">{formErrors.presses[0]}</small>}
 
                         <div className="hx-inline-grid">
                           {form.presses.map((press, index) => (
@@ -770,13 +864,11 @@ export default function Companies() {
                         {form.manufacturing_specifications.length === 0 && (
                           <p className="hx-companies-empty">No specifications added.</p>
                         )}
+                        {formErrors.manufacturing_specifications && (
+                          <small className="hx-field-error hx-section-error">{formErrors.manufacturing_specifications[0]}</small>
+                        )}
 
                         {form.manufacturing_specifications.map((spec, index) => {
-                          // An entirely blank row (just added, not filled in yet) is allowed —
-                          // it's dropped on submit. Once any field in the row has a value,
-                          // Size becomes required, same as the row would need to be complete
-                          // enough to actually get saved.
-                          const rowHasValue = Object.values(spec).some((value) => value.trim() !== '')
                           return (
                           <div className="hx-spec-row" key={index}>
                             <div className="hx-spec-row__header">
@@ -799,7 +891,6 @@ export default function Companies() {
                                   wrapperClassName="mb-0"
                                   value={spec.size}
                                   onChange={(e) => updateSpecField(index, 'size', e.target.value)}
-                                  required={rowHasValue}
                                   error={specError(index, 'size')}
                                 >
                                   <option value="">— Select —</option>
@@ -909,15 +1000,18 @@ export default function Companies() {
                   </button>
                 </div>
                 <div className="modal-body">
-                  <form onSubmit={handleAddSize} autoComplete="off">
+                  <form ref={addSize.formRef} onSubmit={handleAddSize} autoComplete="off" noValidate>
                     {sizeError && <p className="hx-form-error">{sizeError}</p>}
                     <FloatingInput
                       label="Size (e.g. 600 x 1200)"
                       type="text"
                       value={newSizeName}
-                      onChange={(e) => setNewSizeName(e.target.value)}
-                      required
+                      onChange={(e) => {
+                        setNewSizeName(e.target.value)
+                        addSize.clearError('name')
+                      }}
                       autoFocus
+                      error={addSize.formErrors.name?.[0]}
                     />
                     <div className="button-group d-flex justify-content-center pt-20">
                       <button

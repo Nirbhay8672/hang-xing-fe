@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { isAdmin, isMarketing } from '../auth/roleUtils'
 import { DASHBOARD_JS_SRCS } from '../pages/dashboardAssets'
+import NotificationBell from './NotificationBell'
 import PageLoader from './PageLoader'
 import { SHELL_HEADER_HTML, SHELL_SIDEBAR_HTML } from './shellMarkup'
 
@@ -43,6 +45,14 @@ function injectDashboardAssets(): Promise<void> {
   })
 }
 
+// React re-applies `dangerouslySetInnerHTML` (rebuilding that DOM) on every render whenever the
+// prop is a new object, even with identical HTML. Keeping these two objects stable means
+// re-renders leave the header/sidebar DOM alone — which matters now that a React component (the
+// notification bell) is portalled into the header: a rebuild would destroy its mount point, and
+// re-finding it re-renders AppShell, which would rebuild the header again, forever.
+const HEADER_INNER_HTML = { __html: SHELL_HEADER_HTML }
+const SIDEBAR_INNER_HTML = { __html: SHELL_SIDEBAR_HTML }
+
 // Re-fetching these ~46 scripts is near-instant once the browser has them cached, which
 // can make the loader flash so briefly it reads as "not showing" at all. Holding it up
 // for at least this long keeps it perceptible without meaningfully delaying real loads.
@@ -63,6 +73,12 @@ const SIDEBAR_PERMISSIONS: Record<string, string> = {
 // the Marketing and Admin roles in the sidebar on top of the permission check above,
 // regardless of what permissions a non-admin role happens to be granted.
 const SIDEBAR_ADMIN_ONLY = new Set<string>([])
+
+// Links shown when the user holds ANY of these permissions — the Delete Requests page is for
+// the people who review requests and the people who raise them.
+const SIDEBAR_ANY_PERMISSION: Record<string, string[]> = {
+  '/delete-requests': ['review delete requests', 'request delete orders', 'request delete complaints'],
+}
 const SIDEBAR_MARKETING_OR_ADMIN = new Set(['/complaints'])
 
 interface AppShellProps {
@@ -79,6 +95,9 @@ export default function AppShell({ title, actions, children }: AppShellProps) {
   const [assetsReady, setAssetsReady] = useState(false)
   const headerRef = useRef<HTMLDivElement>(null)
   const sidebarRef = useRef<HTMLDivElement>(null)
+  // The header's bell is a React component portalled into a placeholder inside the raw header
+  // markup; the placeholder is re-found whenever that markup gets rebuilt (see resync below).
+  const [notifRoot, setNotifRoot] = useState<HTMLElement | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -125,9 +144,20 @@ export default function AppShell({ title, actions, children }: AppShellProps) {
         if (emailEl && emailEl.textContent !== user.email) emailEl.textContent = user.email
       }
 
+      if (header) {
+        const bellRoot = header.querySelector<HTMLElement>('#hx-notification-root')
+        setNotifRoot((prev) => (prev === bellRoot ? prev : bellRoot))
+      }
+
       if (sidebar && user) {
         sidebar.querySelectorAll<HTMLAnchorElement>('.sidebar_nav a[href]').forEach((link) => {
           const href = link.getAttribute('href') ?? ''
+          const anyEntry = Object.entries(SIDEBAR_ANY_PERMISSION).find(([path]) => href.endsWith(path))
+          if (anyEntry) {
+            const anyLi = link.closest('li')
+            if (anyLi) anyLi.style.display = anyEntry[1].some((permission) => user.permissions.includes(permission)) ? '' : 'none'
+            return
+          }
           const entry = Object.entries(SIDEBAR_PERMISSIONS).find(([path]) => href.endsWith(path))
           if (!entry) return
           const li = link.closest('li')
@@ -199,10 +229,11 @@ export default function AppShell({ title, actions, children }: AppShellProps) {
     <>
       {!assetsReady && <PageLoader />}
 
-      <div ref={headerRef} dangerouslySetInnerHTML={{ __html: SHELL_HEADER_HTML }} />
+      <div ref={headerRef} dangerouslySetInnerHTML={HEADER_INNER_HTML} />
+      {notifRoot && createPortal(<NotificationBell />, notifRoot)}
 
       <main className="main-content">
-        <div ref={sidebarRef} dangerouslySetInnerHTML={{ __html: SHELL_SIDEBAR_HTML }} />
+        <div ref={sidebarRef} dangerouslySetInnerHTML={SIDEBAR_INNER_HTML} />
 
         <div className="contents">
           <div className="container-fluid">

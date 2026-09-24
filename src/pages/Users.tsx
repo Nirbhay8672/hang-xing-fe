@@ -3,6 +3,7 @@ import { ApiError } from '../auth/apiClient'
 import { useAuth } from '../auth/AuthContext'
 import AppShell from '../components/AppShell'
 import { FloatingInput, FloatingSelect } from '../components/FloatingField'
+import { EMAIL_PATTERN, useFormErrors } from '../components/formValidation'
 import '../components/detailView.css'
 import '../components/formStyles.css'
 import '../components/iconButtons.css'
@@ -49,7 +50,7 @@ export default function Users() {
   const [modalMode, setModalMode] = useState<'create' | 'edit' | null>(null)
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [form, setForm] = useState<UserFormState>(EMPTY_FORM)
-  const [formErrors, setFormErrors] = useState<Record<string, string[]>>({})
+  const { formErrors, setFormErrors, clearError, showErrors, formRef } = useFormErrors()
   const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
@@ -102,6 +103,17 @@ export default function Users() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    const errors: Record<string, string[]> = {}
+    if (form.name.trim() === '') errors.name = ['Name is required.']
+    else if (form.name.length > 255) errors.name = ['Name must be 255 characters or fewer.']
+    if (form.email.trim() === '') errors.email = ['Email address is required.']
+    else if (!EMAIL_PATTERN.test(form.email.trim())) errors.email = ['Enter a valid email address.']
+    if (modalMode === 'create' && form.password === '') errors.password = ['Password is required.']
+    else if (form.password !== '' && form.password.length < 8) errors.password = ['Password must be at least 8 characters.']
+    if (Object.keys(errors).length > 0) {
+      showErrors(errors)
+      return
+    }
     setSubmitting(true)
     setFormErrors({})
     try {
@@ -125,7 +137,7 @@ export default function Users() {
       }
       setModalMode(null)
     } catch (err) {
-      setFormErrors(extractErrors(err, 'Something went wrong. Please try again.'))
+      showErrors(extractErrors(err, 'Something went wrong. Please try again.'))
     } finally {
       setSubmitting(false)
     }
@@ -292,16 +304,18 @@ export default function Users() {
                 </div>
                 <div className="modal-body">
                   <div className="add-new-contact">
-                    <form onSubmit={handleSubmit} autoComplete="off">
+                    <form ref={formRef} onSubmit={handleSubmit} autoComplete="off" noValidate>
                       {formErrors[GENERAL_ERROR_KEY] && <p className="hx-form-error">{formErrors[GENERAL_ERROR_KEY][0]}</p>}
 
                       <FloatingInput
                         label="Name"
                         type="text"
                         value={form.name}
-                        onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                        onChange={(e) => {
+                          setForm((f) => ({ ...f, name: e.target.value }))
+                          clearError('name')
+                        }}
                         autoComplete="off"
-                        required
                         error={formErrors.name?.[0]}
                       />
 
@@ -309,16 +323,21 @@ export default function Users() {
                         label="Email Address"
                         type="email"
                         value={form.email}
-                        onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                        onChange={(e) => {
+                          setForm((f) => ({ ...f, email: e.target.value }))
+                          clearError('email')
+                        }}
                         autoComplete="off"
-                        required
                         error={formErrors.email?.[0]}
                       />
 
                       <FloatingSelect
                         label="Role"
                         value={form.role_id}
-                        onChange={(e) => setForm((f) => ({ ...f, role_id: e.target.value }))}
+                        onChange={(e) => {
+                          setForm((f) => ({ ...f, role_id: e.target.value }))
+                          clearError('role_id')
+                        }}
                         error={formErrors.role_id?.[0]}
                       >
                         <option value="">Select a role</option>
@@ -333,9 +352,10 @@ export default function Users() {
                         label={modalMode === 'create' ? 'Password' : 'New Password (leave blank to keep current)'}
                         type={showPassword ? 'text' : 'password'}
                         value={form.password}
-                        onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                        minLength={modalMode === 'create' ? 8 : undefined}
-                        required={modalMode === 'create'}
+                        onChange={(e) => {
+                          setForm((f) => ({ ...f, password: e.target.value }))
+                          clearError('password')
+                        }}
                         autoComplete="new-password"
                         error={formErrors.password?.[0]}
                         endAdornment={

@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { ApiError } from '../auth/apiClient'
 import type { Company } from '../companies/types'
 import { companiesService } from '../companies/companiesService'
@@ -45,6 +45,17 @@ function resizeBlankPunchNumbers(quantity: number, current: string[]): string[] 
   return [...current, ...Array.from({ length: quantity - current.length }, () => '')]
 }
 
+type FieldErrors = Record<string, string>
+
+const FIELD_KEYS: Record<string, true> = {
+  size: true,
+  master_number: true,
+  milling_size: true,
+  facing_thickness: true,
+  punch_border: true,
+  punch_numbers: true,
+}
+
 interface PlanOrderModalProps {
   orderId: number
   onClose: () => void
@@ -69,6 +80,8 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
 
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
+  const formRef = useRef<HTMLFormElement>(null)
 
   useEffect(() => {
     loadOrder()
@@ -110,6 +123,37 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
 
   function handleRcPunchChange(index: number, value: string) {
     setRcPunchNumbers((prev) => prev.map((n, i) => (i === index ? value : n)))
+    clearFieldError('punch_numbers')
+  }
+
+  function clearFieldError(key: string) {
+    setFieldErrors((prev) => {
+      if (!(key in prev)) return prev
+      const { [key]: _removed, ...rest } = prev
+      return rest
+    })
+  }
+
+  function validate(): FieldErrors {
+    const errors: FieldErrors = {}
+    if (size.trim() === '') errors.size = 'Size is required.'
+    if (masterNumber.trim() === '') errors.master_number = 'Master number is required.'
+    if (millingSize.trim() === '') errors.milling_size = 'Milling size is required.'
+    if (facingThickness.trim() === '') errors.facing_thickness = 'Facing thickness is required.'
+    if (punchBorder.trim() === '') errors.punch_border = 'Punch border is required.'
+    if (order && order.order_type !== 'New' && rcPunchNumbers.some((n) => n.trim() === '')) {
+      errors.punch_numbers = 'Enter a punch number for every piece.'
+    }
+    return errors
+  }
+
+  function focusFirstInvalid() {
+    // Runs after React has re-rendered the inputs with their error state applied.
+    setTimeout(() => {
+      const first = formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')
+      first?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      first?.focus({ preventScroll: true })
+    }, 0)
   }
 
   function handleClose() {
@@ -120,12 +164,11 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!order) return
-    if (order.order_type !== 'New' && rcPunchNumbers.some((n) => n.trim() === '')) {
-      setSaveError('Enter a punch number for every piece before saving the plan.')
-      return
-    }
-    if (order.order_type === 'New' && (millingSize.trim() === '' || facingThickness.trim() === '')) {
-      setSaveError('Enter milling size and facing thickness before saving the plan.')
+    const errors = validate()
+    setFieldErrors(errors)
+    if (Object.keys(errors).length > 0) {
+      setSaveError(null)
+      focusFirstInvalid()
       return
     }
     setSaving(true)
@@ -146,7 +189,23 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
       })
       onSaved(updated)
     } catch (err) {
-      setSaveError(err instanceof ApiError ? err.message : 'Failed to save plan.')
+      // Server-side validation failures on the fields above land inline too; anything else
+      // (or a field this form has no slot for) falls back to the banner message.
+      const serverErrors = err instanceof ApiError ? err.body?.errors : undefined
+      const inline: FieldErrors = {}
+      if (serverErrors) {
+        for (const [key, messages] of Object.entries(serverErrors)) {
+          const field = key.startsWith('punch_numbers') ? 'punch_numbers' : key
+          if (field in FIELD_KEYS) inline[field] = messages[0]
+        }
+      }
+      if (Object.keys(inline).length > 0) {
+        setFieldErrors(inline)
+        setSaveError(null)
+        focusFirstInvalid()
+      } else {
+        setSaveError(err instanceof ApiError ? err.message : 'Failed to save plan.')
+      }
     } finally {
       setSaving(false)
     }
@@ -190,7 +249,7 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
               {!order && !loadError && <p className="hx-orders-empty">Loading order…</p>}
 
               {order && (
-                <form onSubmit={handleSave} autoComplete="off">
+                <form ref={formRef} onSubmit={handleSave} autoComplete="off" noValidate>
                   {saveError && <p className="hx-form-error">{saveError}</p>}
 
                   <div className="hx-plan-card hx-plan-card--compact">
@@ -269,18 +328,22 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
                         entered
                       </span>
                       <div className="hx-punch-inputs">
-                        {rcPunchNumbers.map((n, i) => (
-                          <input
-                            key={i}
-                            type="text"
-                            className="form-control hx-punch-input"
-                            placeholder={`Punch ${i + 1}`}
-                            value={n}
-                            onChange={(e) => handleRcPunchChange(i, e.target.value)}
-                            required
-                          />
-                        ))}
+                        {rcPunchNumbers.map((n, i) => {
+                          const invalid = Boolean(fieldErrors.punch_numbers) && n.trim() === ''
+                          return (
+                            <input
+                              key={i}
+                              type="text"
+                              className={`form-control hx-punch-input${invalid ? ' hx-punch-input--invalid' : ''}`}
+                              placeholder={`Punch ${i + 1}`}
+                              value={n}
+                              onChange={(e) => handleRcPunchChange(i, e.target.value)}
+                              aria-invalid={invalid ? true : undefined}
+                            />
+                          )
+                        })}
                       </div>
+                      {fieldErrors.punch_numbers && <small className="hx-field-error">{fieldErrors.punch_numbers}</small>}
                     </div>
                   )}
 
@@ -293,7 +356,11 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
                           type="text"
                           variant="default"
                           value={size}
-                          onChange={(e) => setSize(e.target.value)}
+                          onChange={(e) => {
+                            setSize(e.target.value)
+                            clearFieldError('size')
+                          }}
+                          error={fieldErrors.size}
                         />
                       </div>
                       <div className="col-md-6">
@@ -302,7 +369,11 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
                           type="text"
                           variant="default"
                           value={masterNumber}
-                          onChange={(e) => setMasterNumber(e.target.value)}
+                          onChange={(e) => {
+                            setMasterNumber(e.target.value)
+                            clearFieldError('master_number')
+                          }}
+                          error={fieldErrors.master_number}
                         />
                       </div>
                       <div className="col-md-6">
@@ -311,8 +382,11 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
                           type="text"
                           variant="default"
                           value={millingSize}
-                          onChange={(e) => setMillingSize(e.target.value)}
-                          required={order.order_type === 'New'}
+                          onChange={(e) => {
+                            setMillingSize(e.target.value)
+                            clearFieldError('milling_size')
+                          }}
+                          error={fieldErrors.milling_size}
                         />
                       </div>
                       <div className="col-md-6">
@@ -321,8 +395,11 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
                           type="text"
                           variant="default"
                           value={facingThickness}
-                          onChange={(e) => setFacingThickness(e.target.value)}
-                          required={order.order_type === 'New'}
+                          onChange={(e) => {
+                            setFacingThickness(e.target.value)
+                            clearFieldError('facing_thickness')
+                          }}
+                          error={fieldErrors.facing_thickness}
                         />
                       </div>
                       <div className="col-md-6">
@@ -340,7 +417,11 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
                           type="text"
                           variant="default"
                           value={punchBorder}
-                          onChange={(e) => setPunchBorder(e.target.value)}
+                          onChange={(e) => {
+                            setPunchBorder(e.target.value)
+                            clearFieldError('punch_border')
+                          }}
+                          error={fieldErrors.punch_border}
                         />
                       </div>
                       <div className="col-md-6">

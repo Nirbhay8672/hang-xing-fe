@@ -172,6 +172,22 @@
   color: #dc3545;
 }
 
+/* The inline error sits out of the wrapper's flow: in-flow it would inflate the wrapper, and the
+   label (centered at 50% of the wrapper) would drop below the input's middle. The wrapper's
+   bottom margin grows while an error is showing so the message has clear space above whatever
+   comes next. Rows that zero the margin (mb-0) make room for it themselves — see Companies.css. */
+.hx-floating > .hx-field-error {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 5px;
+  line-height: 1.2;
+}
+
+.hx-floating.hx-floating--invalid {
+  margin-bottom: 38px;
+}
+
 .hx-floating--invalid > input,
 .hx-floating--invalid > select,
 .hx-floating--invalid > textarea {

@@ -82,6 +82,21 @@
   box-shadow: 0 0 0 3px rgba(46, 49, 117, 0.18);
 }
 
+.form-field input.is-invalid {
+  border-color: #dc3545;
+}
+
+.form-field input.is-invalid:focus {
+  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.18);
+}
+
+.field-error {
+  display: block;
+  margin-top: 6px;
+  color: #dc3545;
+  font-size: 12.5px;
+}
+
 .password-input {
   position: relative;
 }

@@ -3,6 +3,7 @@ import { ApiError } from '../auth/apiClient'
 import { useAuth } from '../auth/AuthContext'
 import AppShell from '../components/AppShell'
 import { FloatingInput } from '../components/FloatingField'
+import { EMAIL_PATTERN, useFormErrors } from '../components/formValidation'
 import '../components/formStyles.css'
 import type { Profile } from '../profile/types'
 import { profileService } from '../profile/profileService'
@@ -37,7 +38,7 @@ export default function ProfilePage() {
   const [form, setForm] = useState<ProfileFormState>({ name: '', email: '', currentPassword: '', newPassword: '' })
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
-  const [formErrors, setFormErrors] = useState<Record<string, string[]>>({})
+  const { formErrors, setFormErrors, clearError, showErrors, formRef } = useFormErrors()
   const [submitting, setSubmitting] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
@@ -58,13 +59,22 @@ export default function ProfilePage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setFormErrors({})
     setSuccessMessage(null)
 
-    if (form.newPassword && !form.currentPassword) {
-      setFormErrors({ current_password: ['Enter your current password to set a new one.'] })
+    const errors: Record<string, string[]> = {}
+    if (form.name.trim() === '') errors.name = ['Name is required.']
+    else if (form.name.length > 255) errors.name = ['Name must be 255 characters or fewer.']
+    if (form.email.trim() === '') errors.email = ['Email address is required.']
+    else if (!EMAIL_PATTERN.test(form.email.trim())) errors.email = ['Enter a valid email address.']
+    if (form.newPassword) {
+      if (!form.currentPassword) errors.current_password = ['Enter your current password to set a new one.']
+      if (form.newPassword.length < 8) errors.password = ['New password must be at least 8 characters.']
+    }
+    if (Object.keys(errors).length > 0) {
+      showErrors(errors)
       return
     }
+    setFormErrors({})
 
     setSubmitting(true)
     try {
@@ -82,7 +92,7 @@ export default function ProfilePage() {
       updateUser(updated)
       setSuccessMessage('Profile updated successfully.')
     } catch (err) {
-      setFormErrors(extractErrors(err, 'Something went wrong. Please try again.'))
+      showErrors(extractErrors(err, 'Something went wrong. Please try again.'))
     } finally {
       setSubmitting(false)
     }
@@ -103,7 +113,7 @@ export default function ProfilePage() {
                 </div>
               </div>
               <div className="card-body">
-                <form onSubmit={handleSubmit} autoComplete="off">
+                <form ref={formRef} onSubmit={handleSubmit} autoComplete="off" noValidate>
                     {formErrors[GENERAL_ERROR_KEY] && <p className="hx-form-error">{formErrors[GENERAL_ERROR_KEY][0]}</p>}
                     {successMessage && <p className="hx-form-success">{successMessage}</p>}
 
@@ -113,9 +123,11 @@ export default function ProfilePage() {
                           label="Name"
                           type="text"
                           value={form.name}
-                          onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                          onChange={(e) => {
+                            setForm((f) => ({ ...f, name: e.target.value }))
+                            clearError('name')
+                          }}
                           autoComplete="off"
-                          required
                           error={formErrors.name?.[0]}
                         />
                       </div>
@@ -124,9 +136,11 @@ export default function ProfilePage() {
                           label="Email Address"
                           type="email"
                           value={form.email}
-                          onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                          onChange={(e) => {
+                            setForm((f) => ({ ...f, email: e.target.value }))
+                            clearError('email')
+                          }}
                           autoComplete="off"
-                          required
                           error={formErrors.email?.[0]}
                         />
                       </div>
@@ -141,7 +155,10 @@ export default function ProfilePage() {
                           label="Current Password"
                           type={showCurrentPassword ? 'text' : 'password'}
                           value={form.currentPassword}
-                          onChange={(e) => setForm((f) => ({ ...f, currentPassword: e.target.value }))}
+                          onChange={(e) => {
+                            setForm((f) => ({ ...f, currentPassword: e.target.value }))
+                            clearError('current_password')
+                          }}
                           autoComplete="off"
                           error={formErrors.current_password?.[0]}
                           endAdornment={
@@ -160,8 +177,10 @@ export default function ProfilePage() {
                           label="New Password"
                           type={showNewPassword ? 'text' : 'password'}
                           value={form.newPassword}
-                          onChange={(e) => setForm((f) => ({ ...f, newPassword: e.target.value }))}
-                          minLength={8}
+                          onChange={(e) => {
+                            setForm((f) => ({ ...f, newPassword: e.target.value }))
+                            clearError('password', 'current_password')
+                          }}
                           autoComplete="new-password"
                           error={formErrors.password?.[0]}
                           endAdornment={

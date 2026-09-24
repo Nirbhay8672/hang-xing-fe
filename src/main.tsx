@@ -7,6 +7,7 @@ import Layout from './components/Layout.tsx'
 import Companies from './pages/Companies.tsx'
 import Complaints from './pages/Complaints.tsx'
 import Dashboard from './pages/Dashboard.tsx'
+import DeleteRequests from './pages/DeleteRequests.tsx'
 import Login from './pages/Login.tsx'
 import Orders from './pages/Orders.tsx'
 import Planning from './pages/Planning.tsx'
@@ -114,6 +115,14 @@ createRoot(document.getElementById('root')!).render(
             element={
               <RequireAuth>
                 <Problems />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/delete-requests"
+            element={
+              <RequireAuth>
+                <DeleteRequests />
               </RequireAuth>
             }
           />

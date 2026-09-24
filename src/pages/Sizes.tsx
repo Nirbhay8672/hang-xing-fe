@@ -3,6 +3,7 @@ import { ApiError } from '../auth/apiClient'
 import { useAuth } from '../auth/AuthContext'
 import AppShell from '../components/AppShell'
 import { FloatingInput } from '../components/FloatingField'
+import { useFormErrors } from '../components/formValidation'
 import '../components/detailView.css'
 import '../components/formStyles.css'
 import '../components/iconButtons.css'
@@ -36,7 +37,7 @@ export default function Sizes() {
   const [modalMode, setModalMode] = useState<'create' | 'edit' | null>(null)
   const [editingSize, setEditingSize] = useState<Size | null>(null)
   const [name, setName] = useState('')
-  const [formErrors, setFormErrors] = useState<Record<string, string[]>>({})
+  const { formErrors, setFormErrors, clearError, showErrors, formRef } = useFormErrors()
   const [submitting, setSubmitting] = useState(false)
 
   const [deleteTarget, setDeleteTarget] = useState<Size | null>(null)
@@ -98,6 +99,14 @@ export default function Sizes() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (name.trim() === '') {
+      showErrors({ name: ['Size is required.'] })
+      return
+    }
+    if (name.length > 255) {
+      showErrors({ name: ['Size must be 255 characters or fewer.'] })
+      return
+    }
     setSubmitting(true)
     setFormErrors({})
     try {
@@ -110,7 +119,7 @@ export default function Sizes() {
       }
       setModalMode(null)
     } catch (err) {
-      setFormErrors(extractErrors(err, 'Something went wrong. Please try again.'))
+      showErrors(extractErrors(err, 'Something went wrong. Please try again.'))
     } finally {
       setSubmitting(false)
     }
@@ -246,14 +255,16 @@ export default function Sizes() {
                   </button>
                 </div>
                 <div className="modal-body">
-                  <form onSubmit={handleSubmit} autoComplete="off">
+                  <form ref={formRef} onSubmit={handleSubmit} autoComplete="off" noValidate>
                     {formErrors[GENERAL_ERROR_KEY] && <p className="hx-form-error">{formErrors[GENERAL_ERROR_KEY][0]}</p>}
                     <FloatingInput
                       label="Size (e.g. 600 x 1200)"
                       type="text"
                       value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      required
+                      onChange={(e) => {
+                        setName(e.target.value)
+                        clearError('name')
+                      }}
                       autoFocus
                       error={formErrors.name?.[0]}
                     />

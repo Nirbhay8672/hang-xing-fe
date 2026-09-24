@@ -3,6 +3,9 @@ import { ApiError } from '../auth/apiClient'
 import { useAuth } from '../auth/AuthContext'
 import AppShell from '../components/AppShell'
 import { FloatingInput, FloatingSelect, FloatingTextarea } from '../components/FloatingField'
+import { useFormErrors } from '../components/formValidation'
+import RequestDeleteModal from '../components/RequestDeleteModal'
+import { usePendingDeleteRequestIds } from '../deleteRequests/usePendingDeleteRequests'
 import '../components/detailView.css'
 import '../components/formStyles.css'
 import '../components/iconButtons.css'
@@ -78,7 +81,7 @@ export default function Complaints() {
   const [modalMode, setModalMode] = useState<'create' | 'edit' | null>(null)
   const [editingComplaint, setEditingComplaint] = useState<Complaint | null>(null)
   const [form, setForm] = useState<ComplaintFormState>(EMPTY_FORM)
-  const [formErrors, setFormErrors] = useState<Record<string, string[]>>({})
+  const { formErrors, setFormErrors, clearError, showErrors, formRef } = useFormErrors()
   const [submitting, setSubmitting] = useState(false)
 
   const [resolveTarget, setResolveTarget] = useState<Complaint | null>(null)
@@ -87,6 +90,10 @@ export default function Complaints() {
   const [resolving, setResolving] = useState(false)
 
   const [deleteTarget, setDeleteTarget] = useState<Complaint | null>(null)
+  // People without "delete complaints" (Marketing) can't delete directly — they ask an Admin instead.
+  const [requestDeleteTarget, setRequestDeleteTarget] = useState<Complaint | null>(null)
+  const canRequestDelete = !can('delete complaints') && can('request delete complaints')
+  const { pendingIds: pendingDeleteIds, addPending: addPendingDelete } = usePendingDeleteRequestIds('complaint', canRequestDelete)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
 
@@ -94,6 +101,7 @@ export default function Complaints() {
   const [newProblemName, setNewProblemName] = useState('')
   const [problemError, setProblemError] = useState<string | null>(null)
   const [problemSubmitting, setProblemSubmitting] = useState(false)
+  const addProblem = useFormErrors()
 
   // Image is handled via its own dedicated upload/remove endpoints rather than the main
   // create/update payload — imageFile is a newly picked file waiting to be uploaded on save,
@@ -149,6 +157,16 @@ export default function Complaints() {
   }
 
   function handleImageFileChange(file: File | null) {
+    // Mirrors the API's limits (image only, up to 5 MB) so a bad pick is caught before saving.
+    if (file && !file.type.startsWith('image/')) {
+      setFormErrors((prev) => ({ ...prev, image: ['Choose an image file (JPG, PNG, GIF or WebP).'] }))
+      return
+    }
+    if (file && file.size > 5 * 1024 * 1024) {
+      setFormErrors((prev) => ({ ...prev, image: ['The image must be 5 MB or smaller.'] }))
+      return
+    }
+    clearError('image')
     setImageFile(file)
     setRemoveImageFlag(false)
     setImagePreviewUrl(file ? URL.createObjectURL(file) : (editingComplaint?.image_url ?? null))
@@ -187,6 +205,14 @@ export default function Complaints() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    const errors: Record<string, string[]> = {}
+    if (!form.problem_id) errors.problem_id = ['Problem is required.']
+    if (form.title.trim() === '') errors.title = ['Title is required.']
+    else if (form.title.length > 255) errors.title = ['Title must be 255 characters or fewer.']
+    if (Object.keys(errors).length > 0) {
+      showErrors(errors)
+      return
+    }
     setSubmitting(true)
     setFormErrors({})
     try {
@@ -226,7 +252,7 @@ export default function Complaints() {
 
       setModalMode(null)
     } catch (err) {
-      setFormErrors(extractErrors(err, 'Something went wrong. Please try again.'))
+      showErrors(extractErrors(err, 'Something went wrong. Please try again.'))
     } finally {
       setSubmitting(false)
     }
@@ -270,6 +296,7 @@ export default function Complaints() {
   function openAddProblemModal() {
     setNewProblemName('')
     setProblemError(null)
+    addProblem.setFormErrors({})
     setProblemModalOpen(true)
   }
 
@@ -280,6 +307,14 @@ export default function Complaints() {
 
   async function handleAddProblem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (newProblemName.trim() === '') {
+      addProblem.showErrors({ name: ['Problem name is required.'] })
+      return
+    }
+    if (newProblemName.length > 255) {
+      addProblem.showErrors({ name: ['Problem name must be 255 characters or fewer.'] })
+      return
+    }
     setProblemSubmitting(true)
     setProblemError(null)
     try {
@@ -445,6 +480,18 @@ export default function Complaints() {
                                   <i className="la la-trash"></i>
                                 </button>
                               )}
+                              {canRequestDelete && (
+                                <button
+                                  type="button"
+                                  className="hx-icon-btn hx-icon-btn--delete"
+                                  aria-label="Request complaint deletion"
+                                  title={pendingDeleteIds.has(c.id) ? 'Delete request waiting for admin approval' : 'Request delete'}
+                                  disabled={pendingDeleteIds.has(c.id)}
+                                  onClick={() => setRequestDeleteTarget(c)}
+                                >
+                                  <i className={pendingDeleteIds.has(c.id) ? 'la la-hourglass-half' : 'la la-trash'}></i>
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -478,7 +525,7 @@ export default function Complaints() {
                 </div>
                 <div className="modal-body">
                   <div className="add-new-contact">
-                    <form onSubmit={handleSubmit} autoComplete="off">
+                    <form ref={formRef} onSubmit={handleSubmit} autoComplete="off" noValidate>
                       {formErrors[GENERAL_ERROR_KEY] && <p className="hx-form-error">{formErrors[GENERAL_ERROR_KEY][0]}</p>}
 
                       <div className="row">
@@ -486,8 +533,10 @@ export default function Complaints() {
                           <FloatingSelect
                             label="Problem"
                             value={form.problem_id}
-                            onChange={(e) => setForm((f) => ({ ...f, problem_id: e.target.value }))}
-                            required
+                            onChange={(e) => {
+                              setForm((f) => ({ ...f, problem_id: e.target.value }))
+                              clearError('problem_id')
+                            }}
                             error={formErrors.problem_id?.[0]}
                           >
                             <option value="">— Select —</option>
@@ -521,8 +570,10 @@ export default function Complaints() {
                             label="Title"
                             type="text"
                             value={form.title}
-                            onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                            required
+                            onChange={(e) => {
+                              setForm((f) => ({ ...f, title: e.target.value }))
+                              clearError('title')
+                            }}
                             error={formErrors.title?.[0]}
                           />
                         </div>
@@ -598,15 +649,18 @@ export default function Complaints() {
                   </button>
                 </div>
                 <div className="modal-body">
-                  <form onSubmit={handleAddProblem} autoComplete="off">
+                  <form ref={addProblem.formRef} onSubmit={handleAddProblem} autoComplete="off" noValidate>
                     {problemError && <p className="hx-form-error">{problemError}</p>}
                     <FloatingInput
                       label="Problem Name"
                       type="text"
                       value={newProblemName}
-                      onChange={(e) => setNewProblemName(e.target.value)}
-                      required
+                      onChange={(e) => {
+                        setNewProblemName(e.target.value)
+                        addProblem.clearError('name')
+                      }}
                       autoFocus
+                      error={addProblem.formErrors.name?.[0]}
                     />
                     <div className="button-group d-flex justify-content-center pt-20">
                       <button
@@ -642,7 +696,7 @@ export default function Complaints() {
                   </button>
                 </div>
                 <div className="modal-body">
-                  <form onSubmit={handleResolveSubmit} autoComplete="off">
+                  <form onSubmit={handleResolveSubmit} autoComplete="off" noValidate>
                     {resolveErrors[GENERAL_ERROR_KEY] && <p className="hx-form-error">{resolveErrors[GENERAL_ERROR_KEY][0]}</p>}
                     <div className="row">
                       <div className="col-md-6">
@@ -650,7 +704,6 @@ export default function Complaints() {
                           label="Status"
                           value={resolveForm.status}
                           onChange={(e) => setResolveForm((f) => ({ ...f, status: e.target.value as ComplaintStatus }))}
-                          required
                           error={resolveErrors.status?.[0]}
                         >
                           {STATUS_OPTIONS.map((s) => (
@@ -784,6 +837,16 @@ export default function Complaints() {
           </div>
           <div className="modal-backdrop fade show" onClick={() => setViewTarget(null)}></div>
         </>
+      )}
+
+      {requestDeleteTarget && (
+        <RequestDeleteModal
+          subject="complaint"
+          subjectId={requestDeleteTarget.id}
+          label={requestDeleteTarget.complaint_no}
+          onClose={() => setRequestDeleteTarget(null)}
+          onRequested={(request) => addPendingDelete(request.subject_id)}
+        />
       )}
 
       {deleteTarget && (

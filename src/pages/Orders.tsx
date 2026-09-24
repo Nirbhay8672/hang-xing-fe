@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { ApiError } from '../auth/apiClient'
 import { useAuth } from '../auth/AuthContext'
 import AppShell from '../components/AppShell'
@@ -13,6 +13,9 @@ import type { Company } from '../companies/types'
 import { companiesService } from '../companies/companiesService'
 import { masterNumbersService } from '../masterNumbers/masterNumbersService'
 import { compareSizeNames } from '../sizes/sortSizes'
+import { useFormErrors } from '../components/formValidation'
+import RequestDeleteModal from '../components/RequestDeleteModal'
+import { usePendingDeleteRequestIds } from '../deleteRequests/usePendingDeleteRequests'
 import type { CreateOrderRequest, Order } from '../orders/types'
 import { ordersService } from '../orders/ordersService'
 import type { User } from '../users/types'
@@ -200,9 +203,14 @@ export default function Orders() {
   const [editFetchError, setEditFetchError] = useState<string | null>(null)
   const [form, setForm] = useState<OrderFormState>(EMPTY_FORM)
   const [formErrors, setFormErrors] = useState<Record<string, string[]>>({})
+  const orderFormRef = useRef<HTMLFormElement>(null)
   const [submitting, setSubmitting] = useState(false)
 
   const [deleteTarget, setDeleteTarget] = useState<Order | null>(null)
+  // People without "delete orders" (Marketing) can't delete directly — they ask an Admin instead.
+  const [requestDeleteTarget, setRequestDeleteTarget] = useState<Order | null>(null)
+  const canRequestDelete = !can('delete orders') && can('request delete orders')
+  const { pendingIds: pendingDeleteIds, addPending: addPendingDelete } = usePendingDeleteRequestIds('order', canRequestDelete)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
 
@@ -212,6 +220,7 @@ export default function Orders() {
   const [newMasterNo, setNewMasterNo] = useState('')
   const [masterNoError, setMasterNoError] = useState<string | null>(null)
   const [masterNoSubmitting, setMasterNoSubmitting] = useState(false)
+  const addMasterNo = useFormErrors()
 
   useEffect(() => {
     loadOrders()
@@ -370,8 +379,42 @@ export default function Orders() {
     }
   }
 
+  function clearFormError(...keys: string[]) {
+    setFormErrors((prev) => {
+      if (!keys.some((k) => k in prev)) return prev
+      const next = { ...prev }
+      for (const k of keys) delete next[k]
+      return next
+    })
+  }
+
+  // Everything except Remarks (and RC/RR punch numbers, which are optional) must be filled in.
+  function validateOrderForm(): Record<string, string[]> {
+    const errors: Record<string, string[]> = {}
+    if (!form.company_id) errors.company_id = ['Company is required.']
+    if (!form.size) errors.size = ['Size is required.']
+    if (!form.punch_type) errors.punch_type = ['Punch type is required.']
+    if (!form.order_type) errors.order_type = ['Order type is required.']
+    if (form.quantity.trim() === '') errors.quantity = ['Quantity is required.']
+    else if (!(Number(form.quantity) >= 1)) errors.quantity = ['Quantity must be at least 1.']
+    if (!form.user_id) errors.user_id = ['Order by is required.']
+    if (!form.expected_delivery_date) errors.expected_delivery_date = ['Expected delivery date is required.']
+    if (!form.master_number) errors.master_number = ['Master number is required.']
+    return errors
+  }
+
+  function scrollToFirstInvalid() {
+    // Runs after React has re-rendered the fields with their error state applied.
+    setTimeout(() => {
+      const first = orderFormRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')
+      first?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      first?.focus({ preventScroll: true })
+    }, 0)
+  }
+
   function handleCompanyChange(companyId: string) {
     setForm((f) => ({ ...f, company_id: companyId, size: '', specification_ids: [], master_number: '' }))
+    clearFormError('company_id')
   }
 
   function handleSizeChange(size: string) {
@@ -380,6 +423,7 @@ export default function Orders() {
     const specIds = (selectedCompany?.manufacturing_specifications ?? []).filter((s) => s.size === size).map((s) => String(s.id))
     const options = getMasterNoOptions(selectedCompany, size, form.punch_type, specIds)
     setForm((f) => ({ ...f, size, specification_ids: specIds, master_number: options[0] ?? '' }))
+    clearFormError('size', 'master_number')
   }
 
   function toggleSpecification(specificationId: string) {
@@ -390,6 +434,7 @@ export default function Orders() {
       const options = getMasterNoOptions(selectedCompany, f.size, f.punch_type, specification_ids)
       return { ...f, specification_ids, master_number: options[0] ?? '' }
     })
+    clearFormError('master_number')
   }
 
   function toggleAllSpecifications() {
@@ -399,11 +444,13 @@ export default function Orders() {
       const options = getMasterNoOptions(selectedCompany, f.size, f.punch_type, specification_ids)
       return { ...f, specification_ids, master_number: options[0] ?? '' }
     })
+    clearFormError('master_number')
   }
 
   function handlePunchTypeChange(punchType: string) {
     const options = getMasterNoOptions(selectedCompany, form.size, punchType, form.specification_ids)
     setForm((f) => ({ ...f, punch_type: punchType, master_number: options[0] ?? '' }))
+    clearFormError('punch_type', 'master_number')
   }
 
   // Punch numbers are a running sequence shared across every "New" order ever placed, so the
@@ -450,6 +497,7 @@ export default function Orders() {
       quantity,
       punch_numbers: punchNumbersForOrderType(f.order_type, Number(quantity) || 0, f.punch_numbers),
     }))
+    clearFormError('quantity')
   }
 
   function handleOrderTypeChange(orderType: string) {
@@ -460,6 +508,7 @@ export default function Orders() {
       // start each type fresh rather than reinterpreting the other type's values.
       punch_numbers: punchNumbersForOrderType(orderType, Number(f.quantity) || 0, []),
     }))
+    clearFormError('order_type')
   }
 
   function handlePunchNumberInputChange(index: number, value: string) {
@@ -472,6 +521,7 @@ export default function Orders() {
   function openAddMasterNoModal() {
     setNewMasterNo('')
     setMasterNoError(null)
+    addMasterNo.setFormErrors({})
     setMasterNoModalOpen(true)
   }
 
@@ -482,6 +532,10 @@ export default function Orders() {
 
   async function handleAddMasterNo(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (newMasterNo.trim() === '') {
+      addMasterNo.showErrors({ master_number: ['Master number is required.'] })
+      return
+    }
     setMasterNoSubmitting(true)
     setMasterNoError(null)
     try {
@@ -518,6 +572,12 @@ export default function Orders() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    const clientErrors = validateOrderForm()
+    if (Object.keys(clientErrors).length > 0) {
+      setFormErrors(clientErrors)
+      scrollToFirstInvalid()
+      return
+    }
     setSubmitting(true)
     setFormErrors({})
     try {
@@ -769,6 +829,18 @@ export default function Orders() {
                                   <i className="la la-trash"></i>
                                 </button>
                               )}
+                              {canRequestDelete && (
+                                <button
+                                  type="button"
+                                  className="hx-icon-btn hx-icon-btn--delete"
+                                  aria-label="Request order deletion"
+                                  title={pendingDeleteIds.has(o.id) ? 'Delete request waiting for admin approval' : 'Request delete'}
+                                  disabled={pendingDeleteIds.has(o.id)}
+                                  onClick={() => setRequestDeleteTarget(o)}
+                                >
+                                  <i className={pendingDeleteIds.has(o.id) ? 'la la-hourglass-half' : 'la la-trash'}></i>
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -802,7 +874,7 @@ export default function Orders() {
                 </div>
                 <div className="modal-body">
                   <div className="add-new-contact">
-                    <form onSubmit={handleSubmit} autoComplete="off">
+                    <form ref={orderFormRef} onSubmit={handleSubmit} autoComplete="off" noValidate>
                       {formErrors[GENERAL_ERROR_KEY] && <p className="hx-form-error">{formErrors[GENERAL_ERROR_KEY][0]}</p>}
 
                       <div className="hx-order-section">
@@ -813,7 +885,6 @@ export default function Orders() {
                               label="Company"
                               value={form.company_id}
                               onChange={(e) => handleCompanyChange(e.target.value)}
-                              required
                               error={formErrors.company_id?.[0]}
                             >
                               <option value="">— Select —</option>
@@ -830,7 +901,6 @@ export default function Orders() {
                               value={form.size}
                               onChange={(e) => handleSizeChange(e.target.value)}
                               disabled={!selectedCompany}
-                              required
                               error={formErrors.size?.[0]}
                             >
                               <option value="">— Select —</option>
@@ -846,7 +916,6 @@ export default function Orders() {
                               label="Punch Type"
                               value={form.punch_type}
                               onChange={(e) => handlePunchTypeChange(e.target.value)}
-                              required
                               error={formErrors.punch_type?.[0]}
                             >
                               <option value="">— Select —</option>
@@ -862,7 +931,6 @@ export default function Orders() {
                               label="Order Type"
                               value={form.order_type}
                               onChange={(e) => handleOrderTypeChange(e.target.value)}
-                              required
                               error={formErrors.order_type?.[0]}
                             >
                               <option value="">— Select —</option>
@@ -950,7 +1018,6 @@ export default function Orders() {
                               min={1}
                               value={form.quantity}
                               onChange={(e) => handleQuantityChange(e.target.value)}
-                              required
                               error={formErrors.quantity?.[0]}
                             />
                           </div>
@@ -958,9 +1025,11 @@ export default function Orders() {
                             <FloatingSelect
                               label="Order By"
                               value={form.user_id}
-                              onChange={(e) => setForm((f) => ({ ...f, user_id: e.target.value }))}
+                              onChange={(e) => {
+                                setForm((f) => ({ ...f, user_id: e.target.value }))
+                                clearFormError('user_id')
+                              }}
                               disabled
-                              required
                               error={formErrors.user_id?.[0]}
                             >
                               <option value="">— Select —</option>
@@ -976,8 +1045,10 @@ export default function Orders() {
                               label="Expected Delivery Date"
                               type="date"
                               value={form.expected_delivery_date}
-                              onChange={(e) => setForm((f) => ({ ...f, expected_delivery_date: e.target.value }))}
-                              required
+                              onChange={(e) => {
+                                setForm((f) => ({ ...f, expected_delivery_date: e.target.value }))
+                                clearFormError('expected_delivery_date')
+                              }}
                               error={formErrors.expected_delivery_date?.[0]}
                             />
                           </div>
@@ -985,9 +1056,11 @@ export default function Orders() {
                             <FloatingSelect
                               label="Master Number"
                               value={form.master_number}
-                              onChange={(e) => setForm((f) => ({ ...f, master_number: e.target.value }))}
+                              onChange={(e) => {
+                                setForm((f) => ({ ...f, master_number: e.target.value }))
+                                clearFormError('master_number')
+                              }}
                               disabled={!form.size || !form.punch_type}
-                              required
                               error={formErrors.master_number?.[0]}
                             >
                               <option value="">— Select —</option>
@@ -1080,14 +1153,17 @@ export default function Orders() {
                   </button>
                 </div>
                 <div className="modal-body">
-                  <form onSubmit={handleAddMasterNo} autoComplete="off">
+                  <form ref={addMasterNo.formRef} onSubmit={handleAddMasterNo} autoComplete="off" noValidate>
                     {masterNoError && <p className="hx-form-error">{masterNoError}</p>}
                     <FloatingInput
                       label="Master Number"
                       type="text"
                       value={newMasterNo}
-                      onChange={(e) => setNewMasterNo(e.target.value)}
-                      required
+                      onChange={(e) => {
+                        setNewMasterNo(e.target.value)
+                        addMasterNo.clearError('master_number')
+                      }}
+                      error={addMasterNo.formErrors.master_number?.[0]}
                     />
                     <div className="button-group d-flex justify-content-center pt-20">
                       <button
@@ -1263,6 +1339,16 @@ export default function Orders() {
           </div>
           <div className="modal-backdrop fade show" onClick={() => setViewTarget(null)}></div>
         </>
+      )}
+
+      {requestDeleteTarget && (
+        <RequestDeleteModal
+          subject="order"
+          subjectId={requestDeleteTarget.id}
+          label={requestDeleteTarget.order_no}
+          onClose={() => setRequestDeleteTarget(null)}
+          onRequested={(request) => addPendingDelete(request.subject_id)}
+        />
       )}
 
       {deleteTarget && (

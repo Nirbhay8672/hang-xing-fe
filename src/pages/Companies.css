@@ -185,3 +185,26 @@
 .hx-inline-row .hx-icon-btn {
   flex-shrink: 0;
 }
+
+/* Fields in these rows have no bottom margin (see the global inline-error rule in formStyles.css),
+   so the row/card containing an error grows at the bottom to make room for it instead. */
+.hx-modal-wide .hx-floating > .hx-field-error {
+  margin-top: 4px;
+  white-space: nowrap;
+}
+
+.hx-size-field .hx-floating.hx-floating--invalid {
+  margin-bottom: 0;
+}
+
+.hx-inline-row:has(.hx-field-error) {
+  padding-bottom: 28px;
+}
+
+.hx-spec-row__fields:has(.hx-field-error) {
+  padding-bottom: 26px;
+}
+
+.hx-specs-section > .hx-section-error {
+  margin: 0 0 10px;
+}

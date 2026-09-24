@@ -3,6 +3,7 @@ import { ApiError } from '../auth/apiClient'
 import { useAuth } from '../auth/AuthContext'
 import AppShell from '../components/AppShell'
 import { FloatingInput } from '../components/FloatingField'
+import { useFormErrors } from '../components/formValidation'
 import '../components/detailView.css'
 import '../components/formStyles.css'
 import '../components/iconButtons.css'
@@ -53,7 +54,7 @@ export default function Roles() {
   const [modalMode, setModalMode] = useState<'create' | 'edit' | null>(null)
   const [editingRole, setEditingRole] = useState<Role | null>(null)
   const [form, setForm] = useState<RoleFormState>(EMPTY_FORM)
-  const [formErrors, setFormErrors] = useState<Record<string, string[]>>({})
+  const { formErrors, setFormErrors, clearError, showErrors, formRef } = useFormErrors()
   const [submitting, setSubmitting] = useState(false)
 
   const [deleteTarget, setDeleteTarget] = useState<Role | null>(null)
@@ -118,6 +119,14 @@ export default function Roles() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (form.name.trim() === '') {
+      showErrors({ name: ['Role name is required.'] })
+      return
+    }
+    if (form.name.length > 255) {
+      showErrors({ name: ['Role name must be 255 characters or fewer.'] })
+      return
+    }
     setSubmitting(true)
     setFormErrors({})
     try {
@@ -131,7 +140,7 @@ export default function Roles() {
       }
       setModalMode(null)
     } catch (err) {
-      setFormErrors(extractErrors(err, 'Something went wrong. Please try again.'))
+      showErrors(extractErrors(err, 'Something went wrong. Please try again.'))
     } finally {
       setSubmitting(false)
     }
@@ -307,16 +316,18 @@ export default function Roles() {
                 </div>
                 <div className="modal-body">
                   <div className="add-new-contact">
-                    <form onSubmit={handleSubmit} autoComplete="off">
+                    <form ref={formRef} onSubmit={handleSubmit} autoComplete="off" noValidate>
                       {formErrors[GENERAL_ERROR_KEY] && <p className="hx-form-error">{formErrors[GENERAL_ERROR_KEY][0]}</p>}
 
                       <FloatingInput
                         label="Name"
                         type="text"
                         value={form.name}
-                        onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                        onChange={(e) => {
+                          setForm((f) => ({ ...f, name: e.target.value }))
+                          clearError('name')
+                        }}
                         autoComplete="off"
-                        required
                         error={formErrors.name?.[0]}
                       />
 
