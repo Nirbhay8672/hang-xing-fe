@@ -18,6 +18,9 @@ import type {
 import { companiesService } from '../companies/companiesService'
 import type { Order } from '../orders/types'
 import { ordersService } from '../orders/ordersService'
+import type { Size } from '../sizes/types'
+import { sizesService } from '../sizes/sizesService'
+import { sortSizes } from '../sizes/sortSizes'
 import './Companies.css'
 import './Orders.css'
 
@@ -53,45 +56,6 @@ const EMPTY_FORM: CompanyFormState = {
   manufacturing_specifications: [{ ...EMPTY_SPEC }],
 }
 
-const SIZE_OPTIONS = [
-  '150 x 150',
-  '150 x 900',
-  '200 x 200',
-  '200 x 300',
-  '200 x 600',
-  '200 x 1200',
-  '300 x 300',
-  '300 x 450',
-  '300 x 600',
-  '300 x 900',
-  '300 x 1200',
-  '400 x 400',
-  '400 x 800',
-  '400 x 1200',
-  '450 x 450',
-  '450 x 900',
-  '500 x 500',
-  '600 x 600',
-  '600 x 900',
-  '600 x 1000',
-  '600 x 1200',
-  '600 x 1520',
-  '750 x 1400',
-  '750 x 1500',
-  '800 x 800',
-  '800 x 1200',
-  '800 x 1600',
-  '800 x 1800',
-  '800 x 2400',
-  '800 x 2600',
-  '900 x 1800',
-  '1000 x 1000',
-  '1000 x 2000',
-  '1200 x 1200',
-  '1200 x 1800',
-  '1200 x 2400',
-]
-
 const GENERAL_ERROR_KEY = '_general'
 
 function formatDate(iso: string): string {
@@ -111,6 +75,7 @@ export default function Companies() {
   const [companies, setCompanies] = useState<Company[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [sizeFilter, setSizeFilter] = useState('')
   const [specsTarget, setSpecsTarget] = useState<Company | null>(null)
   const [directorsTarget, setDirectorsTarget] = useState<Company | null>(null)
   const [contractorsTarget, setContractorsTarget] = useState<Company | null>(null)
@@ -132,8 +97,16 @@ export default function Companies() {
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
 
+  const [sizes, setSizes] = useState<Size[]>([])
+  const [sizeModalOpen, setSizeModalOpen] = useState(false)
+  const [newSizeName, setNewSizeName] = useState('')
+  const [newSizeSpecIndex, setNewSizeSpecIndex] = useState<number | null>(null)
+  const [sizeError, setSizeError] = useState<string | null>(null)
+  const [sizeSubmitting, setSizeSubmitting] = useState(false)
+
   useEffect(() => {
     loadCompanies()
+    sizesService.list().then(setSizes).catch(() => setSizes([]))
   }, [])
 
   async function loadCompanies() {
@@ -268,6 +241,36 @@ export default function Companies() {
     return formErrors[`manufacturing_specifications.${index}.${field}`]?.[0]
   }
 
+  function openAddSizeModal(specIndex: number) {
+    setNewSizeName('')
+    setSizeError(null)
+    setNewSizeSpecIndex(specIndex)
+    setSizeModalOpen(true)
+  }
+
+  function closeAddSizeModal() {
+    if (sizeSubmitting) return
+    setSizeModalOpen(false)
+  }
+
+  async function handleAddSize(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setSizeSubmitting(true)
+    setSizeError(null)
+    try {
+      const created = await sizesService.create({ name: newSizeName })
+      setSizes((prev) => sortSizes([...prev, created]))
+      if (newSizeSpecIndex !== null) {
+        updateSpecField(newSizeSpecIndex, 'size', created.name)
+      }
+      setSizeModalOpen(false)
+    } catch (err) {
+      setSizeError(err instanceof ApiError ? err.message : 'Failed to add size.')
+    } finally {
+      setSizeSubmitting(false)
+    }
+  }
+
   function addDirectorRow() {
     setForm((f) => ({ ...f, directors: [...f.directors, { ...EMPTY_DIRECTOR }] }))
   }
@@ -361,12 +364,13 @@ export default function Companies() {
 
   const filteredCompanies = companies?.filter((c) => {
     const q = search.trim().toLowerCase()
-    if (!q) return true
-    return (
+    const matchesSearch =
+      !q ||
       c.name.toLowerCase().includes(q) ||
       c.address.toLowerCase().includes(q) ||
       c.directors.some((d) => d.name.toLowerCase().includes(q))
-    )
+    const matchesSize = !sizeFilter || c.manufacturing_specifications.some((spec) => spec.size === sizeFilter)
+    return matchesSearch && matchesSize
   })
 
   const {
@@ -394,6 +398,23 @@ export default function Companies() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+        </div>
+      </div>
+      <div className="action-btn">
+        <div className="form-group mb-0">
+          <select
+            className="form-control form-control-default hx-size-filter"
+            value={sizeFilter}
+            onChange={(e) => setSizeFilter(e.target.value)}
+            aria-label="Filter by size"
+          >
+            <option value="">All Sizes</option>
+            {sizes.map((size) => (
+              <option key={size.id} value={size.name}>
+                {size.name}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
       <div className="action-btn">
@@ -771,22 +792,33 @@ export default function Companies() {
                               </button>
                             </div>
                             <div className="hx-spec-row__fields">
-                              <FloatingSelect
-                                label="Size"
-                                variant="default"
-                                wrapperClassName="mb-0"
-                                value={spec.size}
-                                onChange={(e) => updateSpecField(index, 'size', e.target.value)}
-                                required={rowHasValue}
-                                error={specError(index, 'size')}
-                              >
-                                <option value="">— Select —</option>
-                                {SIZE_OPTIONS.map((opt) => (
-                                  <option key={opt} value={opt}>
-                                    {opt}
-                                  </option>
-                                ))}
-                              </FloatingSelect>
+                              <div className="hx-size-field">
+                                <FloatingSelect
+                                  label="Size"
+                                  variant="default"
+                                  wrapperClassName="mb-0"
+                                  value={spec.size}
+                                  onChange={(e) => updateSpecField(index, 'size', e.target.value)}
+                                  required={rowHasValue}
+                                  error={specError(index, 'size')}
+                                >
+                                  <option value="">— Select —</option>
+                                  {sizes.map((opt) => (
+                                    <option key={opt.id} value={opt.name}>
+                                      {opt.name}
+                                    </option>
+                                  ))}
+                                </FloatingSelect>
+                                <button
+                                  type="button"
+                                  className="hx-icon-btn hx-icon-btn--edit hx-size-field__add"
+                                  aria-label="Add new size"
+                                  title="Add New Size"
+                                  onClick={() => openAddSizeModal(index)}
+                                >
+                                  <i className="la la-plus"></i>
+                                </button>
+                              </div>
                               <FloatingInput
                                 label="Greentile Thick"
                                 type="text"
@@ -862,6 +894,50 @@ export default function Companies() {
             </div>
           </div>
           <div className="modal-backdrop fade show" onClick={closeModal}></div>
+        </>
+      )}
+
+      {sizeModalOpen && (
+        <>
+          <div className="modal fade show d-block" role="dialog" aria-modal="true">
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content radius-xl">
+                <div className="modal-header">
+                  <h6 className="modal-title fw-500">Add New Size</h6>
+                  <button type="button" className="btn-close" onClick={closeAddSizeModal} aria-label="Close">
+                    <i className="las la-times"></i>
+                  </button>
+                </div>
+                <div className="modal-body">
+                  <form onSubmit={handleAddSize} autoComplete="off">
+                    {sizeError && <p className="hx-form-error">{sizeError}</p>}
+                    <FloatingInput
+                      label="Size (e.g. 600 x 1200)"
+                      type="text"
+                      value={newSizeName}
+                      onChange={(e) => setNewSizeName(e.target.value)}
+                      required
+                      autoFocus
+                    />
+                    <div className="button-group d-flex justify-content-center pt-20">
+                      <button
+                        type="button"
+                        className="btn btn-sm hx-btn-secondary btn-rounded me-10"
+                        onClick={closeAddSizeModal}
+                        disabled={sizeSubmitting}
+                      >
+                        Cancel
+                      </button>
+                      <button type="submit" className="btn btn-sm btn-primary btn-rounded" disabled={sizeSubmitting}>
+                        {sizeSubmitting ? 'Saving…' : 'Save'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show" onClick={closeAddSizeModal}></div>
         </>
       )}
 

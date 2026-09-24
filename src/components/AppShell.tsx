@@ -50,25 +50,20 @@ const MIN_LOADER_MS = 500
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 // Sidebar links whose target module requires a "view <module>" permission to be visible.
-// Links with no entry here (e.g. Dashboard) are always shown.
+// Links with no entry here (e.g. Dashboard, Settings) are always shown. Users/Roles/Sizes/
+// Problems moved off the sidebar into the Settings tile grid (see pages/Settings.tsx), which
+// applies its own permission/role gating per tile, so they no longer need entries here.
 const SIDEBAR_PERMISSIONS: Record<string, string> = {
-  '/users': 'view users',
-  '/roles': 'view roles',
   '/companies': 'view companies',
   '/orders': 'view orders',
   '/complaints': 'view complaints',
-  '/problems': 'view problems',
 }
 
-// Users and Roles manage accounts/permissions for the whole app, so they're restricted to
-// the Admin role in the sidebar on top of the permission check above, regardless of what
-// permissions a non-admin role happens to be granted.
-const SIDEBAR_ADMIN_ONLY = new Set(['/users', '/roles'])
-
-// Complaints/Problems are Marketing's day-to-day tool (customer-raised issues), so they're
-// restricted to the Marketing and Admin roles in the sidebar, same override pattern as
-// SIDEBAR_ADMIN_ONLY above.
-const SIDEBAR_MARKETING_OR_ADMIN = new Set(['/complaints', '/problems'])
+// Complaints is Marketing's day-to-day tool (customer-raised issues), so it's restricted to
+// the Marketing and Admin roles in the sidebar on top of the permission check above,
+// regardless of what permissions a non-admin role happens to be granted.
+const SIDEBAR_ADMIN_ONLY = new Set<string>([])
+const SIDEBAR_MARKETING_OR_ADMIN = new Set(['/complaints'])
 
 interface AppShellProps {
   title: string

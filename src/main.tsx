@@ -14,6 +14,8 @@ import Problems from './pages/Problems.tsx'
 import Production from './pages/Production.tsx'
 import Profile from './pages/Profile.tsx'
 import Roles from './pages/Roles.tsx'
+import Settings from './pages/Settings.tsx'
+import Sizes from './pages/Sizes.tsx'
 import Users from './pages/Users.tsx'
 
 // No <StrictMode>: AppShell re-injects the theme's ~46 jQuery-era vendor scripts as plain
@@ -68,6 +70,14 @@ createRoot(document.getElementById('root')!).render(
             }
           />
           <Route
+            path="/sizes"
+            element={
+              <RequireAuth>
+                <Sizes />
+              </RequireAuth>
+            }
+          />
+          <Route
             path="/orders"
             element={
               <RequireAuth>
@@ -104,6 +114,14 @@ createRoot(document.getElementById('root')!).render(
             element={
               <RequireAuth>
                 <Problems />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <RequireAuth>
+                <Settings />
               </RequireAuth>
             }
           />
