@@ -14,9 +14,8 @@ import { useAutoRefresh } from '../components/useAutoRefresh'
 import { usePagination } from '../components/usePagination'
 import type { Company } from '../companies/types'
 import { companiesService } from '../companies/companiesService'
-import { masterNumbersService } from '../masterNumbers/masterNumbersService'
 import { compareSizeNames } from '../sizes/sortSizes'
-import { useFormErrors } from '../components/formValidation'
+import { PUNCH_TYPE_OPTIONS } from '../orders/punchTypes'
 import RequestDeleteModal from '../components/RequestDeleteModal'
 import { usePendingDeleteRequestIds } from '../deleteRequests/usePendingDeleteRequests'
 import type { CreateOrderRequest, Order } from '../orders/types'
@@ -130,17 +129,6 @@ function sortOrders(list: Order[], field: SortField | null, dir: SortDir): Order
 }
 
 const ORDER_TYPE_OPTIONS = ['New', 'RC', 'RR']
-const PUNCH_TYPE_OPTIONS = [
-  'U - ISO',
-  'U - N ISO',
-  'U - PLAIN',
-  'U - RUSTIC',
-  'L - ISO',
-  'L - N ISO',
-  'L - PLAIN',
-  'L - RUSTIC',
-]
-
 interface OrderFormState {
   company_id: string
   size: string
@@ -246,12 +234,6 @@ export default function Orders() {
   const [deleting, setDeleting] = useState(false)
 
   const [progressOrderId, setProgressOrderId] = useState<number | null>(null)
-
-  const [masterNoModalOpen, setMasterNoModalOpen] = useState(false)
-  const [newMasterNo, setNewMasterNo] = useState('')
-  const [masterNoError, setMasterNoError] = useState<string | null>(null)
-  const [masterNoSubmitting, setMasterNoSubmitting] = useState(false)
-  const addMasterNo = useFormErrors()
 
   useEffect(() => {
     loadOrders()
@@ -572,58 +554,6 @@ export default function Orders() {
       ...f,
       punch_numbers: f.punch_numbers.map((n, i) => (i === index ? value : n)),
     }))
-  }
-
-  function openAddMasterNoModal() {
-    setNewMasterNo('')
-    setMasterNoError(null)
-    addMasterNo.setFormErrors({})
-    setMasterNoModalOpen(true)
-  }
-
-  function closeAddMasterNoModal() {
-    if (masterNoSubmitting) return
-    setMasterNoModalOpen(false)
-  }
-
-  async function handleAddMasterNo(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (newMasterNo.trim() === '') {
-      addMasterNo.showErrors({ master_number: ['Master number is required.'] })
-      return
-    }
-    setMasterNoSubmitting(true)
-    setMasterNoError(null)
-    try {
-      const companyId = Number(form.company_id)
-      const updatedSpec = await masterNumbersService.create({
-        company_id: companyId,
-        size: form.size,
-        punch_type: form.punch_type,
-        master_number: newMasterNo,
-      })
-      // The backend attaches the new master number onto the existing specification and hands
-      // it back — replace that row in place (rather than appending a new one) so the Size
-      // Details table and Master Number dropdown both pick it up immediately.
-      setCompanies((prev) =>
-        prev.map((c) =>
-          c.id === companyId
-            ? {
-                ...c,
-                manufacturing_specifications: c.manufacturing_specifications.map((s) =>
-                  s.id === updatedSpec.id ? updatedSpec : s,
-                ),
-              }
-            : c,
-        ),
-      )
-      setForm((f) => ({ ...f, master_number: newMasterNo }))
-      setMasterNoModalOpen(false)
-    } catch (err) {
-      setMasterNoError(err instanceof ApiError ? err.message : 'Failed to add master number.')
-    } finally {
-      setMasterNoSubmitting(false)
-    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -1203,11 +1133,6 @@ export default function Orders() {
                                 </option>
                               ))}
                             </FloatingSelect>
-                            {form.size && form.punch_type && (
-                              <button type="button" className="hx-add-master-btn" onClick={openAddMasterNoModal}>
-                                <i className="la la-plus"></i> Add New Master Number
-                              </button>
-                            )}
                           </div>
                           {form.order_type === 'New' && form.punch_numbers.length > 0 && (
                             <div className="col-12">
@@ -1271,52 +1196,6 @@ export default function Orders() {
             </div>
           </div>
           <div className="modal-backdrop fade show" onClick={closeModal}></div>
-        </>
-      )}
-
-      {masterNoModalOpen && (
-        <>
-          <div className="modal fade show d-block" role="dialog" aria-modal="true">
-            <div className="modal-dialog modal-dialog-centered">
-              <div className="modal-content radius-xl">
-                <div className="modal-header">
-                  <h6 className="modal-title fw-500">Add New Master Number</h6>
-                  <button type="button" className="btn-close" onClick={closeAddMasterNoModal} aria-label="Close">
-                    <i className="las la-times"></i>
-                  </button>
-                </div>
-                <div className="modal-body">
-                  <form ref={addMasterNo.formRef} onSubmit={handleAddMasterNo} autoComplete="off" noValidate>
-                    {masterNoError && <p className="hx-form-error">{masterNoError}</p>}
-                    <FloatingInput
-                      label="Master Number"
-                      type="text"
-                      value={newMasterNo}
-                      onChange={(e) => {
-                        setNewMasterNo(e.target.value)
-                        addMasterNo.clearError('master_number')
-                      }}
-                      error={addMasterNo.formErrors.master_number?.[0]}
-                    />
-                    <div className="button-group d-flex justify-content-center pt-20">
-                      <button
-                        type="button"
-                        className="btn btn-sm hx-btn-secondary btn-rounded me-10"
-                        onClick={closeAddMasterNoModal}
-                        disabled={masterNoSubmitting}
-                      >
-                        Cancel
-                      </button>
-                      <button type="submit" className="btn btn-sm btn-primary btn-rounded" disabled={masterNoSubmitting}>
-                        {masterNoSubmitting ? 'Saving…' : 'Save'}
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="modal-backdrop fade show" onClick={closeAddMasterNoModal}></div>
         </>
       )}
 

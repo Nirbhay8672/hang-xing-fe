@@ -10,8 +10,8 @@
   min-width: 150px;
 }
 
-/* Size select + its inline "add new size" button, sitting where a single field normally
-   would among the Manufacturing Specification row's other fields. */
+/* Size select, sitting where a single field normally would among the Manufacturing
+   Specification row's other fields. */
 .hx-size-field {
   display: flex;
   align-items: flex-end;
@@ -24,13 +24,6 @@
   flex: 1;
   min-width: 0;
   margin-bottom: 0;
-}
-
-.hx-size-field__add {
-  flex-shrink: 0;
-  width: 30px;
-  height: 30px;
-  font-size: 12px;
 }
 
 .hx-specs-badge {
@@ -203,6 +196,59 @@
 
 .hx-spec-row__fields:has(.hx-field-error) {
   padding-bottom: 26px;
+}
+
+/* A specification's extra master numbers: one punch type + master number per entry, two entries
+   per line, under the specification's main fields. */
+.hx-other-masters {
+  margin-top: 4px;
+  padding: 10px 0 10px;
+  border-top: 1px dashed #e3e6ee;
+}
+
+.hx-other-masters__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hx-other-masters__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #4b5468;
+}
+
+.hx-other-masters__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px 16px;
+  /* Room for the floating labels to sit half above the inputs without clipping. */
+  padding-top: 16px;
+}
+
+@media (max-width: 720px) {
+  .hx-other-masters__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.hx-other-masters__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hx-other-masters__row .hx-floating {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.hx-other-masters__row .hx-icon-btn {
+  flex-shrink: 0;
+}
+
+.hx-other-masters__grid:has(.hx-field-error) {
+  padding-bottom: 22px;
 }
 
 .hx-specs-section > .hx-section-error {

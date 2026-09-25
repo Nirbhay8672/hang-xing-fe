@@ -15,14 +15,15 @@ import type {
   CompanyDirectorInput,
   CompanyPressInput,
   ManufacturingSpecificationInput,
+  OtherMasterNumber,
 } from '../companies/types'
 import { companiesService } from '../companies/companiesService'
 import type { Order } from '../orders/types'
+import { PUNCH_TYPE_OPTIONS } from '../orders/punchTypes'
 import { ordersService } from '../orders/ordersService'
 import type { Size } from '../sizes/types'
 import { sizesService } from '../sizes/sizesService'
-import { compareSizeNames, sortBySize, sortSizes } from '../sizes/sortSizes'
-import { useFormErrors } from '../components/formValidation'
+import { compareSizeNames, sortBySize } from '../sizes/sortSizes'
 import './Companies.css'
 import './Orders.css'
 
@@ -43,6 +44,7 @@ const EMPTY_SPEC: ManufacturingSpecificationInput = {
   lower_punch: '',
   lp_master_no: '',
   cavity: '',
+  other_masters: [],
 }
 
 const EMPTY_DIRECTOR: CompanyDirectorInput = { name: '', contact: '' }
@@ -103,12 +105,6 @@ export default function Companies() {
   const [deleting, setDeleting] = useState(false)
 
   const [sizes, setSizes] = useState<Size[]>([])
-  const [sizeModalOpen, setSizeModalOpen] = useState(false)
-  const [newSizeName, setNewSizeName] = useState('')
-  const [newSizeSpecIndex, setNewSizeSpecIndex] = useState<number | null>(null)
-  const [sizeError, setSizeError] = useState<string | null>(null)
-  const [sizeSubmitting, setSizeSubmitting] = useState(false)
-  const addSize = useFormErrors()
 
   useEffect(() => {
     loadCompanies()
@@ -146,6 +142,7 @@ export default function Companies() {
             lower_punch: spec.lower_punch,
             lp_master_no: spec.lp_master_no,
             cavity: spec.cavity,
+            other_masters: (spec.other_masters ?? []).map((om) => ({ ...om })),
           }))
         : [{ ...EMPTY_SPEC }],
     }
@@ -251,43 +248,31 @@ export default function Companies() {
     return formErrors[`manufacturing_specifications.${index}.${field}`]?.[0]
   }
 
-  function openAddSizeModal(specIndex: number) {
-    setNewSizeName('')
-    setSizeError(null)
-    addSize.setFormErrors({})
-    setNewSizeSpecIndex(specIndex)
-    setSizeModalOpen(true)
+  function updateOtherMasters(specIndex: number, change: (masters: OtherMasterNumber[]) => OtherMasterNumber[]) {
+    setForm((f) => ({
+      ...f,
+      manufacturing_specifications: f.manufacturing_specifications.map((spec, i) =>
+        i === specIndex ? { ...spec, other_masters: change(spec.other_masters) } : spec,
+      ),
+    }))
   }
 
-  function closeAddSizeModal() {
-    if (sizeSubmitting) return
-    setSizeModalOpen(false)
+  function addOtherMaster(specIndex: number) {
+    updateOtherMasters(specIndex, (masters) => [...masters, { punch_type: '', master_number: '' }])
   }
 
-  async function handleAddSize(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (newSizeName.trim() === '') {
-      addSize.showErrors({ name: ['Size is required.'] })
-      return
-    }
-    if (newSizeName.length > 255) {
-      addSize.showErrors({ name: ['Size must be 255 characters or fewer.'] })
-      return
-    }
-    setSizeSubmitting(true)
-    setSizeError(null)
-    try {
-      const created = await sizesService.create({ name: newSizeName })
-      setSizes((prev) => sortSizes([...prev, created]))
-      if (newSizeSpecIndex !== null) {
-        updateSpecField(newSizeSpecIndex, 'size', created.name)
-      }
-      setSizeModalOpen(false)
-    } catch (err) {
-      setSizeError(err instanceof ApiError ? err.message : 'Failed to add size.')
-    } finally {
-      setSizeSubmitting(false)
-    }
+  function removeOtherMaster(specIndex: number, masterIndex: number) {
+    updateOtherMasters(specIndex, (masters) => masters.filter((_, i) => i !== masterIndex))
+    clearFormErrorsWithPrefix(`manufacturing_specifications.${specIndex}.other_masters`)
+  }
+
+  function updateOtherMaster(specIndex: number, masterIndex: number, field: keyof OtherMasterNumber, value: string) {
+    updateOtherMasters(specIndex, (masters) => masters.map((om, i) => (i === masterIndex ? { ...om, [field]: value } : om)))
+    clearFormError(`manufacturing_specifications.${specIndex}.other_masters.${masterIndex}.${field}`)
+  }
+
+  function otherMasterError(specIndex: number, masterIndex: number, field: keyof OtherMasterNumber): string | undefined {
+    return formErrors[`manufacturing_specifications.${specIndex}.other_masters.${masterIndex}.${field}`]?.[0]
   }
 
   function addDirectorRow() {
@@ -376,7 +361,8 @@ export default function Companies() {
 
   // Every director/contractor/press/specification row on the form has to be complete (remove a
   // row you don't need), and each of those sections needs at least one row. Up Master No., LP
-  // Master No. and Cavity are the only optional fields.
+  // Master No. and Cavity are the only optional fields (and any other master number that's added
+  // needs both its punch type and its number).
   function validateCompanyForm(): Record<string, string[]> {
     const errors: Record<string, string[]> = {}
     const required = (key: string, value: string, message = 'Required') => {
@@ -409,6 +395,10 @@ export default function Companies() {
       required(`manufacturing_specifications.${i}.greentile_thick`, spec.greentile_thick)
       required(`manufacturing_specifications.${i}.upper_punch`, spec.upper_punch)
       required(`manufacturing_specifications.${i}.lower_punch`, spec.lower_punch)
+      spec.other_masters.forEach((om, j) => {
+        required(`manufacturing_specifications.${i}.other_masters.${j}.punch_type`, om.punch_type)
+        required(`manufacturing_specifications.${i}.other_masters.${j}.master_number`, om.master_number)
+      })
     })
 
     return errors
@@ -912,15 +902,6 @@ export default function Companies() {
                                     <option value={spec.size}>{spec.size}</option>
                                   )}
                                 </FloatingSelect>
-                                <button
-                                  type="button"
-                                  className="hx-icon-btn hx-icon-btn--edit hx-size-field__add"
-                                  aria-label="Add new size"
-                                  title="Add New Size"
-                                  onClick={() => openAddSizeModal(index)}
-                                >
-                                  <i className="la la-plus"></i>
-                                </button>
                               </div>
                               <FloatingInput
                                 label="Greentile Thick"
@@ -977,6 +958,58 @@ export default function Companies() {
                                 error={specError(index, 'cavity')}
                               />
                             </div>
+                            <div className="hx-other-masters">
+                              <div className="hx-other-masters__header">
+                                <span className="hx-other-masters__title">Other Master Numbers</span>
+                                <button type="button" className="hx-specs-add-btn" onClick={() => addOtherMaster(index)}>
+                                  <i className="la la-plus"></i> Add Master Number
+                                </button>
+                              </div>
+                              {spec.other_masters.length > 0 && (
+                                <div className="hx-other-masters__grid">
+                                  {spec.other_masters.map((om, masterIndex) => (
+                                    <div className="hx-other-masters__row" key={masterIndex}>
+                                      <FloatingSelect
+                                        label="Punch Type"
+                                        variant="default"
+                                        wrapperClassName="mb-0"
+                                        value={om.punch_type}
+                                        onChange={(e) => updateOtherMaster(index, masterIndex, 'punch_type', e.target.value)}
+                                        error={otherMasterError(index, masterIndex, 'punch_type')}
+                                      >
+                                        <option value="">— Select —</option>
+                                        {PUNCH_TYPE_OPTIONS.map((opt) => (
+                                          <option key={opt} value={opt}>
+                                            {opt}
+                                          </option>
+                                        ))}
+                                        {om.punch_type && !PUNCH_TYPE_OPTIONS.includes(om.punch_type) && (
+                                          <option value={om.punch_type}>{om.punch_type}</option>
+                                        )}
+                                      </FloatingSelect>
+                                      <FloatingInput
+                                        label="Master No."
+                                        type="text"
+                                        variant="default"
+                                        wrapperClassName="mb-0"
+                                        value={om.master_number}
+                                        onChange={(e) => updateOtherMaster(index, masterIndex, 'master_number', e.target.value)}
+                                        error={otherMasterError(index, masterIndex, 'master_number')}
+                                      />
+                                      <button
+                                        type="button"
+                                        className="hx-icon-btn hx-icon-btn--delete"
+                                        aria-label="Remove master number"
+                                        title="Remove"
+                                        onClick={() => removeOtherMaster(index, masterIndex)}
+                                      >
+                                        <i className="la la-trash"></i>
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           </div>
                           )
                         })}
@@ -997,53 +1030,6 @@ export default function Companies() {
             </div>
           </div>
           <div className="modal-backdrop fade show" onClick={closeModal}></div>
-        </>
-      )}
-
-      {sizeModalOpen && (
-        <>
-          <div className="modal fade show d-block" role="dialog" aria-modal="true">
-            <div className="modal-dialog modal-dialog-centered">
-              <div className="modal-content radius-xl">
-                <div className="modal-header">
-                  <h6 className="modal-title fw-500">Add New Size</h6>
-                  <button type="button" className="btn-close" onClick={closeAddSizeModal} aria-label="Close">
-                    <i className="las la-times"></i>
-                  </button>
-                </div>
-                <div className="modal-body">
-                  <form ref={addSize.formRef} onSubmit={handleAddSize} autoComplete="off" noValidate>
-                    {sizeError && <p className="hx-form-error">{sizeError}</p>}
-                    <FloatingInput
-                      label="Size (e.g. 600 x 1200)"
-                      type="text"
-                      value={newSizeName}
-                      onChange={(e) => {
-                        setNewSizeName(e.target.value)
-                        addSize.clearError('name')
-                      }}
-                      autoFocus
-                      error={addSize.formErrors.name?.[0]}
-                    />
-                    <div className="button-group d-flex justify-content-center pt-20">
-                      <button
-                        type="button"
-                        className="btn btn-sm hx-btn-secondary btn-rounded me-10"
-                        onClick={closeAddSizeModal}
-                        disabled={sizeSubmitting}
-                      >
-                        Cancel
-                      </button>
-                      <button type="submit" className="btn btn-sm btn-primary btn-rounded" disabled={sizeSubmitting}>
-                        {sizeSubmitting ? 'Saving…' : 'Save'}
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="modal-backdrop fade show" onClick={closeAddSizeModal}></div>
         </>
       )}
 

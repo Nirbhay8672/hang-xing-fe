@@ -148,26 +148,6 @@
   border-bottom: 1px solid #eef0f4;
 }
 
-.hx-add-master-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 8px;
-  padding: 5px 12px;
-  border: 1px dashed rgba(46, 49, 117, 0.35);
-  border-radius: 8px;
-  background: transparent;
-  color: #2e3175;
-  font-size: 12.5px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-}
-
-.hx-add-master-btn:hover {
-  background: rgba(46, 49, 117, 0.08);
-}
-
 .hx-punch-numbers {
   margin-top: 16px;
 }

@@ -71,6 +71,8 @@ export interface ManufacturingSpecificationInput {
   lower_punch: string
   lp_master_no: string
   cavity: string
+  /** Master numbers for punch types other than this row's own Upper/Lower one. */
+  other_masters: OtherMasterNumber[]
 }
 
 export interface CompanyDirectorInput {
