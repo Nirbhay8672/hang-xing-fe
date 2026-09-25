@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { ApiError } from '../auth/apiClient'
 import { useAuth } from '../auth/AuthContext'
 import { isAdmin } from '../auth/roleUtils'
 import AppShell from '../components/AppShell'
+import { useAutoRefresh } from '../components/useAutoRefresh'
 import type { Company } from '../companies/types'
 import { companiesService } from '../companies/companiesService'
 import type { Order } from '../orders/types'
@@ -26,6 +28,8 @@ interface StatCardProps {
   label: string
   variant: Variant
   loading: boolean
+  /** Makes the whole card a link to this page. */
+  to?: string
 }
 
 const BARS: Record<Variant, Bar[]> = {
@@ -73,10 +77,17 @@ const BARS: Record<Variant, Bar[]> = {
   ],
 }
 
-function StatCard({ value, label, variant, loading }: StatCardProps) {
+function StatCard({ value, label, variant, loading, to }: StatCardProps) {
+  const navigate = useNavigate()
   return (
     <div className="col-xl-3 col-lg-4 col-md-6 col-12">
-      <div className="card hx-stat-card">
+      <div
+        className={`card hx-stat-card${to ? ' hx-stat-card--link' : ''}`}
+        onClick={to ? () => navigate(to) : undefined}
+        role={to ? 'link' : undefined}
+        tabIndex={to ? 0 : undefined}
+        onKeyDown={to ? (e) => e.key === 'Enter' && navigate(to) : undefined}
+      >
         <div className="card-body d-flex align-items-center justify-content-between">
           <div>
             <h3 className="hx-stat-card__value">{loading ? '—' : value}</h3>
@@ -113,6 +124,8 @@ export default function Dashboard() {
   const showOrders = can('view orders')
   const showUsers = can('view users') && admin
   const showRoles = can('view roles') && admin
+  // Admin is told about orders put on hold (information only — nothing to approve).
+  const showHolds = can('view held orders')
 
   const [companiesCount, setCompaniesCount] = useState(0)
   const [orders, setOrders] = useState<Order[]>([])
@@ -157,10 +170,16 @@ export default function Dashboard() {
     }
   }, [showCompanies, showOrders, showUsers, showRoles])
 
+  useAutoRefresh(() => {
+    if (showOrders) ordersService.list().then(setOrders).catch(() => {})
+  })
+
   const totalOrders = orders.length
   const newOrders = orders.filter((o) => o.order_type === 'New').length
   const rcOrders = orders.filter((o) => o.order_type === 'RC').length
   const overdueOrders = orders.filter(isOverdue).length
+  // Orders with something on hold: the whole order, or some of its items.
+  const heldOrdersCount = orders.filter((o) => o.planning_status === 'On Hold' || o.held_items_count > 0).length
   const recentOrders = [...orders]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 5)
@@ -181,6 +200,7 @@ export default function Dashboard() {
             {showOrders && <StatCard value={newOrders} label="New Orders" variant="teal" loading={loading} />}
             {showOrders && <StatCard value={rcOrders} label="RC Orders" variant="indigo" loading={loading} />}
             {showOrders && <StatCard value={overdueOrders} label="Overdue Deliveries" variant="rose" loading={loading} />}
+            {showOrders && showHolds && <StatCard value={heldOrdersCount} label="Orders On Hold" variant="amber" loading={loading} to="/orders?tab=hold" />}
             {showUsers && <StatCard value={usersCount} label="Users" variant="slate" loading={loading} />}
             {showRoles && <StatCard value={rolesCount} label="Roles" variant="amber" loading={loading} />}
           </div>

@@ -25,6 +25,11 @@ export interface PunchNumber {
    * completion timestamp — tracked per punch number since each physical mold moves through
    * production independently. */
   completed_tasks: CompletedTask[]
+  /** Planning can put each item (punch number) of an order on hold on its own. */
+  is_on_hold: boolean
+  held_by: number | null
+  held_at: string | null
+  holder?: { id: number; name: string } | null
   created_at: string
   updated_at: string
 }
@@ -54,6 +59,15 @@ export interface Order {
   /** Separate from `status` — tracks the order's state within the Planning workflow
    * specifically (e.g. "Review" / "Planned"), shown on the Planning page. */
   planning_status: string
+  /** While the order is On Hold: who put it on hold and when. Both null otherwise (and for
+   * orders that were already on hold before this was tracked). */
+  held_by: number | null
+  held_at: string | null
+  holder?: { id: number; name: string } | null
+  /** How many of the order's items (punch numbers) are on hold — shown as "2/10 hold" — and who
+   * put items on hold most recently. */
+  held_items_count: number
+  item_hold: { by: string | null; at: string | null } | null
   /** Set on the Planning page's "Corrections & Planning Fields" — null until planned. */
   milling_size: string | null
   facing_thickness: string | null

@@ -183,3 +183,7 @@
 .hx-notif__footer:hover {
   background: #f1f2f9;
 }
+
+.hx-notif__item--hold .hx-notif__dot {
+  background: #e0a100;
+}

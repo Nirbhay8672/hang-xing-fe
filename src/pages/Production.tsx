@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { ApiError } from '../auth/apiClient'
 import AppShell from '../components/AppShell'
+import OrderFilterBar, { EMPTY_ORDER_FILTERS, hasActiveOrderFilters, matchesOrderFilters, type OrderFilters } from '../components/OrderFilterBar'
 import Pagination from '../components/Pagination'
 import '../components/statusPill.css'
+import { useAutoRefresh } from '../components/useAutoRefresh'
 import { usePagination } from '../components/usePagination'
 import type { Order } from '../orders/types'
 import { ordersService } from '../orders/ordersService'
@@ -13,6 +15,18 @@ import TrackOrderModal from './TrackOrderModal'
 
 function orderTypePillClass(orderType: string): string {
   return orderType === 'New' ? 'hx-status-pill--new' : 'hx-status-pill--rc'
+}
+
+const PRODUCTION_STATUS_OPTIONS = [
+  { value: 'In Progress', label: 'In Progress' },
+  { value: 'Complete', label: 'Complete' },
+  { value: 'items-hold', label: 'Items on hold' },
+]
+
+function matchesProductionStatus(order: Order, status: string): boolean {
+  if (!status) return true
+  if (status === 'items-hold') return (order.held_items_count ?? 0) > 0
+  return productionStatus(order) === status
 }
 
 function productionStatus(order: Order): string {
@@ -27,6 +41,7 @@ export default function Production() {
   const [orders, setOrders] = useState<Order[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [trackOrderId, setTrackOrderId] = useState<number | null>(null)
+  const [filters, setFilters] = useState<OrderFilters>(EMPTY_ORDER_FILTERS)
 
   useEffect(() => {
     loadOrders()
@@ -42,8 +57,20 @@ export default function Production() {
     }
   }
 
+  // Quietly picks up changes other people made (a newly planned order, an item put on hold).
+  async function refreshOrders() {
+    try {
+      setOrders(await ordersService.list())
+    } catch {
+      // keep showing what we already have
+    }
+  }
+
+  useAutoRefresh(refreshOrders)
+
   const plannedOrders = orders ? orders.filter((o) => o.planning_status === 'Planned').sort((a, b) => b.id - a.id) : null
-  const { page, setPage, totalPages, totalItems, perPage, pageItems: pagedOrders } = usePagination(plannedOrders ?? [], 10)
+  const filteredOrders = (plannedOrders ?? []).filter((o) => matchesOrderFilters(o, filters) && matchesProductionStatus(o, filters.status))
+  const { page, setPage, totalPages, totalItems, perPage, pageItems: pagedOrders } = usePagination(filteredOrders, 10)
 
   return (
     <AppShell title="Supervisor Dashboard">
@@ -62,6 +89,20 @@ export default function Production() {
               {plannedOrders && plannedOrders.length === 0 && <p className="hx-orders-empty">No planned orders yet.</p>}
 
               {plannedOrders && plannedOrders.length > 0 && (
+                <OrderFilterBar
+                  orders={plannedOrders}
+                  filters={filters}
+                  onChange={setFilters}
+                  statusOptions={PRODUCTION_STATUS_OPTIONS}
+                  shown={filteredOrders.length}
+                  total={plannedOrders.length}
+                />
+              )}
+              {plannedOrders && plannedOrders.length > 0 && filteredOrders.length === 0 && (
+                <p className="hx-orders-empty">{hasActiveOrderFilters(filters) ? 'No orders match the filters.' : 'No planned orders yet.'}</p>
+              )}
+
+              {plannedOrders && filteredOrders.length > 0 && (
                 <div className="table-responsive">
                   <table className="table mb-0 table-borderless table-rounded">
                     <thead>
@@ -114,6 +155,11 @@ export default function Production() {
                           </td>
                           <td>
                             <span className={`hx-status-pill ${productionStatusPillClass(o)}`}>{productionStatus(o)}</span>
+                            {o.held_items_count > 0 && (
+                              <span className="hx-status-pill hx-status-pill--onhold hx-hold-chip">
+                                {o.held_items_count}/{o.quantity} hold
+                              </span>
+                            )}
                           </td>
                           <td>
                             <div className="table-actions d-flex">

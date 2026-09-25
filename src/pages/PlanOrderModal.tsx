@@ -61,9 +61,11 @@ interface PlanOrderModalProps {
   orderId: number
   onClose: () => void
   onSaved: (order: Order) => void
+  /** Called when the order changes without the modal closing (e.g. items put on hold). */
+  onUpdated?: (order: Order) => void
 }
 
-export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderModalProps) {
+export default function PlanOrderModal({ orderId, onClose, onSaved, onUpdated }: PlanOrderModalProps) {
   const [order, setOrder] = useState<Order | null>(null)
   const [company, setCompany] = useState<Company | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -83,6 +85,10 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
   const [saveError, setSaveError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const formRef = useRef<HTMLFormElement>(null)
+
+  // Item (punch number) holds save straight away — they don't wait for "Save Plan".
+  const [holdBusy, setHoldBusy] = useState<number | 'all' | null>(null)
+  const [holdError, setHoldError] = useState<string | null>(null)
 
   useEffect(() => {
     loadOrder()
@@ -114,6 +120,16 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
 
   const taskSteps = taskStepsForOrderType(order?.order_type ?? '')
 
+  // One tile per item of the order (its quantity). Items without a saved punch number yet
+  // (RC/RR numbers are entered during planning) can't be held until that number is saved.
+  const savedItems = [...(order?.punch_numbers ?? [])].sort((a, b) => a.id - b.id)
+  const itemSlots = Array.from({ length: Math.max(order?.quantity ?? 0, savedItems.length) }, (_, index) => ({
+    index,
+    item: savedItems[index] ?? null,
+  }))
+  const heldItemsCount = savedItems.filter((item) => item.is_on_hold).length
+  const allItemsHeld = savedItems.length > 0 && heldItemsCount === savedItems.length
+
   function toggleTask(step: string) {
     setSelectedTasks((prev) => (prev.includes(step) ? prev.filter((s) => s !== step) : [...prev, step]))
     clearFieldError('planning_tasks')
@@ -127,6 +143,26 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
   function handleRcPunchChange(index: number, value: string) {
     setRcPunchNumbers((prev) => prev.map((n, i) => (i === index ? value : n)))
     clearFieldError('punch_numbers')
+  }
+
+  async function toggleItemsHold(ids: number[], onHold: boolean) {
+    if (!order || ids.length === 0) return
+    setHoldBusy(ids.length === 1 ? ids[0] : 'all')
+    setHoldError(null)
+    try {
+      const updated = normalizeOrder(await ordersService.setItemsHold(order.id, ids, onHold))
+      // Only the hold data is refreshed — unsaved edits in the form below stay as they are.
+      setOrder((prev) =>
+        prev
+          ? { ...prev, punch_numbers: updated.punch_numbers, held_items_count: updated.held_items_count, item_hold: updated.item_hold }
+          : updated,
+      )
+      onUpdated?.(updated)
+    } catch (err) {
+      setHoldError(err instanceof ApiError ? err.message : 'Could not update the hold. Please try again.')
+    } finally {
+      setHoldBusy(null)
+    }
   }
 
   function clearFieldError(key: string) {
@@ -272,24 +308,6 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
                         <span className="hx-detail-grid__label">Punch Type</span>
                         <span className="hx-detail-grid__value">{order.punch_type}</span>
                       </div>
-                      <div>
-                        <span className="hx-detail-grid__label">Punch Nos</span>
-                        {order.order_type === 'New' ? (
-                          order.punch_numbers.length > 0 ? (
-                            <div className="hx-order-badges">
-                              {order.punch_numbers.map((p) => (
-                                <span key={p.id} className="hx-order-badge">
-                                  {p.punch_number}
-                                </span>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="hx-detail-grid__value">—</span>
-                          )
-                        ) : (
-                          <span className="hx-detail-grid__value">Enter below</span>
-                        )}
-                      </div>
                     </div>
 
                     <div className="hx-plan-subsection">
@@ -324,6 +342,56 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
                       ) : (
                         <p className="hx-orders-empty">No matching specification found for this size.</p>
                       )}
+                    </div>
+                  </div>
+
+                  <div className="hx-plan-card hx-plan-card--compact">
+                    <div className="hx-plan-card__header">
+                      <span className="hx-plan-card__title hx-plan-card__title--inline">
+                        Items — {heldItemsCount} of {order.quantity} on hold
+                      </span>
+                      {savedItems.length > 0 && (
+                        <button
+                          type="button"
+                          className="hx-plan-select-all"
+                          onClick={() => toggleItemsHold(savedItems.map((item) => item.id), !allItemsHeld)}
+                          disabled={holdBusy !== null}
+                        >
+                          {allItemsHeld ? 'Resume All' : 'Hold All'}
+                        </button>
+                      )}
+                    </div>
+                    <p className="hx-plan-items-hint">
+                      Hold an item to set it aside while the rest of the order carries on. Admin sees how many items are on hold.
+                    </p>
+                    {holdError && <p className="hx-form-error">{holdError}</p>}
+                    <div className="hx-items-grid">
+                      {itemSlots.map(({ index, item }) => {
+                        const busy = item !== null && (holdBusy === item.id || holdBusy === 'all')
+                        return (
+                          <div
+                            key={item?.id ?? `empty-${index}`}
+                            className={`hx-item-tile${item?.is_on_hold ? ' hx-item-tile--held' : ''}${item ? '' : ' hx-item-tile--empty'}`}
+                            title={item?.is_on_hold && item.holder ? `Put on hold by ${item.holder.name}` : undefined}
+                          >
+                            <span className="hx-item-tile__index">{String(index + 1).padStart(2, '0')}</span>
+                            <span className="hx-item-tile__body">
+                              <span className="hx-item-tile__number">{item ? item.punch_number : 'Punch number not saved yet'}</span>
+                              {item?.is_on_hold && <span className="hx-item-tile__meta">On hold</span>}
+                            </span>
+                            <button
+                              type="button"
+                              className="hx-item-tile__btn"
+                              disabled={!item || holdBusy !== null}
+                              title={item ? undefined : 'Enter and save this punch number before holding it'}
+                              onClick={() => item && toggleItemsHold([item.id], !item.is_on_hold)}
+                            >
+                              <i className={busy ? 'la la-spinner la-spin' : item?.is_on_hold ? 'la la-play' : 'la la-pause'}></i>{' '}
+                              {item?.is_on_hold ? 'Resume' : 'Hold'}
+                            </button>
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
 

@@ -133,3 +133,8 @@
   opacity: 1;
   visibility: visible;
 }
+
+/* Small "2/10 hold" tag shown beside an order's status when some of its items are on hold. */
+.hx-hold-chip {
+  margin-left: 6px;
+}

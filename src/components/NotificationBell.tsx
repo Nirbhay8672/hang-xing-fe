@@ -8,7 +8,7 @@ import './NotificationBell.css'
 const POLL_INTERVAL_MS = 30_000
 const MAX_ITEMS = 12
 
-type Tone = 'pending' | 'approved' | 'rejected'
+type Tone = 'pending' | 'approved' | 'rejected' | 'hold'
 
 interface NotificationItem {
   key: string
@@ -17,6 +17,8 @@ interface NotificationItem {
   title: ReactNode
   detail: string | null
   at: string
+  /** Where clicking the item goes. */
+  path: string
 }
 
 function timeAgo(iso: string): string {
@@ -31,7 +33,19 @@ function timeAgo(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
-function buildItems(feed: NotificationFeed, freshDecisionIds: Set<number>): NotificationItem[] {
+const decisionKey = (id: number) => `decision-${id}`
+const holdKey = (id: number) => `hold-${id}`
+
+/** Keys of the notifications that are still unread on the server. */
+function unreadKeys(feed: NotificationFeed | null): string[] {
+  if (!feed) return []
+  return [
+    ...feed.decisions.filter((d) => !d.requester_seen_at).map((d) => decisionKey(d.id)),
+    ...(feed.held_orders ?? []).filter((h) => h.unread).map((h) => holdKey(h.id)),
+  ]
+}
+
+function buildItems(feed: NotificationFeed, freshKeys: Set<string>): NotificationItem[] {
   const reviewItems = feed.pending_reviews.map<NotificationItem>((r) => ({
     key: `review-${r.id}`,
     tone: 'pending',
@@ -44,12 +58,13 @@ function buildItems(feed: NotificationFeed, freshDecisionIds: Set<number>): Noti
     ),
     detail: r.reason,
     at: r.created_at,
+    path: '/delete-requests',
   }))
 
   const decisionItems = feed.decisions.map<NotificationItem>((r: DeleteRequest) => ({
-    key: `decision-${r.id}`,
+    key: decisionKey(r.id),
     tone: r.status === 'Approved' ? 'approved' : 'rejected',
-    unread: !r.requester_seen_at || freshDecisionIds.has(r.id),
+    unread: !r.requester_seen_at || freshKeys.has(decisionKey(r.id)),
     title: (
       <>
         Your request to delete {SUBJECT_LABELS[r.subject_type].toLowerCase()} <strong>{r.subject_label}</strong> was{' '}
@@ -59,25 +74,59 @@ function buildItems(feed: NotificationFeed, freshDecisionIds: Set<number>): Noti
     ),
     detail: r.review_note,
     at: r.reviewed_at ?? r.created_at,
+    path: '/delete-requests',
   }))
 
-  return [...reviewItems, ...decisionItems].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()).slice(0, MAX_ITEMS)
+  // Information only — an order was put on hold; there is nothing for the admin to approve.
+  const holdItems = (feed.held_orders ?? []).map<NotificationItem>((h) => ({
+    key: holdKey(h.id),
+    tone: 'hold',
+    unread: h.unread || freshKeys.has(holdKey(h.id)),
+    title: (
+      <>
+        <strong>{h.holder?.name ?? 'Someone'}</strong> put{' '}
+        {h.whole_order ? (
+          <>
+            order <strong>{h.order_no}</strong>
+          </>
+        ) : (
+          <>
+            <strong>
+              {h.held_items}/{h.quantity}
+            </strong>{' '}
+            items of order <strong>{h.order_no}</strong>
+          </>
+        )}
+        {h.company ? ` — ${h.company.name}` : ''} on hold
+      </>
+    ),
+    detail: null,
+    at: h.held_at ?? new Date(0).toISOString(),
+    path: '/orders?tab=hold',
+  }))
+
+  return [...reviewItems, ...decisionItems, ...holdItems]
+    .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+    .slice(0, MAX_ITEMS)
 }
 
 /**
- * Header bell: Admin sees delete requests waiting for review; whoever raised a request sees the
- * decision on it. Polls lightly so a new request/decision shows up without a page reload.
+ * Header bell: Admin sees delete requests waiting for review and orders put on hold; whoever
+ * raised a delete request sees the decision on it. Polls lightly so new items show up without a
+ * page reload.
  */
 export default function NotificationBell() {
   const { can } = useAuth()
   const navigate = useNavigate()
-  const involved = can('review delete requests') || can('request delete orders') || can('request delete complaints')
+  const involved =
+    can('review delete requests') || can('request delete orders') || can('request delete complaints') || can('view held orders')
+  const seesDeleteRequests = can('review delete requests') || can('request delete orders') || can('request delete complaints')
 
   const [feed, setFeed] = useState<NotificationFeed | null>(null)
   const [open, setOpen] = useState(false)
-  // Decisions that were unread when the panel opened stay highlighted while it's open, even
+  // Items that were unread when the panel opened stay highlighted while it's open, even
   // though opening it marks them read.
-  const [freshDecisionIds, setFreshDecisionIds] = useState<Set<number>>(new Set())
+  const [freshKeys, setFreshKeys] = useState<Set<string>>(new Set())
   const rootRef = useRef<HTMLDivElement>(null)
 
   const load = useCallback(async () => {
@@ -116,8 +165,8 @@ export default function NotificationBell() {
     setOpen(next)
     if (!next) return
 
-    const unseen = feed?.decisions.filter((d) => !d.requester_seen_at) ?? []
-    setFreshDecisionIds(new Set(unseen.map((d) => d.id)))
+    const unseen = unreadKeys(feed)
+    setFreshKeys(new Set(unseen))
     if (unseen.length > 0) {
       deleteRequestsService.markNotificationsRead().then(load).catch(() => {})
     } else {
@@ -125,13 +174,13 @@ export default function NotificationBell() {
     }
   }
 
-  function goToRequests() {
+  function goTo(path: string) {
     setOpen(false)
-    navigate('/delete-requests')
+    navigate(path)
   }
 
   const count = feed?.unread_count ?? 0
-  const items = feed ? buildItems(feed, freshDecisionIds) : []
+  const items = feed ? buildItems(feed, freshKeys) : []
 
   return (
     <div className="hx-notif" ref={rootRef}>
@@ -159,7 +208,7 @@ export default function NotificationBell() {
                   <button
                     type="button"
                     className={`hx-notif__item hx-notif__item--${item.tone}${item.unread ? ' hx-notif__item--unread' : ''}`}
-                    onClick={goToRequests}
+                    onClick={() => goTo(item.path)}
                   >
                     <span className="hx-notif__dot"></span>
                     <span className="hx-notif__body">
@@ -173,8 +222,8 @@ export default function NotificationBell() {
             </ul>
           )}
 
-          {involved && (
-            <button type="button" className="hx-notif__footer" onClick={goToRequests}>
+          {seesDeleteRequests && (
+            <button type="button" className="hx-notif__footer" onClick={() => goTo('/delete-requests')}>
               View all delete requests
             </button>
           )}

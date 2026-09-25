@@ -42,6 +42,14 @@ export const ordersService = {
     })
   },
 
+  /** Puts the given items (punch numbers) of an order on hold, or resumes them. */
+  async setItemsHold(id: number, punchNumberIds: number[], onHold: boolean): Promise<Order> {
+    return apiRequest<Order>(`/orders/${id}/hold-items`, {
+      method: 'PATCH',
+      body: JSON.stringify({ punch_number_ids: punchNumberIds, on_hold: onHold }),
+    })
+  },
+
   async updatePlanningStatus(id: number, planning_status: 'Review' | 'On Hold' | 'Approved'): Promise<Order> {
     return apiRequest<Order>(`/orders/${id}/planning-status`, {
       method: 'PATCH',

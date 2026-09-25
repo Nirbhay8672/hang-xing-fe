@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { ApiError } from '../auth/apiClient'
 import AppShell from '../components/AppShell'
 import '../components/detailView.css'
+import OrderFilterBar, { EMPTY_ORDER_FILTERS, hasActiveOrderFilters, matchesOrderFilters, type OrderFilters } from '../components/OrderFilterBar'
 import Pagination from '../components/Pagination'
 import '../components/statusPill.css'
+import { useAutoRefresh } from '../components/useAutoRefresh'
 import { usePagination } from '../components/usePagination'
 import type { Order } from '../orders/types'
 import { ordersService } from '../orders/ordersService'
@@ -22,6 +24,20 @@ function planningStatusPillClass(status: string): string {
   return 'hx-status-pill--review'
 }
 
+const PLANNING_STATUS_OPTIONS = [
+  { value: 'Review', label: 'Review' },
+  { value: 'Approved', label: 'Approved' },
+  { value: 'On Hold', label: 'On Hold' },
+  { value: 'Planned', label: 'Planned' },
+  { value: 'items-hold', label: 'Items on hold' },
+]
+
+function matchesPlanningStatus(order: Order, status: string): boolean {
+  if (!status) return true
+  if (status === 'items-hold') return (order.held_items_count ?? 0) > 0
+  return order.planning_status === status
+}
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
@@ -30,6 +46,7 @@ export default function Planning() {
   const [orders, setOrders] = useState<Order[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [planOrderId, setPlanOrderId] = useState<number | null>(null)
+  const [filters, setFilters] = useState<OrderFilters>(EMPTY_ORDER_FILTERS)
 
   // An order not yet planned must be approved (or explicitly put on hold) before the actual
   // Plan form opens — this gate only applies to Review/On Hold orders. Approving persists
@@ -53,6 +70,17 @@ export default function Planning() {
       setLoadError(err instanceof ApiError ? err.message : 'Failed to load orders.')
     }
   }
+
+  // Quietly picks up changes other people made (a new order, an approval, an item put on hold).
+  async function refreshOrders() {
+    try {
+      setOrders(await ordersService.list())
+    } catch {
+      // keep showing what we already have
+    }
+  }
+
+  useAutoRefresh(refreshOrders)
 
   function openPlanFlow(order: Order) {
     if (order.planning_status === 'Planned' || order.planning_status === 'Approved') {
@@ -101,8 +129,10 @@ export default function Planning() {
 
   const confirmOrder = orders?.find((o) => o.id === confirmOrderId) ?? null
 
-  const sortedOrders = orders ? [...orders].sort((a, b) => b.id - a.id) : []
-  const { page, setPage, totalPages, totalItems, perPage, pageItems: pagedOrders } = usePagination(sortedOrders, 10)
+  const filteredOrders = orders
+    ? orders.filter((o) => matchesOrderFilters(o, filters) && matchesPlanningStatus(o, filters.status)).sort((a, b) => b.id - a.id)
+    : []
+  const { page, setPage, totalPages, totalItems, perPage, pageItems: pagedOrders } = usePagination(filteredOrders, 10)
 
   return (
     <AppShell title="Production Planning">
@@ -121,6 +151,20 @@ export default function Planning() {
               {orders && orders.length === 0 && <p className="hx-orders-empty">No orders found.</p>}
 
               {orders && orders.length > 0 && (
+                <OrderFilterBar
+                  orders={orders}
+                  filters={filters}
+                  onChange={setFilters}
+                  statusOptions={PLANNING_STATUS_OPTIONS}
+                  shown={filteredOrders.length}
+                  total={orders.length}
+                />
+              )}
+              {orders && orders.length > 0 && filteredOrders.length === 0 && (
+                <p className="hx-orders-empty">{hasActiveOrderFilters(filters) ? 'No orders match the filters.' : 'No orders found.'}</p>
+              )}
+
+              {orders && filteredOrders.length > 0 && (
                 <div className="table-responsive">
                   <table className="table mb-0 table-borderless table-rounded">
                     <thead>
@@ -176,6 +220,11 @@ export default function Planning() {
                             <span className={`hx-status-pill ${planningStatusPillClass(o.planning_status)}`}>
                               {o.planning_status}
                             </span>
+                            {o.held_items_count > 0 && (
+                              <span className="hx-status-pill hx-status-pill--onhold hx-hold-chip">
+                                {o.held_items_count}/{o.quantity} hold
+                              </span>
+                            )}
                           </td>
                           <td>
                             <div className="table-actions d-flex">
@@ -289,6 +338,7 @@ export default function Planning() {
         <PlanOrderModal
           orderId={planOrderId}
           onClose={() => setPlanOrderId(null)}
+          onUpdated={(updated) => setOrders((prev) => prev?.map((o) => (o.id === updated.id ? updated : o)) ?? null)}
           onSaved={(updated) => {
             setOrders((prev) => prev?.map((o) => (o.id === updated.id ? updated : o)) ?? null)
             setPlanOrderId(null)

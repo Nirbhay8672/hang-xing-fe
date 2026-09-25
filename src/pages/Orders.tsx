@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { ApiError } from '../auth/apiClient'
 import { useAuth } from '../auth/AuthContext'
 import AppShell from '../components/AppShell'
@@ -8,6 +9,7 @@ import '../components/formStyles.css'
 import '../components/iconButtons.css'
 import Pagination from '../components/Pagination'
 import '../components/statusPill.css'
+import { useAutoRefresh } from '../components/useAutoRefresh'
 import { usePagination } from '../components/usePagination'
 import type { Company } from '../companies/types'
 import { companiesService } from '../companies/companiesService'
@@ -41,6 +43,24 @@ function sortValue(order: Order, field: SortField): string | number | null {
   }
 }
 
+// What is on hold for an order: the whole order (planning status "On Hold"), some of its items
+// (shown as "2/10 hold"), or both — whichever was put on hold most recently supplies who/when.
+function holdInfo(order: Order): { label: string; by: string | null; at: string | null } | null {
+  const whole = order.planning_status === 'On Hold'
+  const items = order.held_items_count ?? 0
+  if (!whole && items === 0) return null
+
+  const wholeAt = whole ? order.held_at : null
+  const itemsAt = items > 0 ? (order.item_hold?.at ?? null) : null
+  const useWhole = whole && (!itemsAt || (wholeAt !== null && new Date(wholeAt) >= new Date(itemsAt)))
+
+  return {
+    label: `${whole ? order.quantity : items}/${order.quantity} hold`,
+    by: useWhole ? (order.holder?.name ?? null) : (order.item_hold?.by ?? null),
+    at: useWhole ? wholeAt : itemsAt,
+  }
+}
+
 function orderTypePillClass(orderType: string): string {
   return orderType === 'New' ? 'hx-status-pill--new' : 'hx-status-pill--rc'
 }
@@ -52,6 +72,7 @@ function unifiedStatus(order: Order): string {
   const progress = order.production_progress ?? 0
   if (progress === 100) return 'Completed'
   if (progress > 0) return `${progress}%`
+  if (order.planning_status === 'On Hold') return 'On Hold'
   if (order.planning_status === 'Planned') return 'Planned'
   return 'Pending'
 }
@@ -60,6 +81,7 @@ function unifiedStatusPillClass(order: Order): string {
   const progress = order.production_progress ?? 0
   if (progress === 100) return 'hx-status-pill--complete'
   if (progress > 0) return 'hx-status-pill--inprogress'
+  if (order.planning_status === 'On Hold') return 'hx-status-pill--onhold'
   if (order.planning_status === 'Planned') return 'hx-status-pill--planned'
   return 'hx-status-pill--pending'
 }
@@ -186,6 +208,11 @@ export default function Orders() {
   const [orders, setOrders] = useState<Order[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  // "On Hold" tab (Admin): the orders Planning has put on hold. Kept in the URL (?tab=hold) so the
+  // header bell and the dashboard card can link straight to it.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const canSeeHolds = can('view held orders')
+  const tab: 'all' | 'hold' = canSeeHolds && searchParams.get('tab') === 'hold' ? 'hold' : 'all'
   const [sortField, setSortField] = useState<SortField | null>(null)
   const [sortDir, setSortDir] = useState<SortDir>('asc')
 
@@ -237,6 +264,18 @@ export default function Orders() {
       setLoadError(err instanceof ApiError ? err.message : 'Failed to load orders.')
     }
   }
+
+  // Quietly picks up changes other people made (an item put on hold, a status change, a new
+  // order) without showing a loading state or an error if a refresh fails.
+  async function refreshOrders() {
+    try {
+      setOrders(await ordersService.list())
+    } catch {
+      // keep showing what we already have
+    }
+  }
+
+  useAutoRefresh(refreshOrders)
 
   const selectedCompany = companies.find((c) => c.id === Number(form.company_id)) ?? null
 
@@ -612,19 +651,27 @@ export default function Orders() {
     }
   }
 
-  const searchedOrders = orders?.filter((o) => {
+  const heldCount = orders?.filter((o) => holdInfo(o) !== null).length ?? 0
+  const tabOrders = orders?.filter((o) => tab === 'all' || holdInfo(o) !== null)
+  const searchedOrders = tabOrders?.filter((o) => {
     const q = search.trim().toLowerCase()
     if (!q) return true
     return (
       o.order_no?.toLowerCase().includes(q) ||
       o.company?.name.toLowerCase().includes(q) ||
       o.master_number?.toLowerCase().includes(q) ||
+      (tab === 'hold' && (holdInfo(o)?.by ?? '').toLowerCase().includes(q)) ||
       // Punch numbers are set once the order type (New/RC/RR) is chosen — auto-generated
       // HXN-#### for New, free-typed for RC/RR — so searching by one should find the order.
       (o.punch_numbers ?? []).some((p) => p.punch_number?.toLowerCase().includes(q))
     )
   })
-  const filteredOrders = searchedOrders && sortOrders(searchedOrders, sortField, sortDir)
+  // On the Hold tab the most recently held order comes first unless a column sort is chosen.
+  const filteredOrders =
+    searchedOrders &&
+    (tab === 'hold' && !sortField
+      ? [...searchedOrders].sort((a, b) => new Date(holdInfo(b)?.at ?? 0).getTime() - new Date(holdInfo(a)?.at ?? 0).getTime())
+      : sortOrders(searchedOrders, sortField, sortDir))
 
   const {
     page: ordersPage,
@@ -634,6 +681,12 @@ export default function Orders() {
     perPage: ordersPerPage,
     pageItems: pagedOrders,
   } = usePagination(filteredOrders ?? [], 10)
+
+  function changeTab(next: 'all' | 'hold') {
+    setSearchParams(next === 'hold' ? { tab: 'hold' } : {}, { replace: true })
+    setOrdersPage(1)
+    refreshOrders()
+  }
 
   function sortIconClass(field: SortField): string {
     if (sortField !== field) return 'la la-sort hx-sort-icon'
@@ -702,11 +755,31 @@ export default function Orders() {
         <div className="col-12">
           <div className="contact-list-wrap mb-25">
             <div className="contact-list bg-white radius-xl w-100">
+              {canSeeHolds && (
+                <div className="hx-orders-tabs">
+                  <button
+                    type="button"
+                    className={`hx-orders-tab${tab === 'all' ? ' hx-orders-tab--active' : ''}`}
+                    onClick={() => changeTab('all')}
+                  >
+                    All Orders <span className="hx-orders-tab__count">{orders?.length ?? 0}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`hx-orders-tab${tab === 'hold' ? ' hx-orders-tab--active' : ''}`}
+                    onClick={() => changeTab('hold')}
+                  >
+                    Hold Orders <span className="hx-orders-tab__count">{heldCount}</span>
+                  </button>
+                </div>
+              )}
               {loadError && <p className="hx-form-error m-20">{loadError}</p>}
               {editFetchError && <p className="hx-form-error m-20">{editFetchError}</p>}
               {viewFetchError && <p className="hx-form-error m-20">{viewFetchError}</p>}
               {orders === null && !loadError && <p className="hx-orders-empty">Loading orders…</p>}
-              {filteredOrders && filteredOrders.length === 0 && <p className="hx-orders-empty">No orders found.</p>}
+              {filteredOrders && filteredOrders.length === 0 && (
+                <p className="hx-orders-empty">{tab === 'hold' && !search.trim() ? 'No orders are on hold.' : 'No orders found.'}</p>
+              )}
 
               {filteredOrders && filteredOrders.length > 0 && (
                 <div className="table-responsive">
@@ -749,6 +822,19 @@ export default function Orders() {
                         <th>
                           <span>Status</span>
                         </th>
+                        {tab === 'hold' && (
+                          <>
+                            <th>
+                              <span>Hold</span>
+                            </th>
+                            <th>
+                              <span>Put On Hold By</span>
+                            </th>
+                            <th>
+                              <span>On Hold Since</span>
+                            </th>
+                          </>
+                        )}
                         <th className="c-action">
                           <span className="float-right"></span>
                         </th>
@@ -793,7 +879,23 @@ export default function Orders() {
                             ) : (
                               <span className={`hx-status-pill ${unifiedStatusPillClass(o)}`}>{unifiedStatus(o)}</span>
                             )}
+                            {tab === 'all' && o.planning_status !== 'On Hold' && o.held_items_count > 0 && (
+                              <span className="hx-status-pill hx-status-pill--onhold hx-hold-chip">{holdInfo(o)?.label}</span>
+                            )}
                           </td>
+                          {tab === 'hold' && (
+                            <>
+                              <td>
+                                <span className="hx-status-pill hx-status-pill--onhold">{holdInfo(o)?.label}</span>
+                              </td>
+                              <td>
+                                <span className="position">{holdInfo(o)?.by ?? '—'}</span>
+                              </td>
+                              <td>
+                                <span className="position">{holdInfo(o)?.at ? formatDateTime(holdInfo(o)!.at!) : '—'}</span>
+                              </td>
+                            </>
+                          )}
                           <td>
                             <div className="table-actions d-flex">
                               <button

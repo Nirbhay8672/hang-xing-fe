@@ -52,3 +52,14 @@
   font-weight: 500;
   color: #202020;
 }
+
+.hx-stat-card--link {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.hx-stat-card--link:hover,
+.hx-stat-card--link:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(46, 49, 117, 0.1);
+}
