@@ -4,6 +4,12 @@ import type { User } from '../users/types'
 
 export type ComplaintStatus = 'Active' | 'Pending' | 'Completed'
 
+export interface ComplaintImage {
+  id: number
+  /** Ready-to-use absolute URL. */
+  url: string
+}
+
 export interface Complaint {
   id: number
   complaint_no: string
@@ -21,9 +27,9 @@ export interface Complaint {
   result: string | null
   /** Always "Active" on creation; moves to "Pending" then "Completed" from there. */
   status: ComplaintStatus
-  /** Ready-to-use absolute URL — uploaded/replaced/removed via the dedicated
-   * /complaints/{id}/image endpoints, not through create/update. */
-  image_url: string | null
+  /** Pictures attached to the complaint, oldest first — added/removed through the dedicated
+   * /complaints/{id}/images endpoints, not through create/update. */
+  images: ComplaintImage[]
   created_at: string
   updated_at: string
 }

@@ -14,13 +14,23 @@ import '../components/statusPill.css'
 import { usePagination } from '../components/usePagination'
 import type { Company } from '../companies/types'
 import { companiesService } from '../companies/companiesService'
-import type { Complaint, ComplaintStatus } from '../complaints/types'
+import type { Complaint, ComplaintImage, ComplaintStatus } from '../complaints/types'
 import { complaintsService } from '../complaints/complaintsService'
 import type { Problem } from '../problems/types'
 import { problemsService } from '../problems/problemsService'
 import './Complaints.css'
 
 const STATUS_OPTIONS: ComplaintStatus[] = ['Active', 'Pending', 'Completed']
+
+// Mirrors the API's limits so a bad pick is caught before anything is uploaded.
+const MAX_IMAGES = 10
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+
+/** A picture picked in the form that hasn't been uploaded yet. */
+interface PendingImage {
+  file: File
+  previewUrl: string
+}
 
 function statusPillClass(status: ComplaintStatus): string {
   switch (status) {
@@ -103,17 +113,38 @@ export default function Complaints() {
   const [problemSubmitting, setProblemSubmitting] = useState(false)
   const addProblem = useFormErrors()
 
-  // Image is handled via its own dedicated upload/remove endpoints rather than the main
-  // create/update payload — imageFile is a newly picked file waiting to be uploaded on save,
-  // imagePreviewUrl is what to show right now (the new file, the existing saved image, or
-  // nothing), and removeImageFlag marks that the existing saved image should be deleted on save.
-  const [imageFile, setImageFile] = useState<File | null>(null)
-  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
-  const [removeImageFlag, setRemoveImageFlag] = useState(false)
+  // Pictures are handled via their own dedicated upload/remove endpoints rather than the main
+  // create/update payload. keptImages are the ones already saved on the complaint (minus any
+  // marked for removal, which are listed in removedImageIds and deleted on save), and newImages
+  // are freshly picked files waiting to be uploaded on save.
+  const [keptImages, setKeptImages] = useState<ComplaintImage[]>([])
+  const [removedImageIds, setRemovedImageIds] = useState<number[]>([])
+  const [newImages, setNewImages] = useState<PendingImage[]>([])
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null)
+  const imageCount = keptImages.length + newImages.length
 
-  // Full-size view of whichever complaint image was just clicked — the form's small picker
-  // preview and the View modal's image both open the same lightbox.
-  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
+  // Full-size view of whichever picture was just clicked — the form's thumbnails and the View
+  // modal's gallery open the same lightbox, which steps through that complaint's pictures.
+  const [lightbox, setLightbox] = useState<{ urls: string[]; index: number } | null>(null)
+
+  function stepLightbox(step: number) {
+    setLightbox((current) =>
+      current && current.urls.length > 1
+        ? { ...current, index: (current.index + step + current.urls.length) % current.urls.length }
+        : current,
+    )
+  }
+
+  useEffect(() => {
+    if (!lightbox) return
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setLightbox(null)
+      else if (event.key === 'ArrowLeft') stepLightbox(-1)
+      else if (event.key === 'ArrowRight') stepLightbox(1)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [lightbox])
 
   // The problem / company a complaint was raised with may have been deleted since. They no longer
   // show up in the lists to pick from, but the complaint keeps them — so they're added back while
@@ -147,9 +178,7 @@ export default function Complaints() {
     setEditingComplaint(null)
     setForm(EMPTY_FORM)
     setFormErrors({})
-    setImageFile(null)
-    setImagePreviewUrl(null)
-    setRemoveImageFlag(false)
+    resetImages([])
     setModalMode('create')
   }
 
@@ -162,32 +191,56 @@ export default function Complaints() {
       description: complaint.description ?? '',
     })
     setFormErrors({})
-    setImageFile(null)
-    setImagePreviewUrl(complaint.image_url)
-    setRemoveImageFlag(false)
+    resetImages(complaint.images ?? [])
     setModalMode('edit')
   }
 
-  function handleImageFileChange(file: File | null) {
-    // Mirrors the API's limits (image only, up to 5 MB) so a bad pick is caught before saving.
-    if (file && !file.type.startsWith('image/')) {
-      setFormErrors((prev) => ({ ...prev, image: ['Choose an image file (JPG, PNG, GIF or WebP).'] }))
-      return
-    }
-    if (file && file.size > 5 * 1024 * 1024) {
-      setFormErrors((prev) => ({ ...prev, image: ['The image must be 5 MB or smaller.'] }))
-      return
-    }
-    clearError('image')
-    setImageFile(file)
-    setRemoveImageFlag(false)
-    setImagePreviewUrl(file ? URL.createObjectURL(file) : (editingComplaint?.image_url ?? null))
+  /** Starts the form's picture list from scratch (freeing any previews that were still held). */
+  function resetImages(saved: ComplaintImage[]) {
+    newImages.forEach((image) => URL.revokeObjectURL(image.previewUrl))
+    setNewImages([])
+    setKeptImages(saved)
+    setRemovedImageIds([])
+    setUploadProgress(null)
   }
 
-  function handleRemoveImageClick() {
-    setImageFile(null)
-    setImagePreviewUrl(null)
-    setRemoveImageFlag(true)
+  function handleImageFilesChange(files: FileList | null) {
+    if (!files || files.length === 0) return
+
+    const accepted: PendingImage[] = []
+    const problems: string[] = []
+    let room = MAX_IMAGES - imageCount
+
+    for (const file of Array.from(files)) {
+      if (!file.type.startsWith('image/')) {
+        problems.push(`${file.name}: only image files (JPG, PNG, GIF or WebP) can be attached.`)
+      } else if (file.size > MAX_IMAGE_BYTES) {
+        problems.push(`${file.name}: must be 5 MB or smaller.`)
+      } else if (room <= 0) {
+        problems.push(`${file.name}: a complaint can have at most ${MAX_IMAGES} images.`)
+      } else {
+        accepted.push({ file, previewUrl: URL.createObjectURL(file) })
+        room -= 1
+      }
+    }
+
+    if (problems.length > 0) setFormErrors((prev) => ({ ...prev, image: problems }))
+    else clearError('image')
+    if (accepted.length > 0) setNewImages((prev) => [...prev, ...accepted])
+  }
+
+  function removeNewImage(index: number) {
+    setNewImages((prev) => {
+      URL.revokeObjectURL(prev[index].previewUrl)
+      return prev.filter((_, i) => i !== index)
+    })
+    clearError('image')
+  }
+
+  function removeSavedImage(image: ComplaintImage) {
+    setKeptImages((prev) => prev.filter((i) => i.id !== image.id))
+    setRemovedImageIds((prev) => [...prev, image.id])
+    clearError('image')
   }
 
   function closeModal() {
@@ -254,12 +307,27 @@ export default function Complaints() {
         })
       applySaved(saved)
 
-      if (imageFile) {
-        saved = await complaintsService.uploadImage(saved.id, imageFile)
+      // The complaint now exists, so if a picture fails below the form carries on as an edit of it
+      // — pressing Save again finishes the remaining pictures instead of raising a second complaint.
+      if (modalMode === 'create') {
+        setEditingComplaint(saved)
+        setModalMode('edit')
+      }
+
+      // Each picture is its own request, and is dropped from the form once it's through, so a retry
+      // after a failure only repeats what didn't go through.
+      for (const imageId of removedImageIds) {
+        saved = await complaintsService.removeImage(saved.id, imageId)
         applySaved(saved)
-      } else if (removeImageFlag) {
-        saved = await complaintsService.removeImage(saved.id)
+        setRemovedImageIds((prev) => prev.filter((id) => id !== imageId))
+      }
+      for (const [index, image] of newImages.entries()) {
+        setUploadProgress(newImages.length > 1 ? `Uploading image ${index + 1} of ${newImages.length}…` : 'Uploading image…')
+        saved = await complaintsService.addImage(saved.id, image.file)
         applySaved(saved)
+        URL.revokeObjectURL(image.previewUrl)
+        setNewImages((prev) => prev.filter((p) => p !== image))
+        setKeptImages(saved.images)
       }
 
       setModalMode(null)
@@ -267,6 +335,7 @@ export default function Complaints() {
       showErrors(extractErrors(err, 'Something went wrong. Please try again.'))
     } finally {
       setSubmitting(false)
+      setUploadProgress(null)
     }
   }
 
@@ -599,35 +668,69 @@ export default function Complaints() {
                           />
                         </div>
                         <div className="col-12">
-                          <label className="hx-image-picker-label">Image (optional)</label>
+                          <label className="hx-image-picker-label">
+                            Images (optional)
+                            <span className="hx-image-picker-count">
+                              {imageCount} / {MAX_IMAGES}
+                            </span>
+                          </label>
                           <div className="hx-image-picker">
-                            {imagePreviewUrl && (
-                              <div className="hx-image-picker__preview">
-                                <img
-                                  src={imagePreviewUrl}
-                                  alt="Complaint attachment preview"
-                                  className="hx-image-clickable"
-                                  onClick={() => setLightboxUrl(imagePreviewUrl)}
-                                />
-                                <button
-                                  type="button"
-                                  className="hx-icon-btn hx-icon-btn--delete"
-                                  aria-label="Remove image"
-                                  title="Remove"
-                                  onClick={handleRemoveImageClick}
-                                >
-                                  <i className="la la-trash"></i>
-                                </button>
+                            {imageCount > 0 && (
+                              <div className="hx-image-picker__grid">
+                                {[
+                                  ...keptImages.map((image) => ({
+                                    key: `saved-${image.id}`,
+                                    url: image.url,
+                                    remove: () => removeSavedImage(image),
+                                  })),
+                                  ...newImages.map((image, index) => ({
+                                    key: `new-${image.previewUrl}`,
+                                    url: image.previewUrl,
+                                    remove: () => removeNewImage(index),
+                                  })),
+                                ].map((thumb, index, all) => (
+                                  <div className="hx-image-picker__preview" key={thumb.key}>
+                                    <img
+                                      src={thumb.url}
+                                      alt={`Complaint attachment ${index + 1}`}
+                                      className="hx-image-clickable"
+                                      onClick={() => setLightbox({ urls: all.map((t) => t.url), index })}
+                                    />
+                                    <button
+                                      type="button"
+                                      className="hx-icon-btn hx-icon-btn--delete"
+                                      aria-label="Remove image"
+                                      title="Remove"
+                                      onClick={thumb.remove}
+                                      disabled={submitting}
+                                    >
+                                      <i className="la la-trash"></i>
+                                    </button>
+                                  </div>
+                                ))}
                               </div>
                             )}
                             <input
                               type="file"
                               accept="image/*"
+                              multiple
                               className="form-control"
-                              onChange={(e) => handleImageFileChange(e.target.files?.[0] ?? null)}
+                              disabled={imageCount >= MAX_IMAGES || submitting}
+                              onChange={(e) => {
+                                handleImageFilesChange(e.target.files)
+                                // Clear the input so picking the same file again still fires a change.
+                                e.target.value = ''
+                              }}
                             />
+                            <span className="hx-image-picker-hint">
+                              You can select several images at once — up to {MAX_IMAGES}, 5 MB each.
+                            </span>
                           </div>
-                          {formErrors.image?.[0] && <p className="hx-form-error">{formErrors.image[0]}</p>}
+                          {formErrors.image?.map((message) => (
+                            <p className="hx-form-error" key={message}>
+                              {message}
+                            </p>
+                          ))}
                         </div>
                       </div>
 
@@ -636,7 +739,7 @@ export default function Complaints() {
                           Cancel
                         </button>
                         <button type="submit" className="btn btn-sm btn-primary btn-rounded" disabled={submitting}>
-                          {submitting ? 'Saving…' : modalMode === 'create' ? 'Raise Complaint' : 'Save Changes'}
+                          {submitting ? (uploadProgress ?? 'Saving…') : modalMode === 'create' ? 'Raise Complaint' : 'Save Changes'}
                         </button>
                       </div>
                     </form>
@@ -812,15 +915,22 @@ export default function Complaints() {
                     </div>
                   </div>
 
-                  {viewTarget.image_url && (
+                  {viewTarget.images.length > 0 && (
                     <div className="hx-detail-section">
-                      <span className="hx-detail-section__title">Image</span>
-                      <img
-                        src={viewTarget.image_url}
-                        alt="Complaint attachment"
-                        className="hx-complaint-detail-image hx-image-clickable"
-                        onClick={() => setLightboxUrl(viewTarget.image_url)}
-                      />
+                      <span className="hx-detail-section__title">
+                        {viewTarget.images.length === 1 ? 'Image' : `Images (${viewTarget.images.length})`}
+                      </span>
+                      <div className="hx-complaint-gallery">
+                        {viewTarget.images.map((image, index) => (
+                          <img
+                            key={image.id}
+                            src={image.url}
+                            alt={`Complaint attachment ${index + 1}`}
+                            className="hx-complaint-gallery__img hx-image-clickable"
+                            onClick={() => setLightbox({ urls: viewTarget.images.map((i) => i.url), index })}
+                          />
+                        ))}
+                      </div>
                     </div>
                   )}
 
@@ -903,12 +1013,43 @@ export default function Complaints() {
         </>
       )}
 
-      {lightboxUrl && (
-        <div className="hx-lightbox" role="dialog" aria-modal="true" onClick={() => setLightboxUrl(null)}>
-          <button type="button" className="hx-lightbox__close" onClick={() => setLightboxUrl(null)} aria-label="Close">
+      {lightbox && (
+        <div className="hx-lightbox" role="dialog" aria-modal="true" onClick={() => setLightbox(null)}>
+          <button type="button" className="hx-lightbox__close" onClick={() => setLightbox(null)} aria-label="Close">
             <i className="las la-times"></i>
           </button>
-          <img src={lightboxUrl} alt="Complaint attachment full size" onClick={(e) => e.stopPropagation()} />
+          {lightbox.urls.length > 1 && (
+            <button
+              type="button"
+              className="hx-lightbox__nav hx-lightbox__nav--prev"
+              onClick={(e) => {
+                e.stopPropagation()
+                stepLightbox(-1)
+              }}
+              aria-label="Previous image"
+            >
+              <i className="las la-angle-left"></i>
+            </button>
+          )}
+          <img src={lightbox.urls[lightbox.index]} alt="Complaint attachment full size" onClick={(e) => e.stopPropagation()} />
+          {lightbox.urls.length > 1 && (
+            <button
+              type="button"
+              className="hx-lightbox__nav hx-lightbox__nav--next"
+              onClick={(e) => {
+                e.stopPropagation()
+                stepLightbox(1)
+              }}
+              aria-label="Next image"
+            >
+              <i className="las la-angle-right"></i>
+            </button>
+          )}
+          {lightbox.urls.length > 1 && (
+            <span className="hx-lightbox__counter">
+              {lightbox.index + 1} / {lightbox.urls.length}
+            </span>
+          )}
         </div>
       )}
     </AppShell>

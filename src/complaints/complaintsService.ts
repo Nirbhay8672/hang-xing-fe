@@ -28,16 +28,18 @@ export const complaintsService = {
     await apiRequest<{ message: string }>(`/complaints/${id}`, { method: 'DELETE' })
   },
 
-  async uploadImage(id: number, image: File): Promise<Complaint> {
+  /** Uploads one picture. The app sends pictures one request at a time so a batch of large
+   * photos never runs into the server's per-request size limit. */
+  async addImage(id: number, image: File): Promise<Complaint> {
     const formData = new FormData()
-    formData.append('image', image)
-    return apiRequest<Complaint>(`/complaints/${id}/image`, {
+    formData.append('images[]', image)
+    return apiRequest<Complaint>(`/complaints/${id}/images`, {
       method: 'POST',
       body: formData,
     })
   },
 
-  async removeImage(id: number): Promise<Complaint> {
-    return apiRequest<Complaint>(`/complaints/${id}/image`, { method: 'DELETE' })
+  async removeImage(id: number, imageId: number): Promise<Complaint> {
+    return apiRequest<Complaint>(`/complaints/${id}/images/${imageId}`, { method: 'DELETE' })
   },
 }
