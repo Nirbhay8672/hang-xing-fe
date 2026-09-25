@@ -84,6 +84,8 @@ export default function TrackOrderModal({ orderId, onClose, onSaved }: TrackOrde
 
   async function toggleTaskDone(punchId: number, task: string) {
     if (!order) return
+    // Items on hold can't be worked on (the API refuses it too).
+    if (order.punch_numbers.find((p) => p.id === punchId)?.is_on_hold) return
     setSavingKey(`${punchId}:${task}`)
     setSaveError(null)
     try {
@@ -265,7 +267,10 @@ export default function TrackOrderModal({ orderId, onClose, onSaved }: TrackOrde
                             <tr>
                               <th>Task</th>
                               {order.punch_numbers.map((p) => (
-                                <th key={p.id}>{p.punch_number}</th>
+                                <th key={p.id}>
+                                  {p.punch_number}
+                                  {p.is_on_hold && <span className="hx-track-hold-tag">On hold</span>}
+                                </th>
                               ))}
                             </tr>
                           </thead>
@@ -301,23 +306,29 @@ export default function TrackOrderModal({ orderId, onClose, onSaved }: TrackOrde
                                           <button
                                             type="button"
                                             className={`hx-track-toggle ${isDone ? 'hx-track-toggle--done' : ''} ${
-                                              hasTimestamp ? 'hx-tooltip' : ''
-                                            }`}
-                                            data-tooltip={hasTimestamp ? `Completed ${formatDateTime(completedEntry!.completed_at)}` : undefined}
-                                            disabled={savingKey === key}
+                                              p.is_on_hold ? 'hx-track-toggle--held' : ''
+                                            } ${hasTimestamp && !p.is_on_hold ? 'hx-tooltip' : ''}`}
+                                            data-tooltip={
+                                              hasTimestamp && !p.is_on_hold
+                                                ? `Completed ${formatDateTime(completedEntry!.completed_at)}`
+                                                : undefined
+                                            }
+                                            disabled={savingKey === key || p.is_on_hold}
                                             onClick={() => toggleTaskDone(p.id, task)}
                                             aria-label={`${task} for ${p.punch_number}`}
                                           >
                                             {isDone && <i className="la la-check"></i>}
                                           </button>
-                                          <button
-                                            type="button"
-                                            className={`hx-track-remark-btn ${tickRemark ? 'hx-track-remark-btn--active' : ''}`}
-                                            onClick={() => openRemarkModal(task, p.id, p.punch_number, tickRemark)}
-                                            aria-label={`${tickRemark ? 'Edit' : 'Add'} remark for ${task} on ${p.punch_number}`}
-                                          >
-                                            <i className="la la-sticky-note"></i>
-                                          </button>
+                                          {!p.is_on_hold && (
+                                            <button
+                                              type="button"
+                                              className={`hx-track-remark-btn ${tickRemark ? 'hx-track-remark-btn--active' : ''}`}
+                                              onClick={() => openRemarkModal(task, p.id, p.punch_number, tickRemark)}
+                                              aria-label={`${tickRemark ? 'Edit' : 'Add'} remark for ${task} on ${p.punch_number}`}
+                                            >
+                                              <i className="la la-sticky-note"></i>
+                                            </button>
+                                          )}
                                         </div>
                                       </div>
                                     </td>
