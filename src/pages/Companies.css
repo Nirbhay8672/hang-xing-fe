@@ -11,13 +11,14 @@
 }
 
 /* Size select, sitting where a single field normally would among the Manufacturing
-   Specification row's other fields. */
+   Specification row's other fields — given roughly twice the room of the others, since
+   sizes like "1200 x 2400" are the longest values in the row. */
 .hx-size-field {
   display: flex;
   align-items: flex-end;
   gap: 6px;
-  flex: 1 0 160px;
-  min-width: 160px;
+  flex: 2 0 220px;
+  min-width: 220px;
 }
 
 .hx-size-field .hx-floating {
