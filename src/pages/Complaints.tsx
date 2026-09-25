@@ -115,6 +115,18 @@ export default function Complaints() {
   // preview and the View modal's image both open the same lightbox.
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
 
+  // The problem / company a complaint was raised with may have been deleted since. They no longer
+  // show up in the lists to pick from, but the complaint keeps them — so they're added back while
+  // that complaint is being edited.
+  const problemOptions =
+    editingComplaint?.problem && !problems.some((p) => p.id === editingComplaint.problem_id)
+      ? [...problems, editingComplaint.problem]
+      : problems
+  const companyOptions =
+    editingComplaint?.company && !companies.some((c) => c.id === editingComplaint.company_id)
+      ? [...companies, editingComplaint.company]
+      : companies
+
   useEffect(() => {
     loadComplaints()
     problemsService.list().then(setProblems).catch(() => setProblems([]))
@@ -540,7 +552,7 @@ export default function Complaints() {
                             error={formErrors.problem_id?.[0]}
                           >
                             <option value="">— Select —</option>
-                            {problems.map((p) => (
+                            {problemOptions.map((p) => (
                               <option key={p.id} value={p.id}>
                                 {p.name}
                               </option>
@@ -558,7 +570,7 @@ export default function Complaints() {
                             error={formErrors.company_id?.[0]}
                           >
                             <option value="">— None —</option>
-                            {companies.map((co) => (
+                            {companyOptions.map((co) => (
                               <option key={co.id} value={co.id}>
                                 {co.name}
                               </option>
@@ -867,7 +879,7 @@ export default function Complaints() {
                 </div>
                 <div className="modal-body">
                   <p>
-                    This will permanently delete complaint <strong>{deleteTarget.complaint_no}</strong>. This cannot be undone.
+                    This will delete complaint <strong>{deleteTarget.complaint_no}</strong>. The company, problem and other records it refers to are not affected.
                   </p>
                   {deleteError && <p className="hx-form-error">{deleteError}</p>}
                   <div className="button-group d-flex justify-content-center pt-20">

@@ -254,7 +254,7 @@ export default function DeleteRequests() {
                   {review.request.reason && <p className="hx-dr-quote">“{review.request.reason}”</p>}
                   <p className="hx-modal-text">
                     {review.action === 'approve'
-                      ? `Approving permanently deletes this ${SUBJECT_LABELS[review.request.subject_type].toLowerCase()}. This cannot be undone.`
+                      ? `Approving deletes this ${SUBJECT_LABELS[review.request.subject_type].toLowerCase()}. The records it refers to are not affected.`
                       : `The ${SUBJECT_LABELS[review.request.subject_type].toLowerCase()} stays as it is and the requester is told the request was rejected.`}
                   </p>
                   {reviewError && <p className="hx-form-error">{reviewError}</p>}

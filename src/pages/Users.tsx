@@ -454,7 +454,7 @@ export default function Users() {
                 </div>
                 <div className="modal-body">
                   <p>
-                    This will permanently delete <strong>{deleteTarget.name}</strong>. This cannot be undone.
+                    This will delete <strong>{deleteTarget.name}</strong>. Their orders and complaints keep showing their name, and they can no longer sign in.
                   </p>
                   {deleteError && <p className="hx-form-error">{deleteError}</p>}
                   <div className="button-group d-flex justify-content-center pt-20">

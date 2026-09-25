@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ApiError } from '../auth/apiClient'
 import { useAuth } from '../auth/AuthContext'
+import { isAdmin, isMarketing } from '../auth/roleUtils'
 import AppShell from '../components/AppShell'
 import { FloatingInput, FloatingSelect, FloatingTextarea } from '../components/FloatingField'
 import '../components/detailView.css'
@@ -45,7 +46,7 @@ function sortValue(order: Order, field: SortField): string | number | null {
 
 // What is on hold for an order: the whole order (planning status "On Hold"), some of its items
 // (shown as "2/10 hold"), or both — whichever was put on hold most recently supplies who/when.
-function holdInfo(order: Order): { label: string; by: string | null; at: string | null } | null {
+function holdInfo(order: Order): { label: string; whole: boolean; by: string | null; at: string | null } | null {
   const whole = order.planning_status === 'On Hold'
   const items = order.held_items_count ?? 0
   if (!whole && items === 0) return null
@@ -56,6 +57,7 @@ function holdInfo(order: Order): { label: string; by: string | null; at: string 
 
   return {
     label: `${whole ? order.quantity : items}/${order.quantity} hold`,
+    whole,
     by: useWhole ? (order.holder?.name ?? null) : (order.item_hold?.by ?? null),
     at: useWhole ? wholeAt : itemsAt,
   }
@@ -212,6 +214,8 @@ export default function Orders() {
   // header bell and the dashboard card can link straight to it.
   const [searchParams, setSearchParams] = useSearchParams()
   const canSeeHolds = can('view held orders')
+  // Marketing adds and views orders but doesn't edit existing ones (unless they're also an Admin).
+  const canEditOrders = can('edit orders') && !(user && isMarketing(user) && !isAdmin(user))
   const tab: 'all' | 'hold' = canSeeHolds && searchParams.get('tab') === 'hold' ? 'hold' : 'all'
   const [sortField, setSortField] = useState<SortField | null>(null)
   const [sortDir, setSortDir] = useState<SortDir>('asc')
@@ -277,7 +281,14 @@ export default function Orders() {
 
   useAutoRefresh(refreshOrders)
 
-  const selectedCompany = companies.find((c) => c.id === Number(form.company_id)) ?? null
+  // The company / user an order was raised for may have been deleted since. They no longer show up
+  // in the lists to pick from, but the order keeps them — so they're added back for the order
+  // that's being edited.
+  const [orderRefs, setOrderRefs] = useState<{ company: Company | null; user: User | null }>({ company: null, user: null })
+  const companyOptions = orderRefs.company ? [...companies, orderRefs.company] : companies
+  const userOptions = orderRefs.user ? [...users, orderRefs.user] : users
+
+  const selectedCompany = companyOptions.find((c) => c.id === Number(form.company_id)) ?? null
 
   const sizeOptions = Array.from(new Set(selectedCompany?.manufacturing_specifications.map((spec) => spec.size) ?? [])).sort(
     compareSizeNames,
@@ -315,7 +326,7 @@ export default function Orders() {
     ]),
   )
 
-  function orderToForm(order: Order): OrderFormState {
+  function orderToForm(order: Order, companyList: Company[] = companies): OrderFormState {
     return {
       company_id: String(order.company_id),
       size: order.size,
@@ -324,7 +335,7 @@ export default function Orders() {
       specification_ids:
         order.specification_ids && order.specification_ids.length > 0
           ? order.specification_ids.map(String)
-          : (companies.find((c) => c.id === order.company_id)?.manufacturing_specifications ?? [])
+          : (companyList.find((c) => c.id === order.company_id)?.manufacturing_specifications ?? [])
               .filter((s) => s.size === order.size)
               .map((s) => String(s.id)),
       punch_type: order.punch_type,
@@ -345,6 +356,7 @@ export default function Orders() {
 
   function openCreateModal() {
     setEditingOrder(null)
+    setOrderRefs({ company: null, user: null })
     setForm({ ...EMPTY_FORM, user_id: user ? String(user.id) : '' })
     setFormErrors({})
     setModalMode('create')
@@ -373,8 +385,13 @@ export default function Orders() {
     setEditLoadingId(order.id)
     try {
       const fresh = await ordersService.get(order.id)
+      const deletedCompany = companies.some((c) => c.id === fresh.company_id)
+        ? null
+        : await companiesService.get(fresh.company_id).catch(() => null)
+      const deletedUser = users.some((u) => u.id === fresh.user_id) ? null : (fresh.user ?? null)
+      setOrderRefs({ company: deletedCompany, user: deletedUser })
       setEditingOrder(fresh)
-      setForm(orderToForm(fresh))
+      setForm(orderToForm(fresh, deletedCompany ? [...companies, deletedCompany] : companies))
       setFormErrors({})
       setModalMode('edit')
     } catch (err) {
@@ -731,6 +748,14 @@ export default function Orders() {
       : (viewCompany?.manufacturing_specifications ?? []).filter((s) => s.size === viewTarget.size)
     : []
   const viewIsUpperPunch = viewTarget ? viewTarget.punch_type.startsWith('U') : false
+
+  // Items of the viewed order split into what is still moving and what Planning has put on hold
+  // (every item counts as on hold while the whole order is On Hold).
+  const viewWholeHeld = viewTarget?.planning_status === 'On Hold'
+  const viewItems = [...(viewTarget?.punch_numbers ?? [])].sort((a, b) => a.id - b.id)
+  const viewHeldItems = viewItems.filter((p) => viewWholeHeld || p.is_on_hold)
+  const viewActiveItems = viewItems.filter((p) => !viewWholeHeld && !p.is_on_hold)
+  const viewHold = viewTarget ? holdInfo(viewTarget) : null
   const viewIsLowerPunch = viewTarget ? viewTarget.punch_type.startsWith('L') : false
 
   // Every master number that applies to this order's selected spec(s) + punch type — an order
@@ -804,25 +829,28 @@ export default function Orders() {
                             <i className={sortIconClass('size')}></i>
                           </button>
                         </th>
-                        <th>
-                          <span>Punch Type</span>
-                        </th>
-                        <th>
-                          <span>Type</span>
-                        </th>
-                        <th>
-                          <span>Qty</span>
-                        </th>
-                        <th>
-                          <button type="button" className="hx-sort-th" onClick={() => handleSort('expected_delivery_date')}>
-                            <span>Delivery</span>
-                            <i className={sortIconClass('expected_delivery_date')}></i>
-                          </button>
-                        </th>
-                        <th>
-                          <span>Status</span>
-                        </th>
-                        {tab === 'hold' && (
+                        {tab === 'all' ? (
+                          <>
+                            <th>
+                              <span>Punch Type</span>
+                            </th>
+                            <th>
+                              <span>Type</span>
+                            </th>
+                            <th>
+                              <span>Qty</span>
+                            </th>
+                            <th>
+                              <button type="button" className="hx-sort-th" onClick={() => handleSort('expected_delivery_date')}>
+                                <span>Delivery</span>
+                                <i className={sortIconClass('expected_delivery_date')}></i>
+                              </button>
+                            </th>
+                            <th>
+                              <span>Status</span>
+                            </th>
+                          </>
+                        ) : (
                           <>
                             <th>
                               <span>Hold</span>
@@ -852,38 +880,41 @@ export default function Orders() {
                           <td>
                             <span className="position">{o.size}</span>
                           </td>
-                          <td>
-                            <span className="hx-order-badge">{o.punch_type}</span>
-                          </td>
-                          <td>
-                            <span className={`hx-status-pill ${orderTypePillClass(o.order_type)}`}>{o.order_type}</span>
-                          </td>
-                          <td>
-                            <span className="position">{o.quantity}</span>
-                          </td>
-                          <td>
-                            <span className="position">
-                              {o.expected_delivery_date ? formatDate(o.expected_delivery_date) : '—'}
-                            </span>
-                          </td>
-                          <td>
-                            {hasProgressData(o) ? (
-                              <button
-                                type="button"
-                                className={`hx-status-pill hx-status-pill--btn hx-tooltip ${unifiedStatusPillClass(o)}`}
-                                data-tooltip={progressDetail(o)}
-                                onClick={() => setProgressOrderId(o.id)}
-                              >
-                                {unifiedStatus(o)}
-                              </button>
-                            ) : (
-                              <span className={`hx-status-pill ${unifiedStatusPillClass(o)}`}>{unifiedStatus(o)}</span>
-                            )}
-                            {tab === 'all' && o.planning_status !== 'On Hold' && o.held_items_count > 0 && (
-                              <span className="hx-status-pill hx-status-pill--onhold hx-hold-chip">{holdInfo(o)?.label}</span>
-                            )}
-                          </td>
-                          {tab === 'hold' && (
+                          {tab === 'all' ? (
+                            <>
+                              <td>
+                                <span className="hx-order-badge">{o.punch_type}</span>
+                              </td>
+                              <td>
+                                <span className={`hx-status-pill ${orderTypePillClass(o.order_type)}`}>{o.order_type}</span>
+                              </td>
+                              <td>
+                                <span className="position">{o.quantity}</span>
+                              </td>
+                              <td>
+                                <span className="position">
+                                  {o.expected_delivery_date ? formatDate(o.expected_delivery_date) : '—'}
+                                </span>
+                              </td>
+                              <td>
+                                {hasProgressData(o) ? (
+                                  <button
+                                    type="button"
+                                    className={`hx-status-pill hx-status-pill--btn hx-tooltip ${unifiedStatusPillClass(o)}`}
+                                    data-tooltip={progressDetail(o)}
+                                    onClick={() => setProgressOrderId(o.id)}
+                                  >
+                                    {unifiedStatus(o)}
+                                  </button>
+                                ) : (
+                                  <span className={`hx-status-pill ${unifiedStatusPillClass(o)}`}>{unifiedStatus(o)}</span>
+                                )}
+                                {o.planning_status !== 'On Hold' && o.held_items_count > 0 && (
+                                  <span className="hx-status-pill hx-status-pill--onhold hx-hold-chip">{holdInfo(o)?.label}</span>
+                                )}
+                              </td>
+                            </>
+                          ) : (
                             <>
                               <td>
                                 <span className="hx-status-pill hx-status-pill--onhold">{holdInfo(o)?.label}</span>
@@ -908,7 +939,7 @@ export default function Orders() {
                               >
                                 <i className={viewLoadingId === o.id ? 'la la-spinner la-spin' : 'la la-eye'}></i>
                               </button>
-                              {can('edit orders') && (
+                              {canEditOrders && (
                                 <button
                                   type="button"
                                   className="hx-icon-btn hx-icon-btn--edit"
@@ -990,7 +1021,7 @@ export default function Orders() {
                               error={formErrors.company_id?.[0]}
                             >
                               <option value="">— Select —</option>
-                              {companies.map((c) => (
+                              {companyOptions.map((c) => (
                                 <option key={c.id} value={c.id}>
                                   {c.name}
                                 </option>
@@ -1135,7 +1166,7 @@ export default function Orders() {
                               error={formErrors.user_id?.[0]}
                             >
                               <option value="">— Select —</option>
-                              {users.map((u) => (
+                              {userOptions.map((u) => (
                                 <option key={u.id} value={u.id}>
                                   {u.name}
                                 </option>
@@ -1415,13 +1446,48 @@ export default function Orders() {
                   {(viewTarget.punch_numbers ?? []).length > 0 && (
                     <div className="hx-detail-section">
                       <span className="hx-detail-section__title">Punch Numbers</span>
-                      <div className="hx-order-badges">
-                        {(viewTarget.punch_numbers ?? []).map((p) => (
-                          <span key={p.id} className="hx-order-badge">
-                            {p.punch_number}
-                          </span>
-                        ))}
-                      </div>
+                      {viewHeldItems.length === 0 ? (
+                        <div className="hx-order-badges">
+                          {(viewTarget.punch_numbers ?? []).map((p) => (
+                            <span key={p.id} className="hx-order-badge">
+                              {p.punch_number}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="hx-item-groups">
+                          <div className="hx-item-group">
+                            <span className="hx-item-group__label">Active ({viewActiveItems.length})</span>
+                            {viewActiveItems.length > 0 ? (
+                              <div className="hx-order-badges">
+                                {viewActiveItems.map((p) => (
+                                  <span key={p.id} className="hx-order-badge">
+                                    {p.punch_number}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="hx-item-group__empty">No active items</span>
+                            )}
+                          </div>
+                          <div className="hx-item-group hx-item-group--hold">
+                            <span className="hx-item-group__label">On Hold ({viewHeldItems.length})</span>
+                            <div className="hx-order-badges">
+                              {viewHeldItems.map((p) => (
+                                <span key={p.id} className="hx-order-badge hx-order-badge--hold">
+                                  {p.punch_number}
+                                </span>
+                              ))}
+                            </div>
+                            {viewHold?.by || viewHold?.at ? (
+                              <span className="hx-item-group__meta">
+                                Put on hold{viewHold.by ? ` by ${viewHold.by}` : ''}
+                                {viewHold.at ? ` · ${formatDateTime(viewHold.at)}` : ''}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -1471,7 +1537,7 @@ export default function Orders() {
                 </div>
                 <div className="modal-body">
                   <p>
-                    This will permanently delete order <strong>{deleteTarget.order_no}</strong>. This cannot be undone.
+                    This will delete order <strong>{deleteTarget.order_no}</strong>. The company and other records it refers to are not affected.
                   </p>
                   {deleteError && <p className="hx-form-error">{deleteError}</p>}
                   <div className="button-group d-flex justify-content-center pt-20">

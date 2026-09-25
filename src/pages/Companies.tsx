@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { ApiError } from '../auth/apiClient'
 import { useAuth } from '../auth/AuthContext'
+import { isAdmin, isMarketing } from '../auth/roleUtils'
 import AppShell from '../components/AppShell'
 import { FloatingInput, FloatingSelect } from '../components/FloatingField'
 import '../components/detailView.css'
@@ -20,7 +21,7 @@ import type { Order } from '../orders/types'
 import { ordersService } from '../orders/ordersService'
 import type { Size } from '../sizes/types'
 import { sizesService } from '../sizes/sizesService'
-import { sortBySize, sortSizes } from '../sizes/sortSizes'
+import { compareSizeNames, sortBySize, sortSizes } from '../sizes/sortSizes'
 import { useFormErrors } from '../components/formValidation'
 import './Companies.css'
 import './Orders.css'
@@ -72,7 +73,9 @@ function extractErrors(error: unknown, fallback: string): Record<string, string[
 }
 
 export default function Companies() {
-  const { can } = useAuth()
+  const { can, user } = useAuth()
+  // Marketing adds and views companies but doesn't edit existing ones (unless they're also an Admin).
+  const canEditCompanies = can('edit companies') && !(user && isMarketing(user) && !isAdmin(user))
   const [companies, setCompanies] = useState<Company[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -127,14 +130,15 @@ export default function Companies() {
       name: company.name,
       address: company.address,
       directors: company.directors.length
-        ? company.directors.map((d) => ({ name: d.name, contact: d.contact }))
+        ? company.directors.map((d) => ({ id: d.id, name: d.name, contact: d.contact }))
         : [{ ...EMPTY_DIRECTOR }],
       contractors: company.contractors.length
-        ? company.contractors.map((c) => ({ name: c.name, contact: c.contact }))
+        ? company.contractors.map((c) => ({ id: c.id, name: c.name, contact: c.contact }))
         : [{ ...EMPTY_CONTRACTOR }],
-      presses: company.presses.length ? company.presses.map((p) => ({ name: p.name })) : [{ ...EMPTY_PRESS }],
+      presses: company.presses.length ? company.presses.map((p) => ({ id: p.id, name: p.name })) : [{ ...EMPTY_PRESS }],
       manufacturing_specifications: company.manufacturing_specifications.length
         ? sortBySize(company.manufacturing_specifications).map((spec) => ({
+            id: spec.id,
             size: spec.size,
             greentile_thick: spec.greentile_thick,
             upper_punch: spec.upper_punch,
@@ -455,6 +459,11 @@ export default function Companies() {
     }
   }
 
+  // Sizes to filter by: the current sizes plus any deleted size a company still uses.
+  const sizeFilterOptions = Array.from(
+    new Set([...sizes.map((s) => s.name), ...(companies ?? []).flatMap((c) => c.manufacturing_specifications.map((spec) => spec.size))]),
+  ).sort(compareSizeNames)
+
   const filteredCompanies = companies?.filter((c) => {
     const q = search.trim().toLowerCase()
     const matchesSearch =
@@ -502,9 +511,9 @@ export default function Companies() {
             aria-label="Filter by size"
           >
             <option value="">All Sizes</option>
-            {sizes.map((size) => (
-              <option key={size.id} value={size.name}>
-                {size.name}
+            {sizeFilterOptions.map((name) => (
+              <option key={name} value={name}>
+                {name}
               </option>
             ))}
           </select>
@@ -629,7 +638,7 @@ export default function Companies() {
                               >
                                 <i className="la la-eye"></i>
                               </button>
-                              {can('edit companies') && (
+                              {canEditCompanies && (
                                 <button
                                   type="button"
                                   className="hx-icon-btn hx-icon-btn--edit"
@@ -899,6 +908,9 @@ export default function Companies() {
                                       {opt.name}
                                     </option>
                                   ))}
+                                  {spec.size && !sizes.some((opt) => opt.name === spec.size) && (
+                                    <option value={spec.size}>{spec.size}</option>
+                                  )}
                                 </FloatingSelect>
                                 <button
                                   type="button"
@@ -1477,8 +1489,8 @@ export default function Companies() {
                 </div>
                 <div className="modal-body">
                   <p>
-                    This will permanently delete <strong>{deleteTarget.name}</strong> and its manufacturing
-                    specifications. This cannot be undone.
+                    This will delete <strong>{deleteTarget.name}</strong> and its manufacturing specifications. Its
+                    existing orders and complaints are not affected and keep showing this company.
                   </p>
                   {deleteError && <p className="hx-form-error">{deleteError}</p>}
                   <div className="button-group d-flex justify-content-center pt-20">

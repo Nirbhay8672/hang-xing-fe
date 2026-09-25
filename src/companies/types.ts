@@ -61,6 +61,9 @@ export interface Company {
 }
 
 export interface ManufacturingSpecificationInput {
+  /** Set for a row that already exists — sent back on save so the row is updated in place
+   * (and anything that refers to it stays linked) instead of being replaced. */
+  id?: number
   size: string
   greentile_thick: string
   upper_punch: string
@@ -71,16 +74,25 @@ export interface ManufacturingSpecificationInput {
 }
 
 export interface CompanyDirectorInput {
+  /** Set for a row that already exists — sent back on save so the row is updated in place
+   * (and anything that refers to it stays linked) instead of being replaced. */
+  id?: number
   name: string
   contact: string
 }
 
 export interface CompanyContractorInput {
+  /** Set for a row that already exists — sent back on save so the row is updated in place
+   * (and anything that refers to it stays linked) instead of being replaced. */
+  id?: number
   name: string
   contact: string
 }
 
 export interface CompanyPressInput {
+  /** Set for a row that already exists — sent back on save so the row is updated in place
+   * (and anything that refers to it stays linked) instead of being replaced. */
+  id?: number
   name: string
 }
 

@@ -303,7 +303,7 @@ export default function Sizes() {
                 </div>
                 <div className="modal-body">
                   <p>
-                    This will permanently delete <strong>{deleteTarget.name}</strong>. This cannot be undone.
+                    This will delete <strong>{deleteTarget.name}</strong>. Companies and orders that already use it keep it, but it can't be picked for new ones.
                   </p>
                   {deleteError && <p className="hx-form-error">{deleteError}</p>}
                   <div className="button-group d-flex justify-content-center pt-20">
