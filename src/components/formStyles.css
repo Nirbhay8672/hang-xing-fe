@@ -20,6 +20,15 @@
   font-size: 12.5px;
 }
 
+/* A line or two of explanatory text at the top of a modal, with room below it so the form field
+   that follows (whose floating label overhangs its top edge) doesn't sit on top of the text. */
+.hx-modal-text {
+  margin: 0 0 22px;
+  color: #4b5468;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
 .hx-form-success {
   margin: 0 0 16px;
   padding: 10px 14px;

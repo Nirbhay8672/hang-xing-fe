@@ -80,7 +80,7 @@ export default function RequestDeleteModal({ subject, subjectId, label, onClose,
                 </>
               ) : (
                 <form onSubmit={handleSubmit} autoComplete="off" noValidate>
-                  <p>
+                  <p className="hx-modal-text">
                     You can't delete {noun} <strong>{label}</strong> yourself. Send a request and an admin will approve or reject it.
                   </p>
                   {submitError && <p className="hx-form-error">{submitError}</p>}

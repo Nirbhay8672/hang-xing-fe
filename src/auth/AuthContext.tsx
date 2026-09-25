@@ -95,3 +95,15 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   }
   return <>{children}</>
 }
+
+/**
+ * Keeps a page to the roles that are meant to use it. Access is worked out from the person's
+ * role behind the scenes — anyone else who lands here (typed URL, old bookmark) is sent home.
+ */
+export function RequirePermission({ any, children }: { any: string[]; children: ReactNode }) {
+  const { user } = useAuth()
+  if (!user || !any.some((permission) => user.permissions.includes(permission))) {
+    return <Navigate to="/" replace />
+  }
+  return <>{children}</>
+}

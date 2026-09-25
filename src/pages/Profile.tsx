@@ -210,12 +210,12 @@ export default function ProfilePage() {
             <div className="card radius-xl mb-25">
               <div className="card-header px-sm-25 px-3">
                 <div className="edit-profile__title">
-                  <h6>Roles &amp; Permissions</h6>
+                  <h6>My Role</h6>
                 </div>
               </div>
               <div className="card-body">
                 <div className="hx-profile-section">
-                  <span className="hx-profile-section__title">Roles</span>
+                  <span className="hx-profile-section__title">Role</span>
                   {profile.roles.length > 0 ? (
                     <div className="hx-profile-badges">
                       {profile.roles.map((r) => (
@@ -226,20 +226,6 @@ export default function ProfilePage() {
                     </div>
                   ) : (
                     <span className="hx-profile-empty-text">No roles assigned.</span>
-                  )}
-                </div>
-                <div className="hx-profile-section">
-                  <span className="hx-profile-section__title">Permissions</span>
-                  {profile.permissions.length > 0 ? (
-                    <div className="hx-profile-badges">
-                      {profile.permissions.map((p) => (
-                        <span key={p} className="hx-profile-badge">
-                          {titleCase(p)}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="hx-profile-empty-text">No permissions assigned.</span>
                   )}
                 </div>
               </div>

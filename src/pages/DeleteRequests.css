@@ -15,7 +15,8 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  padding: 20px 25px 4px;
+  /* The card already pads its content (the table below lines up with it), so no side padding here. */
+  padding: 0 0 18px;
 }
 
 .hx-dr-filter {
@@ -100,7 +101,7 @@
 }
 
 .hx-dr-quote {
-  margin: 12px 0 14px;
+  margin: -6px 0 16px;
   padding: 10px 14px;
   border-left: 3px solid #e3e6ed;
   background: #fbfbfd;

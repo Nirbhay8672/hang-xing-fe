@@ -59,14 +59,17 @@ const SIDEBAR_INNER_HTML = { __html: SHELL_SIDEBAR_HTML }
 const MIN_LOADER_MS = 500
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
-// Sidebar links whose target module requires a "view <module>" permission to be visible.
-// Links with no entry here (e.g. Dashboard, Settings) are always shown. Users/Roles/Sizes/
-// Problems moved off the sidebar into the Settings tile grid (see pages/Settings.tsx), which
-// applies its own permission/role gating per tile, so they no longer need entries here.
+// Sidebar links and the permission each needs to be visible — which permissions a person has
+// comes from their role (Admin: everything; Marketing: companies/orders/complaints/problems;
+// Planning: Planning; Production: Production). Links with no entry here are always shown.
+// Users/Roles/Sizes (and Problems, for Admin) are reached through the Settings tile grid (pages/Settings.tsx).
 const SIDEBAR_PERMISSIONS: Record<string, string> = {
   '/companies': 'view companies',
   '/orders': 'view orders',
+  '/planning': 'access planning',
+  '/production': 'access production',
   '/complaints': 'view complaints',
+  '/problems': 'view problems',
 }
 
 // Complaints is Marketing's day-to-day tool (customer-raised issues), so it's restricted to
@@ -74,10 +77,17 @@ const SIDEBAR_PERMISSIONS: Record<string, string> = {
 // regardless of what permissions a non-admin role happens to be granted.
 const SIDEBAR_ADMIN_ONLY = new Set<string>([])
 
-// Links shown when the user holds ANY of these permissions — the Delete Requests page is for
-// the people who review requests and the people who raise them.
+// Marketing works with Problems every day so it gets its own sidebar link; Admin reaches the
+// same page from the Settings tiles instead, so the link is hidden for Admin.
+const SIDEBAR_HIDDEN_FOR_ADMIN = new Set(['/problems'])
+
+// Links shown when the user holds ANY of these permissions.
 const SIDEBAR_ANY_PERMISSION: Record<string, string[]> = {
-  '/delete-requests': ['review delete requests', 'request delete orders', 'request delete complaints'],
+  // The dashboard overview and the requests inbox are Admin's; everyone else only sees their own modules
+  // (people who raise delete requests follow them from the header bell).
+  '/': ['view users'],
+  '/delete-requests': ['review delete requests'],
+  '/settings': ['view users', 'view roles', 'view sizes'],
 }
 const SIDEBAR_MARKETING_OR_ADMIN = new Set(['/complaints'])
 
@@ -166,6 +176,7 @@ export default function AppShell({ title, actions, children }: AppShellProps) {
           const allowed =
             user.permissions.includes(permission) &&
             (!SIDEBAR_ADMIN_ONLY.has(path) || isAdmin(user)) &&
+            (!SIDEBAR_HIDDEN_FOR_ADMIN.has(path) || !isAdmin(user)) &&
             (!SIDEBAR_MARKETING_OR_ADMIN.has(path) || isAdmin(user) || isMarketing(user))
           li.style.display = allowed ? '' : 'none'
         })

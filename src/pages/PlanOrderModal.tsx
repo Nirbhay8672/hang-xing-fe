@@ -48,6 +48,7 @@ function resizeBlankPunchNumbers(quantity: number, current: string[]): string[] 
 type FieldErrors = Record<string, string>
 
 const FIELD_KEYS: Record<string, true> = {
+  planning_tasks: true,
   size: true,
   master_number: true,
   milling_size: true,
@@ -115,10 +116,12 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
 
   function toggleTask(step: string) {
     setSelectedTasks((prev) => (prev.includes(step) ? prev.filter((s) => s !== step) : [...prev, step]))
+    clearFieldError('planning_tasks')
   }
 
   function toggleAllTasks() {
     setSelectedTasks((prev) => (prev.length === taskSteps.length ? [] : [...taskSteps]))
+    clearFieldError('planning_tasks')
   }
 
   function handleRcPunchChange(index: number, value: string) {
@@ -144,13 +147,16 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
     if (order && order.order_type !== 'New' && rcPunchNumbers.some((n) => n.trim() === '')) {
       errors.punch_numbers = 'Enter a punch number for every piece.'
     }
+    if (selectedTasks.length === 0) errors.planning_tasks = 'Select at least one task to assign.'
     return errors
   }
 
   function focusFirstInvalid() {
     // Runs after React has re-rendered the inputs with their error state applied.
     setTimeout(() => {
-      const first = formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')
+      const first =
+        formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]') ??
+        formRef.current?.querySelector<HTMLElement>('.hx-section-error')
       first?.scrollIntoView({ block: 'center', behavior: 'smooth' })
       first?.focus({ preventScroll: true })
     }, 0)
@@ -195,7 +201,7 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
       const inline: FieldErrors = {}
       if (serverErrors) {
         for (const [key, messages] of Object.entries(serverErrors)) {
-          const field = key.startsWith('punch_numbers') ? 'punch_numbers' : key
+          const field = key.startsWith('punch_numbers') ? 'punch_numbers' : key.startsWith('planning_tasks') ? 'planning_tasks' : key
           if (field in FIELD_KEYS) inline[field] = messages[0]
         }
       }
@@ -445,7 +451,10 @@ export default function PlanOrderModal({ orderId, onClose, onSaved }: PlanOrderM
                         {selectedTasks.length === taskSteps.length ? 'Clear All' : 'Select All'}
                       </button>
                     </div>
-                    <div className="hx-plan-tasks">
+                    {fieldErrors.planning_tasks && (
+                      <small className="hx-field-error hx-section-error">{fieldErrors.planning_tasks}</small>
+                    )}
+                    <div className={`hx-plan-tasks${fieldErrors.planning_tasks ? ' hx-plan-tasks--invalid' : ''}`}>
                       {taskSteps.map((step, i) => (
                         <label key={step} className="hx-plan-task-row">
                           <input type="checkbox" checked={selectedTasks.includes(step)} onChange={() => toggleTask(step)} />

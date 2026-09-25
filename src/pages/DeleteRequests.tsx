@@ -247,12 +247,12 @@ export default function DeleteRequests() {
                   </button>
                 </div>
                 <div className="modal-body">
-                  <p>
+                  <p className="hx-modal-text">
                     {review.request.requester?.name ?? 'Someone'} asked to delete{' '}
                     {SUBJECT_LABELS[review.request.subject_type].toLowerCase()} <strong>{review.request.subject_label}</strong>.
                   </p>
                   {review.request.reason && <p className="hx-dr-quote">“{review.request.reason}”</p>}
-                  <p>
+                  <p className="hx-modal-text">
                     {review.action === 'approve'
                       ? `Approving permanently deletes this ${SUBJECT_LABELS[review.request.subject_type].toLowerCase()}. This cannot be undone.`
                       : `The ${SUBJECT_LABELS[review.request.subject_type].toLowerCase()} stays as it is and the requester is told the request was rejected.`}

@@ -155,3 +155,11 @@
 .hx-punch-input.hx-punch-input--invalid {
   border-color: #dc3545;
 }
+
+.hx-plan-card .hx-section-error {
+  margin: 0 0 12px;
+}
+
+.hx-plan-tasks--invalid .hx-plan-task-row {
+  border-color: rgba(220, 53, 69, 0.55);
+}
