@@ -82,6 +82,7 @@ export default function Companies() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [sizeFilter, setSizeFilter] = useState('')
+  const [nameSortDir, setNameSortDir] = useState<'asc' | 'desc' | null>(null)
   const [specsTarget, setSpecsTarget] = useState<Company | null>(null)
   const [directorsTarget, setDirectorsTarget] = useState<Company | null>(null)
   const [contractorsTarget, setContractorsTarget] = useState<Company | null>(null)
@@ -370,6 +371,13 @@ export default function Companies() {
     }
 
     required('name', form.name, 'Company name is required.')
+    if (!errors.name) {
+      const trimmedName = form.name.trim().toLowerCase()
+      const isDuplicate = (companies ?? []).some(
+        (c) => c.id !== editingCompany?.id && c.name.trim().toLowerCase() === trimmedName,
+      )
+      if (isDuplicate) errors.name = ['A company with this name already exists.']
+    }
     required('address', form.address, 'Address is required.')
 
     if (form.directors.length === 0) errors.directors = ['Add at least one director.']
@@ -465,6 +473,22 @@ export default function Companies() {
     return matchesSearch && matchesSize
   })
 
+  // Unsorted (nameSortDir === null) keeps the list in whatever order the API returned it in.
+  const sortedCompanies = nameSortDir
+    ? [...(filteredCompanies ?? [])].sort(
+        (a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }) * (nameSortDir === 'asc' ? 1 : -1),
+      )
+    : filteredCompanies
+
+  function toggleNameSort() {
+    setNameSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+  }
+
+  function nameSortIconClass(): string {
+    if (!nameSortDir) return 'la la-sort hx-sort-icon'
+    return nameSortDir === 'asc' ? 'la la-sort-up hx-sort-icon hx-sort-icon--active' : 'la la-sort-down hx-sort-icon hx-sort-icon--active'
+  }
+
   const {
     page: companiesPage,
     setPage: setCompaniesPage,
@@ -472,7 +496,7 @@ export default function Companies() {
     totalItems: companiesTotalItems,
     perPage: companiesPerPage,
     pageItems: pagedCompanies,
-  } = usePagination(filteredCompanies ?? [], 10)
+  } = usePagination(sortedCompanies ?? [], 10)
 
   const headerActions = (
     <>
@@ -536,7 +560,10 @@ export default function Companies() {
                     <thead>
                       <tr>
                         <th>
-                          <span className="userDatatable-title">Name</span>
+                          <button type="button" className="hx-sort-th" onClick={toggleNameSort}>
+                            <span className="userDatatable-title">Name</span>
+                            <i className={nameSortIconClass()}></i>
+                          </button>
                         </th>
                         <th>
                           <span>Address</span>
