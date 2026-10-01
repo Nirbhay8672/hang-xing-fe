@@ -159,6 +159,10 @@ const EMPTY_FORM: OrderFormState = {
 
 const PUNCH_NUMBER_PREFIX = 'HXN-'
 const PUNCH_NUMBER_PAD = 4
+// A New order's punch numbers never start below this, so the next one generated is always at
+// least HXN-4216 — needed because the loaded orders alone (older ones, since-deleted ones)
+// don't reflect every HXN number already used elsewhere (e.g. on the physical punches).
+const PUNCH_NUMBER_FLOOR = 4215
 
 function extractPunchSeq(punchNumber: string): number | null {
   const match = new RegExp(`^${PUNCH_NUMBER_PREFIX}(\\d+)$`).exec(punchNumber)
@@ -505,7 +509,7 @@ export default function Orders() {
       .filter((o) => o.order_type === 'New')
       .flatMap((o) => (o.punch_numbers ?? []).map((p) => extractPunchSeq(p.punch_number)))
     const currentSeqs = current.map(extractPunchSeq)
-    const maxSeq = Math.max(0, ...[...seenSeqs, ...currentSeqs].filter((n): n is number => n !== null))
+    const maxSeq = Math.max(PUNCH_NUMBER_FLOOR, ...[...seenSeqs, ...currentSeqs].filter((n): n is number => n !== null))
 
     const additional: string[] = []
     for (let i = 1; i <= quantity - current.length; i++) {
