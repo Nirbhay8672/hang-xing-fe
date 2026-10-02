@@ -283,8 +283,8 @@ export default function Orders() {
   const matchingSizeSpecs = selectedCompany?.manufacturing_specifications.filter((spec) => spec.size === form.size) ?? []
 
   // A company can have several spec rows sharing one `size` (different master numbers) — the
-  // Size Details table's checkboxes let the user narrow which of those rows' master numbers
-  // actually apply, since "every row for the size" is otherwise ambiguous when they differ.
+  // Size Details table's radio buttons let the user pick exactly which row's master numbers
+  // apply, since "every row for the size" is otherwise ambiguous when they differ.
   function getMasterNoOptions(company: Company | null, size: string, punchType: string, specificationIds?: string[]): string[] {
     if (!company || !size || !punchType) return []
     const isUpper = punchType.startsWith('U')
@@ -312,18 +312,14 @@ export default function Orders() {
     ]),
   )
 
-  function orderToForm(order: Order, companyList: Company[] = companies): OrderFormState {
+  function orderToForm(order: Order): OrderFormState {
     return {
       company_id: String(order.company_id),
       size: order.size,
-      // Older orders (saved before this field existed) have no specification_ids — fall back
-      // to every spec row for this size, same as the create-form default (all checked).
-      specification_ids:
-        order.specification_ids && order.specification_ids.length > 0
-          ? order.specification_ids.map(String)
-          : (companyList.find((c) => c.id === order.company_id)?.manufacturing_specifications ?? [])
-              .filter((s) => s.size === order.size)
-              .map((s) => String(s.id)),
+      // Only one spec row can be picked — an older order saved with several (from before this was
+      // single-select) keeps just the first of those. One saved before the field existed at all
+      // has none to show; nothing is picked for it rather than guessing which row was meant.
+      specification_ids: (order.specification_ids ?? []).map(String).slice(0, 1),
       punch_type: order.punch_type,
       order_type: order.order_type,
       quantity: String(order.quantity),
@@ -377,7 +373,7 @@ export default function Orders() {
       const deletedUser = users.some((u) => u.id === fresh.user_id) ? null : (fresh.user ?? null)
       setOrderRefs({ company: deletedCompany, user: deletedUser })
       setEditingOrder(fresh)
-      setForm(orderToForm(fresh, deletedCompany ? [...companies, deletedCompany] : companies))
+      setForm(orderToForm(fresh))
       setFormErrors({})
       setModalMode('edit')
     } catch (err) {
@@ -441,6 +437,11 @@ export default function Orders() {
     else if (!(Number(form.quantity) >= 1)) errors.quantity = ['Quantity must be at least 1.']
     if (!form.user_id) errors.user_id = ['Order by is required.']
     if (!form.expected_delivery_date) errors.expected_delivery_date = ['Expected delivery date is required.']
+    // Only asked for once there's actually a row to pick — a size with no company record for it
+    // has nothing to select.
+    if (matchingSizeSpecs.length > 0 && form.specification_ids.length === 0) {
+      errors.specification_ids = ['Please select a specification.']
+    }
     if (!form.master_number) errors.master_number = ['Master number is required.']
     return errors
   }
@@ -448,7 +449,9 @@ export default function Orders() {
   function scrollToFirstInvalid() {
     // Runs after React has re-rendered the fields with their error state applied.
     setTimeout(() => {
-      const first = orderFormRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')
+      const first =
+        orderFormRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]') ??
+        orderFormRef.current?.querySelector<HTMLElement>('.hx-section-error')
       first?.scrollIntoView({ block: 'center', behavior: 'smooth' })
       first?.focus({ preventScroll: true })
     }, 0)
@@ -460,33 +463,20 @@ export default function Orders() {
   }
 
   function handleSizeChange(size: string) {
-    // Default to every spec row for this size checked — the checkboxes in the Size Details
-    // table let the user narrow it down from there.
-    const specIds = (selectedCompany?.manufacturing_specifications ?? []).filter((s) => s.size === size).map((s) => String(s.id))
-    const options = getMasterNoOptions(selectedCompany, size, form.punch_type, specIds)
-    setForm((f) => ({ ...f, size, specification_ids: specIds, master_number: options[0] ?? '' }))
+    // Nothing is picked by default — the radio buttons in the Size Details table are left for
+    // the user to choose explicitly.
+    const options = getMasterNoOptions(selectedCompany, size, form.punch_type, [])
+    setForm((f) => ({ ...f, size, specification_ids: [], master_number: options[0] ?? '' }))
     clearFormError('size', 'master_number')
   }
 
-  function toggleSpecification(specificationId: string) {
+  function selectSpecification(specificationId: string) {
     setForm((f) => {
-      const specification_ids = f.specification_ids.includes(specificationId)
-        ? f.specification_ids.filter((id) => id !== specificationId)
-        : [...f.specification_ids, specificationId]
+      const specification_ids = [specificationId]
       const options = getMasterNoOptions(selectedCompany, f.size, f.punch_type, specification_ids)
       return { ...f, specification_ids, master_number: options[0] ?? '' }
     })
-    clearFormError('master_number')
-  }
-
-  function toggleAllSpecifications() {
-    setForm((f) => {
-      const allIds = matchingSizeSpecs.map((s) => String(s.id))
-      const specification_ids = f.specification_ids.length === allIds.length ? [] : allIds
-      const options = getMasterNoOptions(selectedCompany, f.size, f.punch_type, specification_ids)
-      return { ...f, specification_ids, master_number: options[0] ?? '' }
-    })
-    clearFormError('master_number')
+    clearFormError('specification_ids', 'master_number')
   }
 
   function handlePunchTypeChange(punchType: string) {
@@ -1014,12 +1004,10 @@ export default function Orders() {
                       <div className="hx-order-section">
                         <div className="hx-order-section__header">
                           <span className="hx-order-section__title">Size Details (from company record)</span>
-                          {matchingSizeSpecs.length > 0 && (
-                            <button type="button" className="hx-plan-select-all" onClick={toggleAllSpecifications}>
-                              {form.specification_ids.length === matchingSizeSpecs.length ? 'Clear All' : 'Select All'}
-                            </button>
-                          )}
                         </div>
+                        {formErrors.specification_ids && (
+                          <small className="hx-field-error hx-section-error">{formErrors.specification_ids[0]}</small>
+                        )}
                         {matchingSizeSpecs.length > 0 ? (
                           <div className="table-responsive">
                             <table className="hx-order-spec-table">
@@ -1040,9 +1028,10 @@ export default function Orders() {
                                   <tr key={spec.id}>
                                     <td>
                                       <input
-                                        type="checkbox"
+                                        type="radio"
+                                        name="specification"
                                         checked={form.specification_ids.includes(String(spec.id))}
-                                        onChange={() => toggleSpecification(String(spec.id))}
+                                        onChange={() => selectSpecification(String(spec.id))}
                                         aria-label={`Use specification ${spec.id}`}
                                       />
                                     </td>

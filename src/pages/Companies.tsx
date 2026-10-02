@@ -82,7 +82,9 @@ export default function Companies() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [sizeFilter, setSizeFilter] = useState('')
-  const [nameSortDir, setNameSortDir] = useState<'asc' | 'desc' | null>(null)
+  // Defaults to ascending by name rather than the API's own (insertion) order; the header's
+  // toggle only ever switches between the two, so this never goes back to unsorted.
+  const [nameSortDir, setNameSortDir] = useState<'asc' | 'desc'>('asc')
   const [specsTarget, setSpecsTarget] = useState<Company | null>(null)
   const [directorsTarget, setDirectorsTarget] = useState<Company | null>(null)
   const [contractorsTarget, setContractorsTarget] = useState<Company | null>(null)
@@ -473,19 +475,15 @@ export default function Companies() {
     return matchesSearch && matchesSize
   })
 
-  // Unsorted (nameSortDir === null) keeps the list in whatever order the API returned it in.
-  const sortedCompanies = nameSortDir
-    ? [...(filteredCompanies ?? [])].sort(
-        (a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }) * (nameSortDir === 'asc' ? 1 : -1),
-      )
-    : filteredCompanies
+  const sortedCompanies = [...(filteredCompanies ?? [])].sort(
+    (a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }) * (nameSortDir === 'asc' ? 1 : -1),
+  )
 
   function toggleNameSort() {
     setNameSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
   }
 
   function nameSortIconClass(): string {
-    if (!nameSortDir) return 'la la-sort hx-sort-icon'
     return nameSortDir === 'asc' ? 'la la-sort-up hx-sort-icon hx-sort-icon--active' : 'la la-sort-down hx-sort-icon hx-sort-icon--active'
   }
 
@@ -496,7 +494,7 @@ export default function Companies() {
     totalItems: companiesTotalItems,
     perPage: companiesPerPage,
     pageItems: pagedCompanies,
-  } = usePagination(sortedCompanies ?? [], 10)
+  } = usePagination(sortedCompanies, 10)
 
   const headerActions = (
     <>
