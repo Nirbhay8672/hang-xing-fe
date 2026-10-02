@@ -52,6 +52,9 @@ const RAW_JS_SRCS: string[] = [
   "/html/assets/theme_assets/js/main.js"
 ]
 
+// A build-time version query string on each of the theme's own (unhashed) script URLs, so a
+// browser or CDN that cached one under a previous build's bytes is forced to re-fetch it after
+// a deploy instead of silently keeping the stale copy — see __BUILD_VERSION__ in vite.config.ts.
 export const DASHBOARD_JS_SRCS: string[] = RAW_JS_SRCS.map((src) =>
-  src.startsWith('/') ? `${import.meta.env.BASE_URL}${src.slice(1)}` : src,
+  src.startsWith('/') ? `${import.meta.env.BASE_URL}${src.slice(1)}?v=${__BUILD_VERSION__}` : src,
 )
