@@ -84,21 +84,10 @@
   /* feather icon */
   feather.replace();
 
-  /* sidebar collapse  */
-  const sidebarToggle = document.querySelector(".sidebar-toggle");
-
-  function sidebarCollapse() {
-    $('.overlay-dark-sidebar').toggleClass('show');
-    document.querySelector(".sidebar").classList.toggle("sidebar-collapse");
-    document.querySelector(".sidebar").classList.toggle("collapsed");
-    document.querySelector(".contents").classList.toggle("expanded");
-  }
-  if (sidebarToggle) {
-    sidebarToggle.addEventListener("click", function (e) {
-      e.preventDefault();
-      sidebarCollapse();
-    });
-  }
+  /* sidebar collapse — the click handler is attached by the React app instead (AppShell.tsx),
+     not here. Binding one here too would mean both fire on the same click and each toggle
+     the same classes, which cancels out — right back to where it started, i.e. the button
+     doing nothing. Left unbound on purpose; see AppShell.tsx for why it owns this. */
 
   /* sidebar nav events */
   $(".sidebar_nav .has-child ul").hide();
@@ -146,9 +135,9 @@
       if ($(this).width() <= 991) {
         $(".sidebar").removeClass("sidebar-collapse");
         $(".sidebar").addClass("collapsed");
-        $(".sidebar-toggle").on("click", function () {
-          $(".overlay-dark-sidebar").toggleClass("show");
-        });
+        // No click binding for .sidebar-toggle here either, for the same reason as above —
+        // React already owns it, and this handler re-attaching on every resize event would
+        // also pile up a fresh copy each time on top of that.
         $(".overlay-dark-sidebar").on("click", function () {
           $(this).removeClass("show");
           $(".sidebar").removeClass("sidebar-collapse");

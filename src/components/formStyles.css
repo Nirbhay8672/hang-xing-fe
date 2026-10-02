@@ -108,7 +108,7 @@
    inputs — see ALWAYS_FLOAT_TYPES there. */
 .hx-floating {
   position: relative;
-  margin-bottom: 20px;
+  margin-bottom: 14px;
 }
 
 .hx-floating > input,
@@ -194,7 +194,7 @@
 }
 
 .hx-floating.hx-floating--invalid {
-  margin-bottom: 38px;
+  margin-bottom: 32px;
 }
 
 .hx-floating--invalid > input,

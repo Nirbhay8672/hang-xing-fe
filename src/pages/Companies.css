@@ -180,6 +180,23 @@
   flex-shrink: 0;
 }
 
+/* On a narrow phone, label + two 120px-minimum fields + the delete button don't fit on one line
+   — they'd run off the edge of the screen with no way to reach the delete button. Wrapping lets
+   the label sit on its own line and the fields/button flow onto the next one instead. */
+@media (max-width: 480px) {
+  .hx-inline-row {
+    flex-wrap: wrap;
+  }
+
+  .hx-inline-row__label {
+    flex-basis: 100%;
+  }
+
+  .hx-inline-row__field {
+    min-width: 0;
+  }
+}
+
 /* Fields in these rows have no bottom margin (see the global inline-error rule in formStyles.css),
    so the row/card containing an error grows at the bottom to make room for it instead. */
 .hx-modal-wide .hx-floating > .hx-field-error {
@@ -246,6 +263,18 @@
 
 .hx-other-masters__row .hx-icon-btn {
   flex-shrink: 0;
+}
+
+/* Punch Type + Master No. side by side get too narrow to read their floating labels on a phone
+   — stack them instead. */
+@media (max-width: 480px) {
+  .hx-other-masters__row {
+    flex-wrap: wrap;
+  }
+
+  .hx-other-masters__row .hx-floating {
+    flex-basis: 100%;
+  }
 }
 
 .hx-other-masters__grid:has(.hx-field-error) {

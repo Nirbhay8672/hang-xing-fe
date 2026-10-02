@@ -123,3 +123,33 @@ input[type='checkbox'],
 input[type='radio'] {
   accent-color: var(--brand-blue);
 }
+
+/* Every data table in the app uses this class. A cell's content (a size like "150 x 150", a
+   punch type, a count) should stay on one line instead of breaking mid-value on a narrow
+   screen — the table's own .table-responsive wrapper already scrolls horizontally for
+   anything that doesn't fit, the same way it does for columns a narrow screen just can't
+   show all of at once, so that's what handles overflow instead of the cell growing taller. */
+.table td,
+.table th {
+  white-space: nowrap;
+}
+
+/* The theme's default cell/card/modal padding is generous to the point of wasting space —
+   tightened everywhere these are used (every list table, every list page's outer card, every
+   modal) rather than per module. */
+.table td {
+  padding: 8px 14px;
+}
+
+.table th {
+  padding: 10px 14px;
+}
+
+.contact-list-wrap {
+  padding: 16px 16px 18px !important;
+  margin-bottom: 16px !important;
+}
+
+.modal-body {
+  padding: 20px !important;
+}

@@ -57,6 +57,21 @@
   overflow: hidden;
 }
 
+/* The theme tucks the bell into a revealed icon row on a phone, where right-anchoring the panel
+   to the bell's own position can push its left edge off the screen (the row doesn't sit flush
+   with the viewport's right edge). Anchoring to the viewport itself instead guarantees it always
+   fits, regardless of where that row places the bell. */
+@media (max-width: 480px) {
+  .hx-notif__panel {
+    position: fixed;
+    top: 110px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: none;
+  }
+}
+
 .hx-notif__header {
   display: flex;
   align-items: center;
