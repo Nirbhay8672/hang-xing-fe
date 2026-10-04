@@ -177,6 +177,7 @@ export default function Dashboard() {
   const totalOrders = orders.length
   const newOrders = orders.filter((o) => o.order_type === 'New').length
   const rcOrders = orders.filter((o) => o.order_type === 'RC').length
+  const rrOrders = orders.filter((o) => o.order_type === 'RR').length
   const overdueOrders = orders.filter(isOverdue).length
   // Orders with something on hold: the whole order, or some of its items.
   const heldOrdersCount = orders.filter((o) => o.planning_status === 'On Hold' || o.held_items_count > 0).length
@@ -197,8 +198,11 @@ export default function Dashboard() {
           <div className="row">
             {showCompanies && <StatCard value={companiesCount} label="Companies" variant="amber" loading={loading} />}
             {showOrders && <StatCard value={totalOrders} label="Total Orders" variant="violet" loading={loading} />}
-            {showOrders && <StatCard value={newOrders} label="New Orders" variant="teal" loading={loading} />}
-            {showOrders && <StatCard value={rcOrders} label="RC Orders" variant="indigo" loading={loading} />}
+            {showOrders && (
+              <StatCard value={newOrders} label="New Orders" variant="teal" loading={loading} to="/orders?type=New" />
+            )}
+            {showOrders && <StatCard value={rcOrders} label="RC Orders" variant="indigo" loading={loading} to="/orders?type=RC" />}
+            {showOrders && <StatCard value={rrOrders} label="RR Orders" variant="slate" loading={loading} to="/orders?type=RR" />}
             {showOrders && <StatCard value={overdueOrders} label="Overdue Deliveries" variant="rose" loading={loading} />}
             {showOrders && showHolds && <StatCard value={heldOrdersCount} label="Orders On Hold" variant="amber" loading={loading} to="/orders?tab=hold" />}
             {showUsers && <StatCard value={usersCount} label="Users" variant="slate" loading={loading} />}

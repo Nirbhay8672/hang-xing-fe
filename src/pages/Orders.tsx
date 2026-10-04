@@ -211,6 +211,10 @@ export default function Orders() {
   // Marketing adds and views orders but doesn't edit existing ones (unless they're also an Admin).
   const canEditOrders = can('edit orders') && !(user && isMarketing(user) && !isAdmin(user))
   const tab: 'all' | 'hold' = canSeeHolds && searchParams.get('tab') === 'hold' ? 'hold' : 'all'
+  // Order Type filter (New/RC/RR), also kept in the URL (?type=New) so the dashboard's
+  // New/RC/RR Orders cards can link straight to a pre-filtered list.
+  const typeParam = searchParams.get('type')
+  const typeFilter = typeParam && (ORDER_TYPE_OPTIONS as string[]).includes(typeParam) ? typeParam : ''
   const [sortField, setSortField] = useState<SortField | null>(null)
   const [sortDir, setSortDir] = useState<SortDir>('asc')
 
@@ -659,7 +663,8 @@ export default function Orders() {
 
   const heldCount = orders?.filter((o) => holdInfo(o) !== null).length ?? 0
   const tabOrders = orders?.filter((o) => tab === 'all' || holdInfo(o) !== null)
-  const searchedOrders = tabOrders?.filter((o) => {
+  const typeFilteredOrders = tabOrders?.filter((o) => !typeFilter || o.order_type === typeFilter)
+  const searchedOrders = typeFilteredOrders?.filter((o) => {
     const q = search.trim().toLowerCase()
     if (!q) return true
     return (
@@ -688,10 +693,23 @@ export default function Orders() {
     pageItems: pagedOrders,
   } = usePagination(filteredOrders ?? [], 10)
 
+  // Both the Hold tab and the Order Type filter live in the URL independently — changing one
+  // must not drop whichever the other is currently set to.
   function changeTab(next: 'all' | 'hold') {
-    setSearchParams(next === 'hold' ? { tab: 'hold' } : {}, { replace: true })
+    const params: Record<string, string> = {}
+    if (next === 'hold') params.tab = 'hold'
+    if (typeFilter) params.type = typeFilter
+    setSearchParams(params, { replace: true })
     setOrdersPage(1)
     refreshOrders()
+  }
+
+  function changeTypeFilter(next: string) {
+    const params: Record<string, string> = {}
+    if (tab === 'hold') params.tab = 'hold'
+    if (next) params.type = next
+    setSearchParams(params, { replace: true })
+    setOrdersPage(1)
   }
 
   function sortIconClass(field: SortField): string {
@@ -715,6 +733,23 @@ export default function Orders() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+        </div>
+      </div>
+      <div className="action-btn">
+        <div className="form-group mb-0">
+          <select
+            className="form-control form-control-default hx-size-filter"
+            value={typeFilter}
+            onChange={(e) => changeTypeFilter(e.target.value)}
+            aria-label="Filter by order type"
+          >
+            <option value="">All Types</option>
+            {ORDER_TYPE_OPTIONS.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
       <div className="action-btn">
