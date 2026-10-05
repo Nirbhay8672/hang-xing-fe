@@ -20,6 +20,11 @@
   color: #957f41;
 }
 
+.hx-status-pill--rr {
+  background: rgba(15, 157, 138, 0.12);
+  color: #0b7d6e;
+}
+
 .hx-status-pill--planned {
   background: rgba(25, 135, 84, 0.12);
   color: #198754;

@@ -6,63 +6,61 @@
    loaded later in the bundle would silently win.
 
    Same square footprint as the breadcrumb "Add New" button (see theme.css's
-   .btn-add override), but outlined rather than filled, and color-coded by
-   action: neutral gray for view, blue for edit, danger red for delete. */
+   .btn-add override), but softly tinted rather than solid, and color-coded by
+   action: slate for view, navy for edit, red for delete, green for resolve. Each
+   variant sets --tone / --tone-soft; hover fills the button with its tone. */
 .hx-icon-btn {
+  --tone: #5a5f7d;
+  --tone-soft: rgba(90, 95, 125, 0.1);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 34px;
   height: 34px;
-  border: 1.5px solid currentColor;
-  border-radius: 8px;
-  background: transparent;
-  font-size: 14px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--tone-soft);
+  color: var(--tone);
+  font-size: 15px;
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease,
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .hx-icon-btn + .hx-icon-btn {
   margin-left: 6px;
 }
 
-.hx-icon-btn--view {
-  color: #5a5f7d;
+.hx-icon-btn:hover:not(:disabled),
+.hx-icon-btn:focus-visible {
+  background: var(--tone);
+  color: #fff;
+  box-shadow: 0 8px 16px -8px var(--tone);
+  transform: translateY(-2px);
+  outline: none;
 }
 
-.hx-icon-btn--view:hover:not(:disabled) {
-  background: #5a5f7d;
-  color: #fff;
+.hx-icon-btn--view {
+  --tone: #5a5f7d;
+  --tone-soft: rgba(90, 95, 125, 0.1);
 }
 
 .hx-icon-btn--edit {
-  color: var(--brand-blue, #2e3175);
-}
-
-.hx-icon-btn--edit:hover:not(:disabled) {
-  background: var(--brand-blue, #2e3175);
-  color: #fff;
+  --tone: var(--brand-blue, #2e3175);
+  --tone-soft: rgba(46, 49, 117, 0.09);
 }
 
 .hx-icon-btn--delete {
-  color: #dc3545;
-}
-
-.hx-icon-btn--delete:hover:not(:disabled) {
-  background: #dc3545;
-  color: #fff;
+  --tone: #e5484d;
+  --tone-soft: rgba(229, 72, 77, 0.1);
 }
 
 .hx-icon-btn--resolve {
-  color: #198754;
-}
-
-.hx-icon-btn--resolve:hover:not(:disabled) {
-  background: #198754;
-  color: #fff;
+  --tone: #16a34a;
+  --tone-soft: rgba(22, 163, 74, 0.1);
 }
 
 .hx-icon-btn:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
 }

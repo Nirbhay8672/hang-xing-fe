@@ -65,7 +65,8 @@ function holdInfo(order: Order): { label: string; whole: boolean; by: string | n
 }
 
 function orderTypePillClass(orderType: string): string {
-  return orderType === 'New' ? 'hx-status-pill--new' : 'hx-status-pill--rc'
+  if (orderType === 'New') return 'hx-status-pill--new'
+  return orderType === 'RR' ? 'hx-status-pill--rr' : 'hx-status-pill--rc'
 }
 
 // A single status through the order's whole life: Pending (not yet planned) -> Planned

@@ -1,0 +1,591 @@
+/* Page content — the shared building blocks every inner page renders from the vendor theme:
+   list cards (.contact-list-wrap), data tables (.table-rounded), the breadcrumb toolbar
+   (search / filter / Add New), form controls, buttons and modals. Restyled here once so all
+   pages share the dashboard's look (soft cards, navy + gold accents, gentle motion) without
+   each page redeclaring it. Loaded by AppShell after shell.css. */
+
+:root {
+  --pg-navy: #2e3175;
+  --pg-navy-2: #23255f;
+  --pg-gold: #a9904a;
+  --pg-gold-light: #e2c97e;
+  --pg-ink: #1f2240;
+  --pg-text: #3a3d5c;
+  --pg-muted: #6b7280;
+  --pg-line: #eef0f6;
+  --pg-field-border: #e2e5ee;
+  --pg-shadow: 0 1px 2px rgba(31, 34, 64, 0.04), 0 8px 24px rgba(31, 34, 64, 0.06);
+  --pg-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ---------- Page entrance ---------- */
+
+@keyframes pg-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* `backwards` (not `both`) so no transform lingers on these wrappers once the animation ends —
+   a transformed ancestor would otherwise trap the position: fixed modals rendered inside. */
+.contents > .container-fluid > .row,
+.contents > .container-fluid > .hx-page-subtitle,
+.contents > .container-fluid > .hx-settings-subtitle {
+  animation: pg-rise 0.5s var(--pg-ease) backwards;
+}
+.contents > .container-fluid > :nth-child(2) { animation-delay: 0.06s; }
+.contents > .container-fluid > :nth-child(3) { animation-delay: 0.12s; }
+.contents > .container-fluid > :nth-child(4) { animation-delay: 0.18s; }
+.contents > .container-fluid > :nth-child(n + 5) { animation-delay: 0.24s; }
+
+/* ---------- List card ---------- */
+
+.contact-list-wrap {
+  position: relative;
+  background: #fff;
+  border: 1px solid var(--pg-line);
+  border-radius: 18px !important;
+  box-shadow: var(--pg-shadow);
+}
+.contact-list-wrap .contact-list {
+  border-radius: 14px !important;
+}
+
+/* ---------- Data tables ----------
+   "Floating row" tables: each row is its own rounded white strip (separate borders with a
+   gap between rows), under a soft navy header band. Hovering a row tints it, outlines it in
+   navy and shows a gold accent bar on its leading edge. */
+
+table.table-rounded.table {
+  border-collapse: separate !important;
+  border-spacing: 0 8px;
+}
+
+table.table-rounded.table > thead > tr > th,
+table.table-rounded.table > tbody > tr > td {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+table.table-rounded.table > thead > tr > th:first-child,
+table.table-rounded.table > tbody > tr > td:first-child {
+  padding-left: 18px;
+}
+
+table.table-rounded.table > thead > tr > th {
+  padding-top: 13px;
+  padding-bottom: 13px;
+  border: none;
+  background: linear-gradient(180deg, #f5f6fc, #eff1f9);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #6a6f99;
+  box-shadow: none;
+}
+/* Sortable headers are buttons wrapping a span — the vendor's .userDatatable-title forces
+   "capitalize", which left them mixed-case next to the plain uppercase labels. */
+table.table-rounded.table > thead > tr > th .hx-sort-th,
+table.table-rounded.table > thead > tr > th .userDatatable-title,
+table.table-rounded.table > thead > tr > th span {
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  text-transform: uppercase !important;
+  color: inherit;
+}
+table.table-rounded.table > thead > tr > th:first-child {
+  border-radius: 12px 0 0 12px;
+}
+table.table-rounded.table > thead > tr > th:last-child {
+  border-radius: 0 12px 12px 0;
+}
+.hx-sort-th {
+  transition: color 0.2s ease;
+}
+.hx-sort-th:hover {
+  color: var(--pg-navy) !important;
+}
+
+table.table-rounded.table > tbody > tr > td {
+  padding-top: 13px;
+  padding-bottom: 13px;
+  font-size: 13.5px;
+  color: var(--pg-text);
+  background: #fff;
+  border-top: 1px solid var(--pg-line);
+  border-bottom: 1px solid var(--pg-line);
+  border-radius: 0;
+  box-shadow: none;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+table.table-rounded.table > tbody > tr > td:first-child {
+  border-left: 1px solid var(--pg-line);
+  border-radius: 12px 0 0 12px;
+}
+table.table-rounded.table > tbody > tr > td:last-child {
+  border-right: 1px solid var(--pg-line);
+  border-radius: 0 12px 12px 0;
+}
+table.table-rounded.table > tbody > tr > td .position {
+  color: var(--pg-text);
+}
+/* First column (order no., name, …) reads as the row's title. */
+table.table-rounded.table > tbody > tr > td:first-child,
+table.table-rounded.table > tbody > tr > td:first-child .position {
+  font-weight: 700;
+  color: var(--pg-navy);
+}
+
+table.table-rounded.table > tbody > tr:hover > td {
+  background: #fafaff;
+  border-color: rgba(46, 49, 117, 0.16);
+}
+table.table-rounded.table > tbody > tr:hover > td:first-child {
+  box-shadow: inset 3px 0 0 var(--pg-gold);
+}
+
+@keyframes pg-row {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+table.table-rounded tbody tr {
+  animation: pg-row 0.4s var(--pg-ease) backwards;
+}
+table.table-rounded tbody tr:nth-child(1) { animation-delay: 0.08s; }
+table.table-rounded tbody tr:nth-child(2) { animation-delay: 0.12s; }
+table.table-rounded tbody tr:nth-child(3) { animation-delay: 0.16s; }
+table.table-rounded tbody tr:nth-child(4) { animation-delay: 0.2s; }
+table.table-rounded tbody tr:nth-child(5) { animation-delay: 0.24s; }
+table.table-rounded tbody tr:nth-child(6) { animation-delay: 0.28s; }
+table.table-rounded tbody tr:nth-child(7) { animation-delay: 0.32s; }
+table.table-rounded tbody tr:nth-child(n + 8) { animation-delay: 0.36s; }
+
+.hx-sort-icon--active {
+  color: var(--pg-gold) !important;
+}
+
+/* Pills inside tables: a leading status dot (skipped where ::before is the tooltip arrow). */
+table.table-rounded .hx-status-pill {
+  gap: 6px;
+  padding: 4px 12px;
+  font-size: 12px;
+}
+table.table-rounded .hx-status-pill:not(.hx-tooltip)::before {
+  content: '';
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* Punch type and similar code-like values: a squarer neutral chip, so they don't compete
+   with the colored status pills beside them. */
+table.table-rounded .hx-order-badge:not(.hx-order-badge--hold) {
+  padding: 4px 10px;
+  border: 1px solid #e3e5f0;
+  border-radius: 8px;
+  background: #f5f6fb;
+  color: #3a3d5c;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* Row actions sit flush right. */
+table.table-rounded .table-actions {
+  justify-content: flex-end;
+}
+
+/* Horizontal scrollbar on wide tables: slim, rounded, brand-tinted. */
+.table-responsive::-webkit-scrollbar {
+  height: 8px;
+}
+.table-responsive::-webkit-scrollbar-track {
+  background: transparent;
+}
+.table-responsive::-webkit-scrollbar-thumb {
+  border-radius: 8px;
+  background: rgba(46, 49, 117, 0.18);
+}
+.table-responsive::-webkit-scrollbar-thumb:hover {
+  background: rgba(46, 49, 117, 0.35);
+}
+
+/* Empty / loading text inside list cards. */
+.hx-orders-empty,
+.hx-companies-empty,
+.hx-roles-empty,
+.hx-settings-empty,
+.hx-profile-loading {
+  padding: 36px 20px !important;
+  text-align: center;
+  color: #8a8fa8 !important;
+}
+
+/* ---------- Form controls ---------- */
+
+.contents .form-control,
+.modal .form-control {
+  border: 1px solid var(--pg-field-border);
+  border-radius: 10px;
+  color: var(--pg-ink);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+.contents .form-control:hover,
+.modal .form-control:hover {
+  border-color: #cfd3e2;
+}
+.contents .form-control:focus,
+.modal .form-control:focus {
+  border-color: rgba(46, 49, 117, 0.55);
+  box-shadow: 0 0 0 4px rgba(46, 49, 117, 0.08);
+}
+.contents .form-control::placeholder,
+.modal .form-control::placeholder {
+  color: #a3a7bd;
+}
+
+/* Breadcrumb toolbar (search / filters / Add New) */
+.breadcrumb-main {
+  gap: 12px;
+}
+.breadcrumb-main .breadcrumb-action .form-control {
+  height: 40px;
+  font-size: 13.5px;
+  font-weight: 500;
+  background-color: #fff;
+  box-shadow: 0 1px 2px rgba(31, 34, 64, 0.04);
+}
+.breadcrumb-main .breadcrumb-action .input-container .input-icon {
+  color: #8a8fa8;
+}
+
+/* ---------- Buttons ---------- */
+
+.btn {
+  border-radius: 10px;
+  font-weight: 600;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease,
+    transform 0.2s var(--pg-ease);
+}
+.btn-primary {
+  background-image: linear-gradient(135deg, #3b3f9e 0%, #2e3175 60%, #23255f 100%);
+  box-shadow: 0 8px 18px -10px rgba(46, 49, 117, 0.8);
+}
+.btn-primary:hover,
+.btn-primary:focus {
+  background-image: linear-gradient(135deg, #e2c97e 0%, #b99a4c 100%);
+  box-shadow: 0 10px 20px -10px rgba(169, 144, 74, 0.9);
+}
+.btn:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+.btn:not(:disabled):active {
+  transform: none;
+}
+
+/* "Add New" square button in the breadcrumb toolbar. */
+.breadcrumb-main .breadcrumb-action .action-btn .btn-add {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+.breadcrumb-main .breadcrumb-action .action-btn .btn-add i {
+  transition: transform 0.3s var(--pg-ease);
+}
+.breadcrumb-main .breadcrumb-action .action-btn .btn-add:hover i {
+  transform: rotate(90deg);
+}
+
+.hx-btn-secondary {
+  border-radius: 10px;
+}
+
+/* ---------- Modals ---------- */
+
+.modal-backdrop.show {
+  opacity: 1;
+  background: rgba(26, 28, 74, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  overflow: hidden;
+  border: none;
+  border-radius: 20px;
+  box-shadow: 0 30px 60px -20px rgba(26, 28, 74, 0.45);
+}
+/* Brand accent strip along the top of every modal. */
+.modal-content::before {
+  content: '';
+  display: block;
+  height: 4px;
+  background: linear-gradient(90deg, var(--pg-navy), #5a5fc4 50%, var(--pg-gold-light));
+}
+
+.modal-header {
+  padding: 16px 20px !important;
+  border-bottom: 1px solid var(--pg-line);
+}
+.modal-header .modal-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--pg-ink);
+}
+.modal-header button.btn-close {
+  border-radius: 10px;
+  transition: background-color 0.2s ease, transform 0.25s var(--pg-ease);
+}
+.modal-header button.btn-close:hover {
+  transform: rotate(90deg);
+}
+
+.modal-footer {
+  border-top: 1px solid var(--pg-line);
+}
+
+.modal.fade .modal-dialog {
+  transform: translateY(18px) scale(0.97);
+  transition: transform 0.3s var(--pg-ease), opacity 0.3s ease;
+}
+.modal.show .modal-dialog {
+  transform: none;
+}
+
+/* Detail-view grids inside modals. */
+.hx-detail-grid {
+  background: linear-gradient(180deg, #fbfbfe, #f7f8fc);
+  border-color: var(--pg-line);
+  border-radius: 14px;
+}
+.hx-detail-section__title {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  color: var(--pg-navy) !important;
+}
+.hx-detail-section__title::before {
+  content: '';
+  width: 4px;
+  height: 14px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--pg-gold-light), var(--pg-gold));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .contents *,
+  .modal * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Toolbar search: wide enough for its placeholder ("Search by name, address, …"). */
+@media (min-width: 768px) {
+  .breadcrumb-main .breadcrumb-action .input-container .form-control {
+    min-width: 280px;
+  }
+}
+
+/* ---------- Theme cards (Profile, etc.) ---------- */
+
+.contents .card {
+  border: 1px solid var(--pg-line);
+  border-radius: 18px !important;
+  box-shadow: var(--pg-shadow);
+}
+.contents .card > .card-header {
+  min-height: 0;
+  padding-top: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--pg-line);
+  background: transparent;
+}
+.contents .card > .card-header h6 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--pg-ink);
+}
+.contents .card > .card-header h6::before {
+  content: '';
+  width: 4px;
+  height: 16px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--pg-gold-light), var(--pg-gold));
+}
+
+/* Toolbar filters (<select>): same look as the search box, with a custom chevron. */
+.breadcrumb-main .breadcrumb-action select.form-control {
+  min-width: 140px;
+  padding-right: 34px;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236a6f99' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+
+/* The vendor shrinks the toolbar search (and its placeholder) to 12px; match the filters. */
+.breadcrumb-main .breadcrumb-action .input-container.icon-left input,
+.breadcrumb-main .breadcrumb-action .input-container.icon-left input::placeholder {
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+/* Long free text in a table cell (e.g. an address): wraps onto a second line instead of
+   forcing the whole table wider — every other cell stays on one line (see theme.css). */
+.hx-cell-wrap {
+  display: inline-block;
+  min-width: 180px;
+  max-width: 260px;
+  white-space: normal;
+  line-height: 1.45;
+}
+
+/* Wide tables (Orders, Companies on a laptop) scroll sideways; the row-actions column stays
+   pinned to the right edge so View / Edit / Delete are always reachable. */
+table.table-rounded.table > thead > tr > th.c-action,
+table.table-rounded.table > tbody > tr > td:has(> .table-actions) {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+}
+table.table-rounded.table > thead > tr > th.c-action {
+  background: #eff1f9;
+}
+table.table-rounded.table > tbody > tr > td:has(> .table-actions) {
+  box-shadow: -14px 0 14px -14px rgba(31, 34, 64, 0.25);
+}
+
+/* ---------- Form fields (pages + modals; Login keeps its own design) ----------
+   Floating-label fields (see formStyles.css): the floated label straddles the field's top
+   border, so it eats into the space above — the default 14px gap left labels touching the
+   field (or error message) above them. Fields here get a consistent 46px height, 14px text,
+   room between rows, and a bit more breathing room under section titles. */
+
+.contents .hx-floating,
+.modal .hx-floating {
+  margin-bottom: 24px;
+}
+.contents .hx-floating.hx-floating--invalid,
+.modal .hx-floating.hx-floating--invalid {
+  margin-bottom: 42px;
+}
+
+.contents .hx-floating > input.form-control,
+.contents .hx-floating > select.form-control,
+.modal .hx-floating > input.form-control,
+.modal .hx-floating > select.form-control {
+  height: 46px;
+  padding: 0 16px;
+  font-size: 14px;
+  line-height: 46px;
+}
+.contents .hx-floating > textarea.form-control,
+.modal .hx-floating > textarea.form-control {
+  padding: 14px 16px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.contents .hx-floating.hx-floating--with-adornment > input.form-control,
+.modal .hx-floating.hx-floating--with-adornment > input.form-control {
+  padding-right: 46px !important;
+}
+
+/* Selects: custom chevron in place of the native arrow. */
+.contents .hx-floating > select.form-control,
+.modal .hx-floating > select.form-control {
+  padding-right: 38px;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236a6f99' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+}
+
+/* Read-only / not-yet-available fields (e.g. Size before a company is chosen). */
+.contents .form-control:disabled,
+.modal .form-control:disabled {
+  background-color: #f5f6fa;
+  color: #6b7091;
+  cursor: not-allowed;
+}
+
+/* Label: lines up with the field's text, sized to match it. */
+.contents .hx-floating > label,
+.modal .hx-floating > label {
+  left: 12px;
+  font-size: 14px;
+}
+.contents .hx-floating.hx-floating--floated > label,
+.modal .hx-floating.hx-floating--floated > label {
+  font-weight: 600;
+  transform: translateY(-50%) scale(0.82);
+}
+.contents .hx-floating--textarea > label,
+.modal .hx-floating--textarea > label {
+  top: 25px;
+}
+.contents .hx-floating--textarea.hx-floating--floated > label,
+.modal .hx-floating--textarea.hx-floating--floated > label {
+  top: 0;
+}
+
+/* Inline error under a field. */
+.contents .hx-floating > .hx-field-error,
+.modal .hx-floating > .hx-field-error {
+  margin-top: 6px;
+  padding-left: 2px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Section titles inside forms / detail modals: room for the first row's floating labels. */
+.modal .hx-order-section > .hx-order-section__title,
+.modal .hx-detail-section > .hx-detail-section__title {
+  margin-bottom: 22px !important;
+}
+.modal .hx-order-section__header {
+  margin-bottom: 22px;
+}
+.modal .hx-order-section {
+  margin-bottom: 24px;
+  padding-bottom: 8px;
+}
+
+.modal-body {
+  padding: 24px !important;
+}
+
+/* Form buttons (Cancel / Save) at the bottom of a form. */
+.modal .button-group .btn,
+.contents form .button-group .btn {
+  min-width: 120px;
+  height: 42px;
+  padding: 0 22px;
+  font-size: 14px;
+}
+
+/* Date fields: keep the native calendar button visible and clearly clickable. */
+.contents .hx-floating > input[type='date'].form-control,
+.modal .hx-floating > input[type='date'].form-control {
+  line-height: normal;
+}
+.contents input[type='date']::-webkit-calendar-picker-indicator,
+.modal input[type='date']::-webkit-calendar-picker-indicator {
+  opacity: 0.6;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+.contents input[type='date']::-webkit-calendar-picker-indicator:hover,
+.modal input[type='date']::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}

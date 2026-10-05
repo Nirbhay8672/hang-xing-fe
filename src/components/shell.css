@@ -1,0 +1,300 @@
+/* App shell — header, sidebar, page background, page title, footer.
+   The shell markup is the vendor theme's own HTML (see shellMarkup.ts), so this file only
+   restyles it: a navy sidebar with a gold active pill, a frosted white header, and a softly
+   tinted page background, using the same navy + gold brand tokens as theme.css. Loaded by
+   AppShell, after theme.css and the vendor bundle, so equal-specificity rules here win. */
+
+:root {
+  --shell-navy: #2e3175;
+  --shell-navy-2: #23255f;
+  --shell-navy-3: #1a1c4a;
+  --shell-gold: #a9904a;
+  --shell-gold-light: #e2c97e;
+  --shell-ink: #1f2240;
+  --shell-muted: #6b7280;
+  --shell-bg: #f4f5fb;
+  --shell-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ---------- Page background ---------- */
+
+body,
+.contents {
+  background-color: var(--shell-bg);
+}
+.contents {
+  background-image:
+    radial-gradient(900px 420px at 100% 0%, rgba(169, 144, 74, 0.07), transparent 60%),
+    radial-gradient(700px 380px at 0% 30%, rgba(46, 49, 117, 0.05), transparent 60%);
+  background-attachment: fixed;
+}
+
+/* ---------- Header ---------- */
+
+.header-top {
+  background: #fff !important;
+  border-bottom: 1px solid rgba(46, 49, 117, 0.07);
+  box-shadow: 0 6px 24px -12px rgba(31, 34, 64, 0.18);
+}
+
+/* Hamburger: rounded square that fills navy on hover. */
+.header-top .sidebar-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: rgba(46, 49, 117, 0.06);
+  transition: background-color 0.2s ease, transform 0.2s var(--shell-ease);
+}
+.header-top .sidebar-toggle:hover {
+  background: var(--shell-navy);
+  transform: scale(1.04);
+}
+.header-top .sidebar-toggle svg,
+.header-top .sidebar-toggle img {
+  transition: filter 0.2s ease;
+}
+.header-top .sidebar-toggle:hover svg,
+.header-top .sidebar-toggle:hover img {
+  filter: brightness(0) invert(1);
+}
+
+.header-top .navbar-brand img {
+  transition: transform 0.3s var(--shell-ease);
+}
+.header-top .navbar-brand:hover img {
+  transform: scale(1.03);
+}
+
+/* Search: soft pill. Desktop only — the vendor hides this form on phones (it has its own
+   mobile search), and setting `display` here at all widths would bring it back. */
+@media (min-width: 768px) {
+  .header-top .navbar-left .search-form {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    height: 42px;
+    padding: 0 6px 0 14px;
+    border-radius: 12px;
+    background: #f3f4fa;
+    border: 1px solid transparent;
+    transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .header-top .navbar-left .search-form:focus-within {
+    background: #fff;
+    border-color: rgba(46, 49, 117, 0.25);
+    box-shadow: 0 0 0 4px rgba(46, 49, 117, 0.08);
+  }
+  .header-top .navbar-left .search-form svg {
+    color: #8a8fa8;
+  }
+  .header-top .navbar-left .search-form input,
+  .header-top .navbar-left .search-form input:focus {
+    background: transparent;
+    box-shadow: none;
+  }
+}
+
+/* Right-hand icon buttons (messages, notifications). */
+.navbar-right__menu .nav-item-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  color: #6b7091;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.navbar-right__menu .nav-item-toggle:hover {
+  background: rgba(46, 49, 117, 0.08);
+  color: var(--shell-navy);
+}
+.navbar-right__menu .nav-item-toggle:before {
+  top: 6px;
+  left: auto;
+  right: 8px;
+  transform: none;
+  width: 7px;
+  height: 7px;
+  box-shadow: 0 0 0 2px #fff;
+}
+
+.hx-notif__toggle {
+  border-radius: 12px;
+  color: #6b7091;
+}
+
+/* Avatar: gold ring. */
+.navbar-right__menu .nav-author > .dropdown-custom > a img,
+.navbar-right__menu .nav-author img.rounded-circle {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--shell-gold-light);
+  transition: box-shadow 0.2s ease, transform 0.2s var(--shell-ease);
+}
+.navbar-right__menu .nav-author > .dropdown-custom > a:hover img {
+  transform: scale(1.06);
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--shell-gold);
+}
+
+.navbar-right__menu .dropdown-wrapper {
+  border-radius: 14px;
+  border: 1px solid rgba(46, 49, 117, 0.08);
+  box-shadow: 0 20px 40px -16px rgba(31, 34, 64, 0.25);
+  overflow: hidden;
+}
+
+/* ---------- Sidebar ---------- */
+
+.sidebar {
+  position: relative;
+  background:
+    radial-gradient(260px 220px at 0% 100%, rgba(226, 201, 126, 0.16), transparent 70%),
+    radial-gradient(240px 200px at 100% 35%, rgba(124, 92, 219, 0.16), transparent 70%),
+    linear-gradient(180deg, var(--shell-navy) 0%, var(--shell-navy-2) 55%, var(--shell-navy-3) 100%);
+  box-shadow: 8px 0 30px -18px rgba(26, 28, 74, 0.6);
+}
+.sidebar::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.sidebar__menu-group ul.sidebar_nav {
+  padding: 0 14px;
+}
+
+.sidebar__menu-group ul.sidebar_nav li.menu-title span {
+  display: block;
+  padding: 0 16px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(226, 201, 126, 0.75);
+}
+
+.sidebar__menu-group ul.sidebar_nav li > a {
+  margin: 2px 0;
+  padding: 11px 16px;
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.72);
+  font-weight: 500;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s var(--shell-ease);
+}
+.sidebar__menu-group ul.sidebar_nav li > a .nav-icon {
+  margin-right: 14px;
+  color: rgba(255, 255, 255, 0.55);
+  transition: color 0.2s ease, transform 0.25s var(--shell-ease);
+}
+
+.sidebar__menu-group ul.sidebar_nav li > a:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateX(3px);
+}
+.sidebar__menu-group ul.sidebar_nav li > a:hover .nav-icon {
+  color: var(--shell-gold-light);
+  transform: scale(1.12);
+}
+
+/* Current page: gold pill with navy text — the brand's version of an accent highlight. */
+.sidebar__menu-group ul.sidebar_nav li > a.active,
+.sidebar__menu-group ul.sidebar_nav li > a.active:hover {
+  color: var(--shell-navy-3);
+  font-weight: 600;
+  background: linear-gradient(135deg, #f0d891 0%, #d4b663 55%, #b99a4c 100%);
+  box-shadow: 0 10px 22px -10px rgba(226, 201, 126, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  transform: none;
+}
+.sidebar__menu-group ul.sidebar_nav li > a.active .nav-icon,
+.sidebar__menu-group ul.sidebar_nav li > a.active .toggle-icon {
+  color: var(--shell-navy-3);
+}
+
+/* Icon-only (collapsed) sidebar on desktop. */
+.sidebar.collapsed .sidebar__menu-group ul.sidebar_nav {
+  padding: 0;
+}
+.sidebar.collapsed .sidebar__menu-group li a {
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  margin: 4px auto;
+  border-radius: 14px;
+}
+.sidebar.collapsed .sidebar__menu-group li a:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  transform: none;
+}
+.sidebar.collapsed .sidebar__menu-group li a.active {
+  background: linear-gradient(135deg, #f0d891 0%, #d4b663 55%, #b99a4c 100%);
+}
+
+/* Backdrop behind the off-canvas sidebar (≤1150px). The vendor only raises it above the
+   page from 991px down, so between 992–1150px taps went straight through it to the page. */
+@media (max-width: 1150px) {
+  .overlay-dark-sidebar {
+    background: rgba(26, 28, 74, 0.45);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    transition: opacity 0.25s ease;
+  }
+  .overlay-dark-sidebar.show {
+    z-index: 998;
+    opacity: 1;
+  }
+}
+
+/* ---------- Page title ---------- */
+
+.breadcrumb-main .breadcrumb-title {
+  position: relative;
+  padding-left: 14px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--shell-ink);
+}
+.breadcrumb-main .breadcrumb-title::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 15%;
+  bottom: 15%;
+  width: 4px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--shell-gold-light), var(--shell-gold));
+}
+
+/* ---------- Footer ---------- */
+
+.footer-wrapper {
+  background: transparent;
+  border-top: 1px solid rgba(46, 49, 117, 0.08);
+}
+.footer-wrapper .footer-copyright p {
+  font-size: 13px;
+  color: var(--shell-muted);
+}
+.footer-wrapper .footer-copyright a {
+  font-weight: 600;
+  color: var(--shell-navy);
+}
+.footer-wrapper .footer-copyright a:hover {
+  color: var(--shell-gold);
+}
+
+@media (max-width: 767.98px) {
+  .footer-wrapper .footer-copyright,
+  .footer-wrapper .footer-copyright.text-end {
+    text-align: center !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar *,
+  .header-top * {
+    transition: none !important;
+  }
+}

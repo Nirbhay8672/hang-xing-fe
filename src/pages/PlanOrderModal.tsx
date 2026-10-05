@@ -22,7 +22,8 @@ function taskStepsForOrderType(orderType: string): string[] {
 }
 
 function orderTypePillClass(orderType: string): string {
-  return orderType === 'New' ? 'hx-status-pill--new' : 'hx-status-pill--rc'
+  if (orderType === 'New') return 'hx-status-pill--new'
+  return orderType === 'RR' ? 'hx-status-pill--rr' : 'hx-status-pill--rc'
 }
 
 // The backend sends `punch_numbers`/`planning_tasks` as null (not []) for an order that

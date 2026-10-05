@@ -593,7 +593,7 @@ export default function Companies() {
                             <span className="position">{c.name}</span>
                           </td>
                           <td>
-                            <span className="position">{c.address}</span>
+                            <span className="position hx-cell-wrap">{c.address}</span>
                           </td>
                           <td>
                             <button

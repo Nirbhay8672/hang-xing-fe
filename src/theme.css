@@ -74,25 +74,7 @@ a:focus {
   font-size: 16px;
 }
 
-/* Sidebar nav: blue by default (vendor default is a pale gray-blue, #adb4d2) and for
-   the current page, gold on hover — same split as the buttons. */
-.sidebar__menu-group ul.sidebar_nav li > a .nav-icon {
-  color: var(--brand-blue);
-}
-.sidebar__menu-group ul.sidebar_nav li > a.active {
-  background: rgba(46, 49, 117, 0.1);
-  border-radius: 0 24px 24px 0;
-}
-.sidebar__menu-group ul.sidebar_nav li > a.active,
-.sidebar__menu-group ul.sidebar_nav li > a.active .nav-icon,
-.sidebar__menu-group ul.sidebar_nav li > a.active .toggle-icon {
-  color: var(--brand-blue);
-}
-.sidebar__menu-group ul.sidebar_nav li > a:hover,
-.sidebar__menu-group ul.sidebar_nav li > a:hover .nav-icon,
-.sidebar__menu-group ul.sidebar_nav li > a:hover .toggle-icon {
-  color: var(--brand-gold);
-}
+/* Sidebar, header, footer and page-background styling live in components/shell.css. */
 
 .form-control:focus {
   box-shadow: 0 5px 20px rgba(46, 49, 117, 0.15);

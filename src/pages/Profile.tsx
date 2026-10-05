@@ -207,11 +207,22 @@ export default function ProfilePage() {
           </div>
 
           <div className="col-lg-4 col-12">
-            <div className="card radius-xl mb-25">
-              <div className="card-header px-sm-25 px-3">
-                <div className="edit-profile__title">
-                  <h6>My Role</h6>
-                </div>
+            <div className="card radius-xl mb-25 hx-profile-card">
+              <div className="hx-profile-card__banner" />
+              <div className="hx-profile-card__identity">
+                <span className="hx-profile-card__avatar">
+                  {profile.name
+                    .split(/\s+/)
+                    .slice(0, 2)
+                    .map((part) => part[0]?.toUpperCase())
+                    .join('')}
+                </span>
+                <h5 className="hx-profile-card__name">{profile.name}</h5>
+                <span className="hx-profile-card__email">{profile.email}</span>
+                <span className="hx-profile-card__since">
+                  Member since{' '}
+                  {new Date(profile.created_at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+                </span>
               </div>
               <div className="card-body">
                 <div className="hx-profile-section">

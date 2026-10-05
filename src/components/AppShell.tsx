@@ -1,35 +1,35 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { isAdmin, isMarketing } from '../auth/roleUtils'
 import { DASHBOARD_JS_SRCS } from '../pages/dashboardAssets'
 import NotificationBell from './NotificationBell'
-import PageLoader from './PageLoader'
+import './shell.css'
+import './pageTheme.css'
 import { SHELL_HEADER_HTML, SHELL_SIDEBAR_HTML } from './shellMarkup'
 
 declare global {
   interface Window {
     /** Global injected by the vendored feather.min.js (see DASHBOARD_JS_SRCS). */
     feather?: { replace: () => void }
+    /** Global injected by the vendored jQuery (see DASHBOARD_JS_SRCS). */
+    jQuery?: (target: unknown) => { trigger: (event: string) => void }
   }
 }
 
-/**
- * Re-injects the theme's vendor scripts and resolves once the last one has loaded.
- *
- * These scripts don't just define reusable libraries — several of them (charts.js,
- * main.js's feather-icon/inline-SVG swap, etc.) wire themselves up to whatever specific
- * DOM elements exist *at the moment they execute*. AppShell mounts fresh on every route
- * change (Dashboard <-> Users are different component trees, so React fully unmounts and
- * remounts it), so if these scripts only ran once, icons would only ever render on the
- * very first mount and stay blank after that. Re-running them fresh each time keeps them
- * in sync; old script tags from a previous mount are removed first so they don't pile up.
- */
-function injectDashboardAssets(): Promise<void> {
-  document.querySelectorAll('script[data-dashboard-asset]').forEach((el) => el.remove())
+let dashboardAssets: Promise<void> | null = null
 
-  return new Promise((resolve) => {
+/**
+ * Injects the theme's vendor scripts once per page load and resolves when the last one has
+ * loaded. The shell (header + sidebar) is a persistent layout route (ShellLayout below), so it
+ * stays mounted while the user moves between pages — the scripts never need re-running for a
+ * navigation. If the shell does remount (sign out, then back in), ShellLayout re-applies the
+ * scripts' DOM fixups itself (feather icons, main.js's resize-driven sidebar/header wiring)
+ * instead of re-downloading and re-executing all ~46 of them.
+ */
+function loadDashboardAssets(): Promise<void> {
+  dashboardAssets ??= new Promise((resolve) => {
     DASHBOARD_JS_SRCS.forEach((src, index) => {
       const script = document.createElement('script')
       script.src = src
@@ -43,6 +43,25 @@ function injectDashboardAssets(): Promise<void> {
       document.body.appendChild(script)
     })
   })
+  return dashboardAssets
+}
+
+/** The app's own path for an in-app link's href (BASE_URL stripped), or null for anything else. */
+function appPath(href: string | null): string | null {
+  if (!href || href.startsWith('#') || /^[a-z]+:/i.test(href) || href.startsWith('//')) return null
+  const base = import.meta.env.BASE_URL
+  if (href.startsWith(`${base}html/`)) return null // the theme's static demo pages
+  const path = href.startsWith(base) ? `/${href.slice(base.length)}` : href
+  return path.startsWith('/') ? path : null
+}
+
+/** Below 1150px the sidebar is off-canvas — close it (and its backdrop) after navigating. */
+function closeOffCanvasSidebar() {
+  if (window.innerWidth > 1150) return
+  document.querySelector('.overlay-dark-sidebar')?.classList.remove('show')
+  const sidebar = document.querySelector('.sidebar')
+  sidebar?.classList.remove('sidebar-collapse')
+  sidebar?.classList.add('collapsed')
 }
 
 // React re-applies `dangerouslySetInnerHTML` (rebuilding that DOM) on every render whenever the
@@ -52,12 +71,6 @@ function injectDashboardAssets(): Promise<void> {
 // re-finding it re-renders AppShell, which would rebuild the header again, forever.
 const HEADER_INNER_HTML = { __html: SHELL_HEADER_HTML }
 const SIDEBAR_INNER_HTML = { __html: SHELL_SIDEBAR_HTML }
-
-// Re-fetching these ~46 scripts is near-instant once the browser has them cached, which
-// can make the loader flash so briefly it reads as "not showing" at all. Holding it up
-// for at least this long keeps it perceptible without meaningfully delaying real loads.
-const MIN_LOADER_MS = 500
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 // Sidebar links and the permission each needs to be visible — which permissions a person has
 // comes from their role (Admin: everything; Marketing: companies/orders/complaints/problems;
@@ -98,11 +111,36 @@ interface AppShellProps {
   children: ReactNode
 }
 
+/**
+ * A page's title row (title + optional toolbar) and content. Rendered by each page inside the
+ * persistent ShellLayout, so switching pages only swaps this part — the header and sidebar
+ * stay put, like any single-page app.
+ */
 export default function AppShell({ title, actions, children }: AppShellProps) {
+  return (
+    <>
+      <div className="row">
+        <div className="col-lg-12">
+          <div className="breadcrumb-main">
+            <h4 className="text-capitalize breadcrumb-title">{title}</h4>
+            {actions && <div className="breadcrumb-action justify-content-center flex-wrap">{actions}</div>}
+          </div>
+        </div>
+      </div>
+
+      {children}
+    </>
+  )
+}
+
+/**
+ * The app frame — header, sidebar, footer — mounted once as the layout route for every
+ * signed-in page; the current page renders into its <Outlet />.
+ */
+export function ShellLayout() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const [assetsReady, setAssetsReady] = useState(false)
   const headerRef = useRef<HTMLDivElement>(null)
   const sidebarRef = useRef<HTMLDivElement>(null)
   // The header's bell is a React component portalled into a placeholder inside the raw header
@@ -111,15 +149,44 @@ export default function AppShell({ title, actions, children }: AppShellProps) {
 
   useEffect(() => {
     let cancelled = false
-    Promise.all([injectDashboardAssets(), delay(MIN_LOADER_MS)]).then(() => {
+    const alreadyLoaded = dashboardAssets !== null
+    loadDashboardAssets().then(() => {
       if (cancelled) return
       window.feather?.replace()
-      setAssetsReady(true)
+      // On a remount the scripts' one-time setup ran against the previous shell DOM; replaying
+      // a resize re-runs main.js's responsive wiring (sidebar collapse, header menu placement).
+      if (alreadyLoaded) window.jQuery?.(window).trigger('resize')
     })
     return () => {
       cancelled = true
     }
   }, [])
+
+  // Each new page starts at the top, as a fresh page load would.
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [location.pathname])
+
+  // Sidebar links are plain anchors in the theme's raw markup — route them in-app instead of
+  // letting the browser reload the whole page. Delegated from the stable container so it
+  // survives that markup being rebuilt. Ctrl/Cmd/Shift/middle-click still open a new tab.
+  useEffect(() => {
+    const sidebar = sidebarRef.current
+    if (!sidebar) return
+
+    function handleClick(event: MouseEvent) {
+      if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return
+      const link = (event.target as HTMLElement).closest('a')
+      const path = appPath(link?.getAttribute('href') ?? null)
+      if (!path) return
+      event.preventDefault()
+      closeOffCanvasSidebar()
+      navigate(path)
+    }
+
+    sidebar.addEventListener('click', handleClick)
+    return () => sidebar.removeEventListener('click', handleClick)
+  }, [navigate])
 
   // Keeps the header/sidebar content in sync no matter what else touches that DOM. React
   // itself re-applies the raw `dangerouslySetInnerHTML` markup once shortly after mount
@@ -186,7 +253,9 @@ export default function AppShell({ title, actions, children }: AppShellProps) {
         sidebar.querySelectorAll<HTMLAnchorElement>('.sidebar_nav a.active').forEach((el) => el.classList.remove('active'))
         sidebar.querySelectorAll<HTMLLIElement>('.sidebar_nav li.open').forEach((el) => el.classList.remove('open'))
 
-        const activeLink = sidebar.querySelector<HTMLAnchorElement>(`a[href="${location.pathname}"]`)
+        const activeLink = [...sidebar.querySelectorAll<HTMLAnchorElement>('.sidebar_nav a[href]')].find(
+          (link) => appPath(link.getAttribute('href')) === location.pathname,
+        )
         if (activeLink) {
           activeLink.classList.add('active')
           const parentLi = activeLink.closest('li.has-child')
@@ -223,6 +292,15 @@ export default function AppShell({ title, actions, children }: AppShellProps) {
         return
       }
 
+      // Logo → home. Its href is "/" (so new-tab / middle-click still work); a plain click is
+      // routed in-app instead of reloading the whole page.
+      if (target.closest('.navbar-brand') && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+        event.preventDefault()
+        closeOffCanvasSidebar()
+        navigate('/')
+        return
+      }
+
       if (target.closest('.sidebar-toggle')) {
         event.preventDefault()
         document.querySelector('.overlay-dark-sidebar')?.classList.toggle('show')
@@ -238,8 +316,6 @@ export default function AppShell({ title, actions, children }: AppShellProps) {
 
   return (
     <>
-      {!assetsReady && <PageLoader />}
-
       <div ref={headerRef} dangerouslySetInnerHTML={HEADER_INNER_HTML} />
       {notifRoot && createPortal(<NotificationBell />, notifRoot)}
 
@@ -247,17 +323,9 @@ export default function AppShell({ title, actions, children }: AppShellProps) {
         <div ref={sidebarRef} dangerouslySetInnerHTML={SIDEBAR_INNER_HTML} />
 
         <div className="contents">
-          <div className="container-fluid">
-            <div className="row">
-              <div className="col-lg-12">
-                <div className="breadcrumb-main">
-                  <h4 className="text-capitalize breadcrumb-title">{title}</h4>
-                  {actions && <div className="breadcrumb-action justify-content-center flex-wrap">{actions}</div>}
-                </div>
-              </div>
-            </div>
-
-            {children}
+          {/* Keyed by path so each page's entrance animation (pageTheme.css) replays on navigation. */}
+          <div className="container-fluid" key={location.pathname}>
+            <Outlet />
           </div>
         </div>
 

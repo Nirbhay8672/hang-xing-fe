@@ -14,7 +14,8 @@ import './Planning.css'
 import PlanOrderModal from './PlanOrderModal'
 
 function orderTypePillClass(orderType: string): string {
-  return orderType === 'New' ? 'hx-status-pill--new' : 'hx-status-pill--rc'
+  if (orderType === 'New') return 'hx-status-pill--new'
+  return orderType === 'RR' ? 'hx-status-pill--rr' : 'hx-status-pill--rc'
 }
 
 function planningStatusPillClass(status: string): string {

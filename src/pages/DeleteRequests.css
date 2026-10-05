@@ -23,13 +23,13 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 14px;
+  padding: 8px 16px;
   border: 1px solid #e3e6ed;
-  border-radius: 20px;
+  border-radius: 999px;
   background: #fff;
   color: #4b5468;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
@@ -39,10 +39,12 @@
   color: #2e3175;
 }
 
-.hx-dr-filter--active {
-  background: #2e3175;
-  border-color: #2e3175;
+.hx-dr-filter--active,
+.hx-dr-filter--active:hover {
+  background: linear-gradient(135deg, #3b3f9e, #23255f);
+  border-color: transparent;
   color: #fff;
+  box-shadow: 0 8px 16px -8px rgba(46, 49, 117, 0.75);
 }
 
 .hx-dr-filter__count {

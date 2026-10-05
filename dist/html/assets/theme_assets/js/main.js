@@ -132,7 +132,10 @@
   $(window)
     .bind("resize", function () {
       var screenSize = window.innerWidth;
-      if ($(this).width() <= 991) {
+      // 1150 (not the theme's original 991) to match style.css, which already lays the page
+      // out full-width with an off-canvas sidebar from 1150px down — at 992–1150px the
+      // expanded sidebar otherwise sat on top of the page content.
+      if ($(this).width() <= 1150) {
         $(".sidebar").removeClass("sidebar-collapse");
         $(".sidebar").addClass("collapsed");
         // No click binding for .sidebar-toggle here either, for the same reason as above —
