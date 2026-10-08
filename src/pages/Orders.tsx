@@ -4,6 +4,7 @@ import { ApiError } from '../auth/apiClient'
 import { useAuth } from '../auth/AuthContext'
 import { isAdmin, isMarketing } from '../auth/roleUtils'
 import AppShell from '../components/AppShell'
+import { requestNotificationsRefresh } from '../components/notificationEvents'
 import { FloatingInput, FloatingSelect, FloatingTextarea } from '../components/FloatingField'
 import '../components/detailView.css'
 import '../components/formStyles.css'
@@ -653,6 +654,7 @@ export default function Orders() {
       } else {
         const created = await ordersService.create(payload)
         setOrders((prev) => (prev ? [created, ...prev] : [created]))
+        requestNotificationsRefresh()
       }
       setModalMode(null)
     } catch (err) {

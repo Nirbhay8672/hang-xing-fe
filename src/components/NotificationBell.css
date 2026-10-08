@@ -239,3 +239,12 @@
 .hx-notif__item--hold .hx-notif__dot {
   background: #e0a100;
 }
+
+/* A newly booked order: brand navy dot, and its summary ("RC · 300 x 600 · 7 pcs") isn't a quote. */
+.hx-notif__item--new .hx-notif__dot {
+  background: #2e3175;
+}
+
+.hx-notif__item--new .hx-notif__detail {
+  font-style: normal;
+}

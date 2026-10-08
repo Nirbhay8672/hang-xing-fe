@@ -13,6 +13,7 @@ import type { Role } from '../roles/types'
 import { rolesService } from '../roles/rolesService'
 import type { User } from '../users/types'
 import { usersService } from '../users/usersService'
+import '../components/statusPill.css'
 import './Users.css'
 
 interface UserFormState {
@@ -20,9 +21,10 @@ interface UserFormState {
   email: string
   password: string
   role_id: string
+  notify_new_orders: boolean
 }
 
-const EMPTY_FORM: UserFormState = { name: '', email: '', password: '', role_id: '' }
+const EMPTY_FORM: UserFormState = { name: '', email: '', password: '', role_id: '', notify_new_orders: false }
 const GENERAL_ERROR_KEY = '_general'
 
 function formatDate(iso: string): string {
@@ -91,7 +93,13 @@ export default function Users() {
   function openEditModal(user: User) {
     setModalMode('edit')
     setEditingUser(user)
-    setForm({ name: user.name, email: user.email, password: '', role_id: user.role_id ? String(user.role_id) : '' })
+    setForm({
+      name: user.name,
+      email: user.email,
+      password: '',
+      role_id: user.role_id ? String(user.role_id) : '',
+      notify_new_orders: user.notify_new_orders,
+    })
     setFormErrors({})
     setShowPassword(false)
   }
@@ -123,12 +131,14 @@ export default function Users() {
           email: form.email,
           password: form.password,
           ...(form.role_id && { role_id: Number(form.role_id) }),
+          notify_new_orders: form.notify_new_orders,
         })
         setUsers((prev) => (prev ? [created, ...prev] : [created]))
       } else if (modalMode === 'edit' && editingUser) {
-        const payload: { name: string; email: string; password?: string; role_id?: number } = {
+        const payload: { name: string; email: string; password?: string; role_id?: number; notify_new_orders: boolean } = {
           name: form.name,
           email: form.email,
+          notify_new_orders: form.notify_new_orders,
         }
         if (form.password) payload.password = form.password
         if (form.role_id) payload.role_id = Number(form.role_id)
@@ -222,6 +232,9 @@ export default function Users() {
                           <span>Role</span>
                         </th>
                         <th className="c-position">
+                          <span>New Order Alerts</span>
+                        </th>
+                        <th className="c-position">
                           <span>Created</span>
                         </th>
                         <th className="c-action">
@@ -240,6 +253,11 @@ export default function Users() {
                           </td>
                           <td>
                             <span className="position">{u.roles.length > 0 ? u.roles.join(', ') : '—'}</span>
+                          </td>
+                          <td>
+                            <span className={`hx-status-pill ${u.notify_new_orders ? 'hx-status-pill--planned' : 'hx-status-pill--pending'}`}>
+                              {u.notify_new_orders ? 'On' : 'Off'}
+                            </span>
                           </td>
                           <td>
                             <span className="position">{formatDate(u.created_at)}</span>
@@ -365,6 +383,18 @@ export default function Users() {
                         }
                       />
 
+                      <label className="hx-toggle-row">
+                        <input
+                          type="checkbox"
+                          checked={form.notify_new_orders}
+                          onChange={(e) => setForm((f) => ({ ...f, notify_new_orders: e.target.checked }))}
+                        />
+                        <span>
+                          <strong>New order notifications</strong>
+                          <small>Show an alert in the bell (and on the desktop) whenever a new order is booked.</small>
+                        </span>
+                      </label>
+
                       <div className="button-group d-flex justify-content-center pt-20">
                         <button type="button" className="btn btn-sm hx-btn-secondary btn-rounded me-10" onClick={closeModal} disabled={submitting}>
                           Cancel
@@ -411,6 +441,10 @@ export default function Users() {
                         <span className="hx-detail-grid__value">
                           {viewTarget.roles.length > 0 ? viewTarget.roles.join(', ') : '—'}
                         </span>
+                      </div>
+                      <div>
+                        <span className="hx-detail-grid__label">New Order Alerts</span>
+                        <span className="hx-detail-grid__value">{viewTarget.notify_new_orders ? 'On' : 'Off'}</span>
                       </div>
                       <div>
                         <span className="hx-detail-grid__label">Created</span>

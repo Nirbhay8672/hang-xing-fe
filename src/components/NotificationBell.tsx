@@ -2,16 +2,30 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { deleteRequestsService } from '../deleteRequests/deleteRequestsService'
-import { SUBJECT_LABELS, type DeleteRequest, type HeldOrderNotification, type NotificationFeed } from '../deleteRequests/types'
+import {
+  SUBJECT_LABELS,
+  type DeleteRequest,
+  type HeldOrderNotification,
+  type NewOrderNotification,
+  type NotificationFeed,
+} from '../deleteRequests/types'
+import { NOTIFICATIONS_REFRESH_EVENT } from './notificationEvents'
 import './NotificationBell.css'
 
 const POLL_INTERVAL_MS = 30_000
 const MAX_ITEMS = 12
 
-// How many hold-event keys to remember (per user, in this browser) so the same hold never pops
-// a second desktop notification — capped so it can't grow forever over months of use.
+// Desktop-popup bookkeeping, one store per kind of event (holds, new orders): the event keys this
+// browser has already popped for this user, so the same event never pops twice — capped so it
+// can't grow forever over months of use. Separate stores so each kind gets its own "first run"
+// backlog handling (see popDesktopEvents).
 const NOTIFIED_HOLDS_STORAGE_PREFIX = 'hx.notified-holds.'
-const NOTIFIED_HOLDS_CAP = 300
+const NOTIFIED_NEW_ORDERS_STORAGE_PREFIX = 'hx.notified-new-orders.'
+const NOTIFIED_KEYS_CAP = 300
+
+// A desktop popup is "news" only for an order booked within this window — older ones (e.g. the
+// first time the alerts are switched on for someone) still show in the bell, just without popping.
+const NEW_ORDER_POPUP_MAX_AGE_MS = 15 * 60_000
 
 /** One hold notification identified by order + exact hold time, so a resumed-then-re-held order
  * pops a fresh desktop notification rather than being treated as the same event. */
@@ -22,24 +36,50 @@ function holdEventKey(h: HeldOrderNotification): string {
 /** `neverRunBefore` reflects whether this browser has used the feature before *at all* (i.e.
  * whether localStorage already held a key), not just whether this component instance has — a
  * page reload must still notify for anything new, not treat it all as backlog again. */
-function loadNotifiedHoldKeys(userId: number): { keys: Set<string>; neverRunBefore: boolean } {
+function loadNotifiedKeys(storageKey: string): { keys: Set<string>; neverRunBefore: boolean } {
   try {
-    const raw = localStorage.getItem(NOTIFIED_HOLDS_STORAGE_PREFIX + userId)
+    const raw = localStorage.getItem(storageKey)
     return { keys: raw ? new Set(JSON.parse(raw)) : new Set(), neverRunBefore: raw === null }
   } catch {
     return { keys: new Set(), neverRunBefore: true }
   }
 }
 
-function saveNotifiedHoldKeys(userId: number, keys: Set<string>): void {
+function saveNotifiedKeys(storageKey: string, keys: Set<string>): void {
   try {
     // Keep only the most recently added keys — insertion order in a Set is preserved, so this
     // drops the oldest ones once the cap is hit.
-    const trimmed = Array.from(keys).slice(-NOTIFIED_HOLDS_CAP)
-    localStorage.setItem(NOTIFIED_HOLDS_STORAGE_PREFIX + userId, JSON.stringify(trimmed))
+    const trimmed = Array.from(keys).slice(-NOTIFIED_KEYS_CAP)
+    localStorage.setItem(storageKey, JSON.stringify(trimmed))
   } catch {
     // Private browsing / storage disabled — desktop notifications may repeat, nothing else breaks.
   }
+}
+
+interface DesktopEvent {
+  key: string
+  title: string
+  body: string
+  path: string
+}
+
+/** Per-kind desktop-popup state: the seen keys (null until loaded for the signed-in user) and
+ * whether this browser has never run this kind before (its first batch is backlog). */
+interface SeenStore {
+  keys: Set<string> | null
+  neverRunBefore: boolean | null
+}
+
+/** "Arvind Mishra booked order HX/26/10/003 — ABC" (popup text; the bell list uses rich text). */
+function newOrderNotificationBody(o: NewOrderNotification): string {
+  const who = o.created_by?.name ?? 'Someone'
+  const where = o.company ? ` — ${o.company.name}` : ''
+  return `${who} booked order ${o.order_no}${where} · ${newOrderDetail(o)}`
+}
+
+/** "RC · 300 x 600 · 7 pcs" */
+function newOrderDetail(o: NewOrderNotification): string {
+  return [o.order_type, o.size, `${o.quantity} pc${o.quantity === 1 ? '' : 's'}`].filter(Boolean).join(' · ')
 }
 
 /** The popup's text — same wording as the bell's own list entry, just as plain text. */
@@ -50,7 +90,7 @@ function holdNotificationBody(h: HeldOrderNotification): string {
   return `${who} put ${what}${where} on hold`
 }
 
-type Tone = 'pending' | 'approved' | 'rejected' | 'hold'
+type Tone = 'pending' | 'approved' | 'rejected' | 'hold' | 'new'
 
 interface NotificationItem {
   key: string
@@ -77,6 +117,7 @@ function timeAgo(iso: string): string {
 
 const decisionKey = (id: number) => `decision-${id}`
 const holdKey = (id: number) => `hold-${id}`
+const newOrderKey = (id: number) => `new-order-${id}`
 
 /** Keys of the notifications that are still unread on the server. */
 function unreadKeys(feed: NotificationFeed | null): string[] {
@@ -84,10 +125,12 @@ function unreadKeys(feed: NotificationFeed | null): string[] {
   return [
     ...feed.decisions.filter((d) => !d.requester_seen_at).map((d) => decisionKey(d.id)),
     ...(feed.held_orders ?? []).filter((h) => h.unread).map((h) => holdKey(h.id)),
+    ...(feed.new_orders ?? []).filter((o) => o.unread).map((o) => newOrderKey(o.id)),
   ]
 }
 
-function buildItems(feed: NotificationFeed, freshKeys: Set<string>): NotificationItem[] {
+/** `newOrderPath`: where a new-order notification leads for this person (see NotificationBell). */
+function buildItems(feed: NotificationFeed, freshKeys: Set<string>, newOrderPath: string): NotificationItem[] {
   const reviewItems = feed.pending_reviews.map<NotificationItem>((r) => ({
     key: `review-${r.id}`,
     tone: 'pending',
@@ -147,23 +190,45 @@ function buildItems(feed: NotificationFeed, freshKeys: Set<string>): Notificatio
     path: '/orders?tab=hold',
   }))
 
-  return [...reviewItems, ...decisionItems, ...holdItems]
+  // A freshly booked order, for whoever has new-order notifications switched on.
+  const newOrderItems = (feed.new_orders ?? []).map<NotificationItem>((o) => ({
+    key: newOrderKey(o.id),
+    tone: 'new',
+    unread: o.unread || freshKeys.has(newOrderKey(o.id)),
+    title: (
+      <>
+        <strong>{o.created_by?.name ?? 'Someone'}</strong> booked new order <strong>{o.order_no}</strong>
+        {o.company ? ` — ${o.company.name}` : ''}
+      </>
+    ),
+    detail: newOrderDetail(o),
+    at: o.created_at ?? new Date(0).toISOString(),
+    path: newOrderPath,
+  }))
+
+  return [...reviewItems, ...decisionItems, ...holdItems, ...newOrderItems]
     .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
     .slice(0, MAX_ITEMS)
 }
 
 /**
- * Header bell: Admin sees delete requests waiting for review and orders put on hold; whoever
+ * Header bell: Admin sees delete requests waiting for review and orders put on hold; people
+ * with "notify new orders" switched on see newly booked orders; whoever
  * raised a delete request sees the decision on it. Polls lightly so new items show up without a
  * page reload.
  */
 export default function NotificationBell() {
   const { can, user } = useAuth()
   const navigate = useNavigate()
-  const involved =
-    can('review delete requests') || can('request delete orders') || can('request delete complaints') || can('view held orders')
   const seesDeleteRequests = can('review delete requests') || can('request delete orders') || can('request delete complaints')
   const seesHolds = can('view held orders')
+  // Set per person by an Admin on the Users page (not by role).
+  const seesNewOrders = user?.notify_new_orders === true
+  const involved = seesDeleteRequests || seesHolds || seesNewOrders
+  const getsDesktopAlerts = seesHolds || seesNewOrders
+  // New-order notifications go to several roles, so each opens a page that person can reach:
+  // Planning reviews the order, Marketing sees it in Orders, Production on its own dashboard.
+  const newOrderPath = can('access planning') ? '/planning' : can('view orders') ? '/orders' : '/production'
 
   const [feed, setFeed] = useState<NotificationFeed | null>(null)
   const [open, setOpen] = useState(false)
@@ -177,69 +242,96 @@ export default function NotificationBell() {
   // though opening it marks them read.
   const [freshKeys, setFreshKeys] = useState<Set<string>>(new Set())
   const rootRef = useRef<HTMLDivElement>(null)
-  // Hold-event keys this browser has already popped a desktop notification for. Loaded lazily
-  // (once the user id is known) and null beforehand so the first poll of this mount can tell
-  // "not loaded yet" apart from "loaded, and the set happens to be empty".
-  const notifiedHoldsRef = useRef<Set<string> | null>(null)
-  // Whether this browser has used the feature before *at all*, across every past page load —
-  // unlike notifiedHoldsRef, this must not reset to "unknown" on every remount (a page reload),
-  // or a genuinely new hold right after a reload would wrongly be treated as backlog.
-  const neverRunBeforeRef = useRef<boolean | null>(null)
+  // Desktop-popup state for each kind of event (see SeenStore). The keys load lazily, once the
+  // user id is known, and stay null beforehand so the first poll of this mount can tell "not
+  // loaded yet" apart from "loaded, and the set happens to be empty". neverRunBefore reflects
+  // every past page load, not just this mount — otherwise a genuinely new event right after a
+  // reload would wrongly be treated as backlog.
+  const holdStoreRef = useRef<SeenStore>({ keys: null, neverRunBefore: null })
+  const newOrderStoreRef = useRef<SeenStore>({ keys: null, neverRunBefore: null })
 
-  // Desktop popups for a newly held order/items, on top of (not instead of) the bell's own
-  // badge/list — which stays the system of record for what's unread. Only for people who are
-  // actually told about holds, and only once permission has been granted.
-  const notifyNewHolds = useCallback(
-    (held: HeldOrderNotification[]) => {
-      if (!user || !seesHolds || typeof Notification === 'undefined' || Notification.permission !== 'granted') return
+  // Desktop popups for new events, on top of (not instead of) the bell's own badge/list — which
+  // stays the system of record for what's unread. Only once permission has been granted.
+  const popDesktopEvents = useCallback(
+    (store: SeenStore, storagePrefix: string, events: DesktopEvent[]) => {
+      if (!user || typeof Notification === 'undefined' || Notification.permission !== 'granted') return
 
-      if (notifiedHoldsRef.current === null) {
-        const loaded = loadNotifiedHoldKeys(user.id)
-        notifiedHoldsRef.current = loaded.keys
-        neverRunBeforeRef.current = loaded.neverRunBefore
+      const storageKey = storagePrefix + user.id
+      if (store.keys === null) {
+        const loaded = loadNotifiedKeys(storageKey)
+        store.keys = loaded.keys
+        store.neverRunBefore = loaded.neverRunBefore
       }
-      const seen = notifiedHoldsRef.current
+      const seen = store.keys
       // Only this one batch is backlog — flip it off immediately so every later poll (even still
       // within this same mount) pops normally for anything genuinely new.
-      const isBacklogBatch = neverRunBeforeRef.current === true
-      neverRunBeforeRef.current = false
+      const isBacklogBatch = store.neverRunBefore === true
+      store.neverRunBefore = false
 
-      for (const h of held) {
-        const key = holdEventKey(h)
-        if (seen.has(key)) continue
-        seen.add(key)
-        // The very first time this feature ever runs for this person, whatever is already on
-        // hold is a backlog, not news — seed it as "seen" quietly instead of popping a burst of
-        // notifications for holds that may be long since resolved by now.
+      for (const event of events) {
+        if (seen.has(event.key)) continue
+        seen.add(event.key)
+        // The very first time this runs for this person, whatever is already there is a backlog,
+        // not news — seed it as "seen" quietly instead of popping a burst of old notifications.
         if (isBacklogBatch) continue
 
-        const notification = new Notification('Order put on hold', { body: holdNotificationBody(h), tag: key })
+        const notification = new Notification(event.title, { body: event.body, tag: event.key })
         notification.onclick = () => {
           window.focus()
-          navigate('/orders?tab=hold')
+          navigate(event.path)
           notification.close()
         }
       }
-      saveNotifiedHoldKeys(user.id, seen)
+      saveNotifiedKeys(storageKey, seen)
     },
-    [user, seesHolds, navigate],
+    [user, navigate],
   )
 
   const load = useCallback(async () => {
     try {
       const data = await deleteRequestsService.notifications()
       setFeed(data)
-      notifyNewHolds(data.held_orders ?? [])
+      if (seesHolds) {
+        popDesktopEvents(
+          holdStoreRef.current,
+          NOTIFIED_HOLDS_STORAGE_PREFIX,
+          (data.held_orders ?? []).map((h) => ({
+            key: holdEventKey(h),
+            title: 'Order put on hold',
+            body: holdNotificationBody(h),
+            path: '/orders?tab=hold',
+          })),
+        )
+      }
+      if (seesNewOrders) {
+        popDesktopEvents(
+          newOrderStoreRef.current,
+          NOTIFIED_NEW_ORDERS_STORAGE_PREFIX,
+          (data.new_orders ?? [])
+            .filter((o) => o.created_at && Date.now() - new Date(o.created_at).getTime() < NEW_ORDER_POPUP_MAX_AGE_MS)
+            .map((o) => ({
+            key: String(o.id),
+            title: 'New order booked',
+            body: newOrderNotificationBody(o),
+            path: newOrderPath,
+          })),
+        )
+      }
     } catch {
       // A failed poll just leaves the last known state in place.
     }
-  }, [notifyNewHolds])
+  }, [seesHolds, seesNewOrders, newOrderPath, popDesktopEvents])
 
   useEffect(() => {
     if (!involved) return
     load()
     const id = setInterval(load, POLL_INTERVAL_MS)
-    return () => clearInterval(id)
+    // Something just happened in this tab (e.g. an order was booked) — check straight away.
+    window.addEventListener(NOTIFICATIONS_REFRESH_EVENT, load)
+    return () => {
+      clearInterval(id)
+      window.removeEventListener(NOTIFICATIONS_REFRESH_EVENT, load)
+    }
   }, [involved, load])
 
   useEffect(() => {
@@ -290,7 +382,7 @@ export default function NotificationBell() {
   }
 
   const count = feed?.unread_count ?? 0
-  const items = feed ? buildItems(feed, freshKeys) : []
+  const items = feed ? buildItems(feed, freshKeys, newOrderPath) : []
 
   return (
     <div className="hx-notif" ref={rootRef}>
@@ -309,15 +401,23 @@ export default function NotificationBell() {
             {count > 0 && <span className="hx-notif__count">{count} new</span>}
           </div>
 
-          {seesHolds && desktopPermission === 'default' && (
+          {getsDesktopAlerts && desktopPermission === 'default' && (
             <div className="hx-notif__permission">
-              <span>Get a desktop alert the moment an order is put on hold.</span>
+              <span>
+                Get a desktop alert the moment{' '}
+                {seesNewOrders && seesHolds
+                  ? 'a new order is booked or an order is put on hold'
+                  : seesNewOrders
+                    ? 'a new order is booked'
+                    : 'an order is put on hold'}
+                .
+              </span>
               <button type="button" className="hx-notif__permission-btn" onClick={requestDesktopPermission}>
                 Enable
               </button>
             </div>
           )}
-          {seesHolds && desktopPermission === 'denied' && (
+          {getsDesktopAlerts && desktopPermission === 'denied' && (
             <div className="hx-notif__permission hx-notif__permission--blocked">
               Desktop alerts are blocked for this site. Allow notifications for it in your browser's site settings
               (usually via the icon next to the address bar), then reopen this panel.
@@ -338,7 +438,10 @@ export default function NotificationBell() {
                     <span className="hx-notif__dot"></span>
                     <span className="hx-notif__body">
                       <span className="hx-notif__title">{item.title}</span>
-                      {item.detail && <span className="hx-notif__detail">“{item.detail}”</span>}
+                      {/* A typed reason/note reads as a quote; an order summary doesn't. */}
+                      {item.detail && (
+                        <span className="hx-notif__detail">{item.tone === 'new' ? item.detail : `“${item.detail}”`}</span>
+                      )}
                       <span className="hx-notif__time">{timeAgo(item.at)}</span>
                     </span>
                   </button>

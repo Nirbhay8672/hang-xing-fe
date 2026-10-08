@@ -4,6 +4,8 @@ export interface User {
   email: string
   roles: string[]
   permissions: string[]
+  /** Hears about each newly booked order (bell + desktop alert) — set per person by an Admin. */
+  notify_new_orders?: boolean
 }
 
 export interface LoginRequest {

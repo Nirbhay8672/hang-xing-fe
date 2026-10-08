@@ -46,12 +46,28 @@ export interface HeldOrderNotification {
   unread: boolean
 }
 
+/** An order someone else just booked — shown to whoever reviews new orders (Planning, Admin). */
+export interface NewOrderNotification {
+  id: number
+  order_no: string
+  size: string | null
+  order_type: string
+  quantity: number
+  company: { id: number; name: string } | null
+  created_by: { id: number; name: string } | null
+  created_at: string | null
+  unread: boolean
+}
+
 /** What the header bell shows: requests waiting on the user's review (Admin), decisions on
- * requests they raised, orders put on hold (Admin), and the combined unread badge count. */
+ * requests they raised, orders put on hold (Admin), newly booked orders (Planning, Admin), and
+ * the combined unread badge count. */
 export interface NotificationFeed {
   pending_reviews: DeleteRequest[]
   decisions: DeleteRequest[]
   held_orders: HeldOrderNotification[]
+  /** Absent from an API that predates new-order notifications. */
+  new_orders?: NewOrderNotification[]
   unread_count: number
 }
 

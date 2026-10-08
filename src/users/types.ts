@@ -4,6 +4,8 @@ export interface User {
   email: string
   role_id: number | null
   roles: string[]
+  /** Hears about each newly booked order (bell + desktop alert). */
+  notify_new_orders: boolean
   created_at: string
   updated_at: string
 }
@@ -13,6 +15,7 @@ export interface CreateUserRequest {
   email: string
   password: string
   role_id?: number
+  notify_new_orders?: boolean
 }
 
 export interface UpdateUserRequest {
@@ -20,4 +23,5 @@ export interface UpdateUserRequest {
   email?: string
   password?: string
   role_id?: number
+  notify_new_orders?: boolean
 }
